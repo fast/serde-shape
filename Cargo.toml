@@ -13,15 +13,15 @@
 # limitations under the License.
 
 [workspace]
-members = ["template", "xtask"]
+members = ["serde-shape", "xtask"]
 resolver = "3"
 
 [workspace.package]
 edition = "2024"
-homepage = "https://github.com/fast/template"
+homepage = "https://github.com/fast/serde-shape"
 license = "Apache-2.0"
 readme = "README.md"
-repository = "https://github.com/fast/template"
+repository = "https://github.com/fast/serde-shape"
 rust-version = "1.85.0"
 
 [workspace.lints.rust]
