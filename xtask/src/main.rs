@@ -12,8 +12,6 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-//! An xtask binary for managing workspace tasks.
-
 use std::path::Path;
 use std::process::Command as StdCommand;
 
@@ -72,6 +70,7 @@ struct CommandTest {
 impl CommandTest {
     fn run(self) {
         run_command(make_test_cmd(self.no_capture, &[]));
+        run_command(make_test_cmd(self.no_capture, &["derive"]));
     }
 }
 

@@ -1,0 +1,186 @@
+---
+source: serde-shape/tests/env_vars.rs
+expression: "env_options::<Config>(\"PERCAS_CONFIG\")"
+---
+[
+    EnvOption {
+        env_name: "PERCAS_CONFIG_SERVER_ADVERTISE_DATA_ADDR",
+        config_path: "server.advertise_data_addr",
+        value_kind: "string",
+        optional: true,
+        condition: None,
+    },
+    EnvOption {
+        env_name: "PERCAS_CONFIG_SERVER_CLUSTER_ID",
+        config_path: "server.cluster_id",
+        value_kind: "string",
+        optional: true,
+        condition: None,
+    },
+    EnvOption {
+        env_name: "PERCAS_CONFIG_SERVER_DIR",
+        config_path: "server.dir",
+        value_kind: "string",
+        optional: true,
+        condition: None,
+    },
+    EnvOption {
+        env_name: "PERCAS_CONFIG_SERVER_INITIAL_PEERS",
+        config_path: "server.initial_peers",
+        value_kind: "array",
+        optional: true,
+        condition: None,
+    },
+    EnvOption {
+        env_name: "PERCAS_CONFIG_SERVER_LISTEN_DATA_ADDR",
+        config_path: "server.listen_data_addr",
+        value_kind: "string",
+        optional: true,
+        condition: None,
+    },
+    EnvOption {
+        env_name: "PERCAS_CONFIG_STORAGE_BACKEND_BUCKET",
+        config_path: "storage.backend.bucket",
+        value_kind: "string",
+        optional: true,
+        condition: Some(
+            "storage.backend.kind=s3",
+        ),
+    },
+    EnvOption {
+        env_name: "PERCAS_CONFIG_STORAGE_BACKEND_DATA_DIR",
+        config_path: "storage.backend.data_dir",
+        value_kind: "string",
+        optional: true,
+        condition: Some(
+            "storage.backend.kind=local",
+        ),
+    },
+    EnvOption {
+        env_name: "PERCAS_CONFIG_STORAGE_BACKEND_KIND",
+        config_path: "storage.backend.kind",
+        value_kind: "enum[local|s3]",
+        optional: true,
+        condition: None,
+    },
+    EnvOption {
+        env_name: "PERCAS_CONFIG_STORAGE_BACKEND_REGION",
+        config_path: "storage.backend.region",
+        value_kind: "string",
+        optional: true,
+        condition: Some(
+            "storage.backend.kind=s3",
+        ),
+    },
+    EnvOption {
+        env_name: "PERCAS_CONFIG_STORAGE_DISK_CAPACITY",
+        config_path: "storage.disk_capacity",
+        value_kind: "string",
+        optional: true,
+        condition: None,
+    },
+    EnvOption {
+        env_name: "PERCAS_CONFIG_STORAGE_DISK_THROTTLE_IOPS_COUNTER_MODE",
+        config_path: "storage.disk_throttle.iops_counter.mode",
+        value_kind: "enum[window|leaky_bucket]",
+        optional: true,
+        condition: None,
+    },
+    EnvOption {
+        env_name: "PERCAS_CONFIG_STORAGE_DISK_THROTTLE_IOPS_COUNTER_SIZE",
+        config_path: "storage.disk_throttle.iops_counter.size",
+        value_kind: "integer",
+        optional: true,
+        condition: None,
+    },
+    EnvOption {
+        env_name: "PERCAS_CONFIG_STORAGE_DISK_THROTTLE_READ_IOPS",
+        config_path: "storage.disk_throttle.read_iops",
+        value_kind: "integer",
+        optional: true,
+        condition: None,
+    },
+    EnvOption {
+        env_name: "PERCAS_CONFIG_STORAGE_DISK_THROTTLE_WRITE_IOPS",
+        config_path: "storage.disk_throttle.write_iops",
+        value_kind: "integer",
+        optional: true,
+        condition: None,
+    },
+    EnvOption {
+        env_name: "PERCAS_CONFIG_STORAGE_MEMORY_CAPACITY",
+        config_path: "storage.memory_capacity",
+        value_kind: "string",
+        optional: true,
+        condition: None,
+    },
+    EnvOption {
+        env_name: "PERCAS_CONFIG_TELEMETRY_LOGS_DIR",
+        config_path: "telemetry.logs.dir",
+        value_kind: "string",
+        optional: true,
+        condition: Some(
+            "telemetry.logs.kind=file",
+        ),
+    },
+    EnvOption {
+        env_name: "PERCAS_CONFIG_TELEMETRY_LOGS_FILTER",
+        config_path: "telemetry.logs.filter",
+        value_kind: "string",
+        optional: true,
+        condition: None,
+    },
+    EnvOption {
+        env_name: "PERCAS_CONFIG_TELEMETRY_LOGS_KIND",
+        config_path: "telemetry.logs.kind",
+        value_kind: "enum[file|stderr|opentelemetry]",
+        optional: true,
+        condition: None,
+    },
+    EnvOption {
+        env_name: "PERCAS_CONFIG_TELEMETRY_LOGS_MAX_FILES",
+        config_path: "telemetry.logs.max_files",
+        value_kind: "integer",
+        optional: true,
+        condition: Some(
+            "telemetry.logs.kind=file",
+        ),
+    },
+    EnvOption {
+        env_name: "PERCAS_CONFIG_TELEMETRY_LOGS_OTLP_ENDPOINT",
+        config_path: "telemetry.logs.otlp_endpoint",
+        value_kind: "string",
+        optional: true,
+        condition: Some(
+            "telemetry.logs.kind=opentelemetry",
+        ),
+    },
+    EnvOption {
+        env_name: "PERCAS_CONFIG_TELEMETRY_METRICS_OPENTELEMETRY_OTLP_ENDPOINT",
+        config_path: "telemetry.metrics.opentelemetry.otlp_endpoint",
+        value_kind: "string",
+        optional: true,
+        condition: None,
+    },
+    EnvOption {
+        env_name: "PERCAS_CONFIG_TELEMETRY_METRICS_OPENTELEMETRY_PUSH_INTERVAL",
+        config_path: "telemetry.metrics.opentelemetry.push_interval",
+        value_kind: "string",
+        optional: true,
+        condition: None,
+    },
+    EnvOption {
+        env_name: "PERCAS_CONFIG_TELEMETRY_TRACES_CAPTURE_LOG_FILTER",
+        config_path: "telemetry.traces.capture_log_filter",
+        value_kind: "string",
+        optional: true,
+        condition: None,
+    },
+    EnvOption {
+        env_name: "PERCAS_CONFIG_TELEMETRY_TRACES_OPENTELEMETRY_OTLP_ENDPOINT",
+        config_path: "telemetry.traces.opentelemetry.otlp_endpoint",
+        value_kind: "string",
+        optional: true,
+        condition: None,
+    },
+]

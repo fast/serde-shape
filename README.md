@@ -1,4 +1,4 @@
-# Fast template for developing a new Rust project
+# serde-shape
 
 [![Crates.io][crates-badge]][crates-url]
 [![Documentation][docs-badge]][docs-url]
@@ -16,7 +16,7 @@
 [actions-badge]: https://github.com/fast/serde-shape/workflows/CI/badge.svg
 [actions-url]: https://github.com/fast/serde-shape/actions?query=workflow%3ACI
 
-`serde-shape` is a crate to reflect the shap of a serde-derived type.
+`serde-shape` is a crate to reflect the shape of a Serde-derived type.
 
 ## Minimum Rust version policy
 

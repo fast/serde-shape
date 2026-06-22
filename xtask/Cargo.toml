@@ -25,8 +25,8 @@ release = false
 [features]
 
 [dependencies]
-clap = { version = "4.6.1", features = ["derive"] }
-which = { version = "8.0.4" }
+clap = { workspace = true, features = ["derive"] }
+which = { workspace = true }
 
 [lints]
 workspace = true

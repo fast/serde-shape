@@ -1,0 +1,118 @@
+---
+source: serde-shape/tests/derive.rs
+expression: "Storage::shape()"
+---
+Shape {
+    root: Definition(
+        ShapeId(
+            0,
+        ),
+    ),
+    definitions: [
+        DefinitionShape {
+            id: ShapeId(
+                0,
+            ),
+            type_name: TypeName {
+                rust_name: "derive::Storage",
+                serde_name: "Storage",
+            },
+            kind: Enum(
+                EnumShape {
+                    repr: Internal {
+                        tag: "type",
+                    },
+                    variants: [
+                        VariantShape {
+                            rust_name: "S3",
+                            deserialize_name: "s3",
+                            deserialize_aliases: [
+                                "s3",
+                                "s3-compatible",
+                            ],
+                            style: Struct,
+                            fields: [
+                                FieldShape {
+                                    member: Named(
+                                        "bucket_name",
+                                    ),
+                                    deserialize_name: "bucket-name",
+                                    deserialize_aliases: [
+                                        "bucket-name",
+                                    ],
+                                    shape: Some(
+                                        String,
+                                    ),
+                                    default: None,
+                                    flatten: false,
+                                    skip_deserializing: false,
+                                    custom_deserializer: false,
+                                    transparent: false,
+                                },
+                            ],
+                            skip_deserializing: false,
+                            custom_deserializer: false,
+                            other: false,
+                            untagged: false,
+                        },
+                        VariantShape {
+                            rust_name: "AzBlob",
+                            deserialize_name: "az-blob",
+                            deserialize_aliases: [
+                                "az-blob",
+                            ],
+                            style: Struct,
+                            fields: [
+                                FieldShape {
+                                    member: Named(
+                                        "container_name",
+                                    ),
+                                    deserialize_name: "container-name",
+                                    deserialize_aliases: [
+                                        "container-name",
+                                    ],
+                                    shape: Some(
+                                        String,
+                                    ),
+                                    default: None,
+                                    flatten: false,
+                                    skip_deserializing: false,
+                                    custom_deserializer: false,
+                                    transparent: false,
+                                },
+                            ],
+                            skip_deserializing: false,
+                            custom_deserializer: false,
+                            other: false,
+                            untagged: false,
+                        },
+                        VariantShape {
+                            rust_name: "Other",
+                            deserialize_name: "other",
+                            deserialize_aliases: [
+                                "other",
+                            ],
+                            style: Unit,
+                            fields: [],
+                            skip_deserializing: false,
+                            custom_deserializer: false,
+                            other: true,
+                            untagged: false,
+                        },
+                    ],
+                    attributes: ContainerAttributes {
+                        tagging: Internal {
+                            tag: "type",
+                        },
+                        deny_unknown_fields: false,
+                        default: None,
+                        has_flatten: false,
+                        transparent: false,
+                        expecting: None,
+                        non_exhaustive: true,
+                    },
+                },
+            ),
+        },
+    ],
+}
