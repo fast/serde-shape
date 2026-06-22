@@ -1,4 +1,4 @@
-# Fast template for developing a new Rust project
+# serde-shape
 
 [![Crates.io][crates-badge]][crates-url]
 [![Documentation][docs-badge]][docs-url]
@@ -17,6 +17,14 @@
 [actions-url]: https://github.com/fast/serde-shape/actions?query=workflow%3ACI
 
 `serde-shape` is a crate to reflect the shape of a Serde-derived type.
+
+## Examples
+
+Generate environment variable entries from a Serde-derived configuration shape:
+
+```shell
+cargo run -p serde-shape --example env_vars
+```
 
 ## Minimum Rust version policy
 

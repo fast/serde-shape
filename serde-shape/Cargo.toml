@@ -37,5 +37,9 @@ serde-shape-derive = { version = "0.0.1", path = "../serde-shape-derive", option
 [dev-dependencies]
 insta = "1.48.0"
 
+[[example]]
+name = "env_vars"
+required-features = ["derive"]
+
 [lints]
 workspace = true

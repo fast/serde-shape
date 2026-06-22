@@ -413,6 +413,37 @@ primitive_shape!(usize, ShapeRef::Unsigned(IntegerWidth::Size));
 primitive_shape!(f32, ShapeRef::Float(FloatWidth::W32));
 primitive_shape!(f64, ShapeRef::Float(FloatWidth::W64));
 primitive_shape!(String, ShapeRef::String);
+primitive_shape!(std::path::PathBuf, ShapeRef::String);
+primitive_shape!(std::net::IpAddr, ShapeRef::String);
+primitive_shape!(std::net::Ipv4Addr, ShapeRef::String);
+primitive_shape!(std::net::Ipv6Addr, ShapeRef::String);
+primitive_shape!(std::net::SocketAddr, ShapeRef::String);
+primitive_shape!(std::net::SocketAddrV4, ShapeRef::String);
+primitive_shape!(std::net::SocketAddrV6, ShapeRef::String);
+primitive_shape!(std::num::NonZeroI8, ShapeRef::Signed(IntegerWidth::W8));
+primitive_shape!(std::num::NonZeroI16, ShapeRef::Signed(IntegerWidth::W16));
+primitive_shape!(std::num::NonZeroI32, ShapeRef::Signed(IntegerWidth::W32));
+primitive_shape!(std::num::NonZeroI64, ShapeRef::Signed(IntegerWidth::W64));
+primitive_shape!(std::num::NonZeroI128, ShapeRef::Signed(IntegerWidth::W128));
+primitive_shape!(std::num::NonZeroIsize, ShapeRef::Signed(IntegerWidth::Size));
+primitive_shape!(std::num::NonZeroU8, ShapeRef::Unsigned(IntegerWidth::W8));
+primitive_shape!(std::num::NonZeroU16, ShapeRef::Unsigned(IntegerWidth::W16));
+primitive_shape!(std::num::NonZeroU32, ShapeRef::Unsigned(IntegerWidth::W32));
+primitive_shape!(std::num::NonZeroU64, ShapeRef::Unsigned(IntegerWidth::W64));
+primitive_shape!(
+    std::num::NonZeroU128,
+    ShapeRef::Unsigned(IntegerWidth::W128)
+);
+primitive_shape!(
+    std::num::NonZeroUsize,
+    ShapeRef::Unsigned(IntegerWidth::Size)
+);
+
+impl SerdeShape for std::path::Path {
+    fn shape_in(_context: &mut ShapeContext) -> ShapeRef {
+        ShapeRef::String
+    }
+}
 
 impl SerdeShape for str {
     fn shape_in(_context: &mut ShapeContext) -> ShapeRef {
