@@ -16,6 +16,7 @@ Shape {
             type_name: TypeName {
                 rust_name: "derive::Recursive",
                 serde_name: "Recursive",
+                serialize_name: "Recursive",
             },
             kind: Struct(
                 StructShape {
@@ -25,6 +26,7 @@ Shape {
                             member: Named(
                                 "child",
                             ),
+                            serialize_name: "child",
                             deserialize_name: "child",
                             deserialize_aliases: [
                                 "child",
@@ -40,7 +42,10 @@ Shape {
                             ),
                             default: None,
                             flatten: false,
+                            skip_serializing: false,
+                            skip_serializing_if: None,
                             skip_deserializing: false,
+                            custom_serializer: false,
                             custom_deserializer: false,
                             transparent: false,
                         },

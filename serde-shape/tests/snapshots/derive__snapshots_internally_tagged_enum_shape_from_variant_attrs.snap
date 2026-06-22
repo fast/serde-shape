@@ -16,6 +16,7 @@ Shape {
             type_name: TypeName {
                 rust_name: "derive::Storage",
                 serde_name: "Storage",
+                serialize_name: "Storage",
             },
             kind: Enum(
                 EnumShape {
@@ -25,6 +26,7 @@ Shape {
                     variants: [
                         VariantShape {
                             rust_name: "S3",
+                            serialize_name: "s3",
                             deserialize_name: "s3",
                             deserialize_aliases: [
                                 "s3",
@@ -36,6 +38,7 @@ Shape {
                                     member: Named(
                                         "bucket_name",
                                     ),
+                                    serialize_name: "bucket-name",
                                     deserialize_name: "bucket-name",
                                     deserialize_aliases: [
                                         "bucket-name",
@@ -45,18 +48,24 @@ Shape {
                                     ),
                                     default: None,
                                     flatten: false,
+                                    skip_serializing: false,
+                                    skip_serializing_if: None,
                                     skip_deserializing: false,
+                                    custom_serializer: false,
                                     custom_deserializer: false,
                                     transparent: false,
                                 },
                             ],
+                            skip_serializing: false,
                             skip_deserializing: false,
+                            custom_serializer: false,
                             custom_deserializer: false,
                             other: false,
                             untagged: false,
                         },
                         VariantShape {
                             rust_name: "AzBlob",
+                            serialize_name: "az-blob",
                             deserialize_name: "az-blob",
                             deserialize_aliases: [
                                 "az-blob",
@@ -67,6 +76,7 @@ Shape {
                                     member: Named(
                                         "container_name",
                                     ),
+                                    serialize_name: "container-name",
                                     deserialize_name: "container-name",
                                     deserialize_aliases: [
                                         "container-name",
@@ -76,25 +86,33 @@ Shape {
                                     ),
                                     default: None,
                                     flatten: false,
+                                    skip_serializing: false,
+                                    skip_serializing_if: None,
                                     skip_deserializing: false,
+                                    custom_serializer: false,
                                     custom_deserializer: false,
                                     transparent: false,
                                 },
                             ],
+                            skip_serializing: false,
                             skip_deserializing: false,
+                            custom_serializer: false,
                             custom_deserializer: false,
                             other: false,
                             untagged: false,
                         },
                         VariantShape {
                             rust_name: "Other",
+                            serialize_name: "other",
                             deserialize_name: "other",
                             deserialize_aliases: [
                                 "other",
                             ],
                             style: Unit,
                             fields: [],
+                            skip_serializing: false,
                             skip_deserializing: false,
+                            custom_serializer: false,
                             custom_deserializer: false,
                             other: true,
                             untagged: false,

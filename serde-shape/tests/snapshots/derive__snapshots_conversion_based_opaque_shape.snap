@@ -16,6 +16,7 @@ Shape {
             type_name: TypeName {
                 rust_name: "derive::FromString",
                 serde_name: "FromString",
+                serialize_name: "FromString",
             },
             kind: Opaque(
                 OpaqueShape {

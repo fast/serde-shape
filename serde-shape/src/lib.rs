@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-//! Reflect the Serde deserialization shape of Rust types.
+//! Reflect the Serde deserialization shape and selected serialization metadata of Rust types.
 
 #![cfg_attr(docsrs, feature(doc_cfg))]
 #![deny(missing_docs)]
@@ -116,6 +116,8 @@ pub struct TypeName {
     pub rust_name: &'static str,
     /// The Serde deserialize name after container rename rules are applied.
     pub serde_name: &'static str,
+    /// The Serde serialize name after container rename rules are applied.
+    pub serialize_name: &'static str,
 }
 
 /// A reference to a shape node.
@@ -320,6 +322,8 @@ pub enum FieldsStyle {
 pub struct FieldShape {
     /// The original Rust field member.
     pub member: FieldMember,
+    /// The primary Serde serialize name.
+    pub serialize_name: &'static str,
     /// The primary Serde deserialize name.
     pub deserialize_name: &'static str,
     /// All accepted Serde deserialize names, including the primary name.
@@ -330,8 +334,14 @@ pub struct FieldShape {
     pub default: DefaultShape,
     /// Whether the field is flattened into the containing map.
     pub flatten: bool,
+    /// Whether Serde skips this field during serialization.
+    pub skip_serializing: bool,
+    /// The predicate used to skip this field during serialization.
+    pub skip_serializing_if: Option<&'static str>,
     /// Whether Serde skips this field during deserialization.
     pub skip_deserializing: bool,
+    /// Whether this field uses a custom serializer.
+    pub custom_serializer: bool,
     /// Whether this field uses a custom deserializer.
     pub custom_deserializer: bool,
     /// Whether this is the transparent field of a transparent container.
@@ -352,6 +362,8 @@ pub enum FieldMember {
 pub struct VariantShape {
     /// The original Rust variant name.
     pub rust_name: &'static str,
+    /// The primary Serde serialize name.
+    pub serialize_name: &'static str,
     /// The primary Serde deserialize name.
     pub deserialize_name: &'static str,
     /// All accepted Serde deserialize names, including the primary name.
@@ -360,8 +372,12 @@ pub struct VariantShape {
     pub style: FieldsStyle,
     /// The variant fields, if their input shape can be inferred.
     pub fields: Vec<FieldShape>,
+    /// Whether Serde skips this variant during serialization.
+    pub skip_serializing: bool,
     /// Whether Serde skips this variant during deserialization.
     pub skip_deserializing: bool,
+    /// Whether this variant uses a custom serializer.
+    pub custom_serializer: bool,
     /// Whether this variant uses a custom deserializer.
     pub custom_deserializer: bool,
     /// Whether this is a Serde `other` catch-all variant.

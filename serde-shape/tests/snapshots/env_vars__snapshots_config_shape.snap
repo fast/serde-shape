@@ -16,6 +16,7 @@ Shape {
             type_name: TypeName {
                 rust_name: "env_vars::Config",
                 serde_name: "Config",
+                serialize_name: "Config",
             },
             kind: Struct(
                 StructShape {
@@ -25,6 +26,7 @@ Shape {
                             member: Named(
                                 "server",
                             ),
+                            serialize_name: "server",
                             deserialize_name: "server",
                             deserialize_aliases: [
                                 "server",
@@ -38,7 +40,10 @@ Shape {
                             ),
                             default: None,
                             flatten: false,
+                            skip_serializing: false,
+                            skip_serializing_if: None,
                             skip_deserializing: false,
+                            custom_serializer: false,
                             custom_deserializer: false,
                             transparent: false,
                         },
@@ -46,6 +51,7 @@ Shape {
                             member: Named(
                                 "storage",
                             ),
+                            serialize_name: "storage",
                             deserialize_name: "storage",
                             deserialize_aliases: [
                                 "storage",
@@ -59,7 +65,10 @@ Shape {
                             ),
                             default: None,
                             flatten: false,
+                            skip_serializing: false,
+                            skip_serializing_if: None,
                             skip_deserializing: false,
+                            custom_serializer: false,
                             custom_deserializer: false,
                             transparent: false,
                         },
@@ -67,6 +76,7 @@ Shape {
                             member: Named(
                                 "telemetry",
                             ),
+                            serialize_name: "telemetry",
                             deserialize_name: "telemetry",
                             deserialize_aliases: [
                                 "telemetry",
@@ -80,7 +90,10 @@ Shape {
                             ),
                             default: None,
                             flatten: false,
+                            skip_serializing: false,
+                            skip_serializing_if: None,
                             skip_deserializing: false,
+                            custom_serializer: false,
                             custom_deserializer: false,
                             transparent: false,
                         },
@@ -104,6 +117,7 @@ Shape {
             type_name: TypeName {
                 rust_name: "env_vars::ServerConfig",
                 serde_name: "ServerConfig",
+                serialize_name: "ServerConfig",
             },
             kind: Struct(
                 StructShape {
@@ -113,6 +127,7 @@ Shape {
                             member: Named(
                                 "dir",
                             ),
+                            serialize_name: "dir",
                             deserialize_name: "dir",
                             deserialize_aliases: [
                                 "dir",
@@ -124,7 +139,10 @@ Shape {
                                 "default_dir",
                             ),
                             flatten: false,
+                            skip_serializing: false,
+                            skip_serializing_if: None,
                             skip_deserializing: false,
+                            custom_serializer: false,
                             custom_deserializer: false,
                             transparent: false,
                         },
@@ -132,6 +150,7 @@ Shape {
                             member: Named(
                                 "listen_data_addr",
                             ),
+                            serialize_name: "listen_data_addr",
                             deserialize_name: "listen_data_addr",
                             deserialize_aliases: [
                                 "listen_data_addr",
@@ -143,7 +162,10 @@ Shape {
                                 "default_listen_data_addr",
                             ),
                             flatten: false,
+                            skip_serializing: false,
+                            skip_serializing_if: None,
                             skip_deserializing: false,
+                            custom_serializer: false,
                             custom_deserializer: false,
                             transparent: false,
                         },
@@ -151,6 +173,7 @@ Shape {
                             member: Named(
                                 "advertise_data_addr",
                             ),
+                            serialize_name: "advertise_data_addr",
                             deserialize_name: "advertise_data_addr",
                             deserialize_aliases: [
                                 "advertise_data_addr",
@@ -162,7 +185,12 @@ Shape {
                             ),
                             default: None,
                             flatten: false,
+                            skip_serializing: false,
+                            skip_serializing_if: Some(
+                                "Option::is_none",
+                            ),
                             skip_deserializing: false,
+                            custom_serializer: false,
                             custom_deserializer: false,
                             transparent: false,
                         },
@@ -170,6 +198,7 @@ Shape {
                             member: Named(
                                 "initial_peers",
                             ),
+                            serialize_name: "initial_peers",
                             deserialize_name: "initial_peers",
                             deserialize_aliases: [
                                 "initial_peers",
@@ -181,7 +210,10 @@ Shape {
                             ),
                             default: Default,
                             flatten: false,
+                            skip_serializing: false,
+                            skip_serializing_if: None,
                             skip_deserializing: false,
+                            custom_serializer: false,
                             custom_deserializer: false,
                             transparent: false,
                         },
@@ -189,6 +221,7 @@ Shape {
                             member: Named(
                                 "cluster_id",
                             ),
+                            serialize_name: "cluster_id",
                             deserialize_name: "cluster_id",
                             deserialize_aliases: [
                                 "cluster_id",
@@ -200,7 +233,10 @@ Shape {
                                 "default_cluster_id",
                             ),
                             flatten: false,
+                            skip_serializing: false,
+                            skip_serializing_if: None,
                             skip_deserializing: false,
+                            custom_serializer: false,
                             custom_deserializer: false,
                             transparent: false,
                         },
@@ -224,6 +260,7 @@ Shape {
             type_name: TypeName {
                 rust_name: "env_vars::StorageConfig",
                 serde_name: "StorageConfig",
+                serialize_name: "StorageConfig",
             },
             kind: Struct(
                 StructShape {
@@ -233,6 +270,7 @@ Shape {
                             member: Named(
                                 "backend",
                             ),
+                            serialize_name: "backend",
                             deserialize_name: "backend",
                             deserialize_aliases: [
                                 "backend",
@@ -246,7 +284,10 @@ Shape {
                             ),
                             default: Default,
                             flatten: false,
+                            skip_serializing: false,
+                            skip_serializing_if: None,
                             skip_deserializing: false,
+                            custom_serializer: false,
                             custom_deserializer: false,
                             transparent: false,
                         },
@@ -254,6 +295,7 @@ Shape {
                             member: Named(
                                 "disk_capacity",
                             ),
+                            serialize_name: "disk_capacity",
                             deserialize_name: "disk_capacity",
                             deserialize_aliases: [
                                 "disk_capacity",
@@ -265,7 +307,10 @@ Shape {
                                 "default_disk_capacity",
                             ),
                             flatten: false,
+                            skip_serializing: false,
+                            skip_serializing_if: None,
                             skip_deserializing: false,
+                            custom_serializer: false,
                             custom_deserializer: false,
                             transparent: false,
                         },
@@ -273,6 +318,7 @@ Shape {
                             member: Named(
                                 "memory_capacity",
                             ),
+                            serialize_name: "memory_capacity",
                             deserialize_name: "memory_capacity",
                             deserialize_aliases: [
                                 "memory_capacity",
@@ -284,7 +330,10 @@ Shape {
                                 "default_memory_capacity",
                             ),
                             flatten: false,
+                            skip_serializing: false,
+                            skip_serializing_if: None,
                             skip_deserializing: false,
+                            custom_serializer: false,
                             custom_deserializer: false,
                             transparent: false,
                         },
@@ -292,6 +341,7 @@ Shape {
                             member: Named(
                                 "disk_throttle",
                             ),
+                            serialize_name: "disk_throttle",
                             deserialize_name: "disk_throttle",
                             deserialize_aliases: [
                                 "disk_throttle",
@@ -307,7 +357,12 @@ Shape {
                             ),
                             default: None,
                             flatten: false,
+                            skip_serializing: false,
+                            skip_serializing_if: Some(
+                                "Option::is_none",
+                            ),
                             skip_deserializing: false,
+                            custom_serializer: false,
                             custom_deserializer: false,
                             transparent: false,
                         },
@@ -331,6 +386,7 @@ Shape {
             type_name: TypeName {
                 rust_name: "env_vars::StorageBackend",
                 serde_name: "StorageBackend",
+                serialize_name: "StorageBackend",
             },
             kind: Enum(
                 EnumShape {
@@ -340,6 +396,7 @@ Shape {
                     variants: [
                         VariantShape {
                             rust_name: "Local",
+                            serialize_name: "local",
                             deserialize_name: "local",
                             deserialize_aliases: [
                                 "local",
@@ -350,6 +407,7 @@ Shape {
                                     member: Named(
                                         "data_dir",
                                     ),
+                                    serialize_name: "data_dir",
                                     deserialize_name: "data_dir",
                                     deserialize_aliases: [
                                         "data_dir",
@@ -359,18 +417,24 @@ Shape {
                                     ),
                                     default: None,
                                     flatten: false,
+                                    skip_serializing: false,
+                                    skip_serializing_if: None,
                                     skip_deserializing: false,
+                                    custom_serializer: false,
                                     custom_deserializer: false,
                                     transparent: false,
                                 },
                             ],
+                            skip_serializing: false,
                             skip_deserializing: false,
+                            custom_serializer: false,
                             custom_deserializer: false,
                             other: false,
                             untagged: false,
                         },
                         VariantShape {
                             rust_name: "S3",
+                            serialize_name: "s3",
                             deserialize_name: "s3",
                             deserialize_aliases: [
                                 "s3",
@@ -381,6 +445,7 @@ Shape {
                                     member: Named(
                                         "bucket",
                                     ),
+                                    serialize_name: "bucket",
                                     deserialize_name: "bucket",
                                     deserialize_aliases: [
                                         "bucket",
@@ -390,7 +455,10 @@ Shape {
                                     ),
                                     default: None,
                                     flatten: false,
+                                    skip_serializing: false,
+                                    skip_serializing_if: None,
                                     skip_deserializing: false,
+                                    custom_serializer: false,
                                     custom_deserializer: false,
                                     transparent: false,
                                 },
@@ -398,6 +466,7 @@ Shape {
                                     member: Named(
                                         "region",
                                     ),
+                                    serialize_name: "region",
                                     deserialize_name: "region",
                                     deserialize_aliases: [
                                         "region",
@@ -407,12 +476,17 @@ Shape {
                                     ),
                                     default: None,
                                     flatten: false,
+                                    skip_serializing: false,
+                                    skip_serializing_if: None,
                                     skip_deserializing: false,
+                                    custom_serializer: false,
                                     custom_deserializer: false,
                                     transparent: false,
                                 },
                             ],
+                            skip_serializing: false,
                             skip_deserializing: false,
+                            custom_serializer: false,
                             custom_deserializer: false,
                             other: false,
                             untagged: false,
@@ -439,6 +513,7 @@ Shape {
             type_name: TypeName {
                 rust_name: "env_vars::DiskThrottle",
                 serde_name: "DiskThrottle",
+                serialize_name: "DiskThrottle",
             },
             kind: Struct(
                 StructShape {
@@ -448,6 +523,7 @@ Shape {
                             member: Named(
                                 "read_iops",
                             ),
+                            serialize_name: "read_iops",
                             deserialize_name: "read_iops",
                             deserialize_aliases: [
                                 "read_iops",
@@ -457,7 +533,10 @@ Shape {
                             ),
                             default: None,
                             flatten: false,
+                            skip_serializing: false,
+                            skip_serializing_if: None,
                             skip_deserializing: false,
+                            custom_serializer: false,
                             custom_deserializer: false,
                             transparent: false,
                         },
@@ -465,6 +544,7 @@ Shape {
                             member: Named(
                                 "write_iops",
                             ),
+                            serialize_name: "write_iops",
                             deserialize_name: "write_iops",
                             deserialize_aliases: [
                                 "write_iops",
@@ -474,7 +554,10 @@ Shape {
                             ),
                             default: None,
                             flatten: false,
+                            skip_serializing: false,
+                            skip_serializing_if: None,
                             skip_deserializing: false,
+                            custom_serializer: false,
                             custom_deserializer: false,
                             transparent: false,
                         },
@@ -482,6 +565,7 @@ Shape {
                             member: Named(
                                 "iops_counter",
                             ),
+                            serialize_name: "iops_counter",
                             deserialize_name: "iops_counter",
                             deserialize_aliases: [
                                 "iops_counter",
@@ -495,7 +579,10 @@ Shape {
                             ),
                             default: None,
                             flatten: false,
+                            skip_serializing: false,
+                            skip_serializing_if: None,
                             skip_deserializing: false,
+                            custom_serializer: false,
                             custom_deserializer: false,
                             transparent: false,
                         },
@@ -519,6 +606,7 @@ Shape {
             type_name: TypeName {
                 rust_name: "env_vars::CounterConfig",
                 serde_name: "CounterConfig",
+                serialize_name: "CounterConfig",
             },
             kind: Struct(
                 StructShape {
@@ -528,6 +616,7 @@ Shape {
                             member: Named(
                                 "mode",
                             ),
+                            serialize_name: "mode",
                             deserialize_name: "mode",
                             deserialize_aliases: [
                                 "mode",
@@ -541,7 +630,10 @@ Shape {
                             ),
                             default: None,
                             flatten: false,
+                            skip_serializing: false,
+                            skip_serializing_if: None,
                             skip_deserializing: false,
+                            custom_serializer: false,
                             custom_deserializer: false,
                             transparent: false,
                         },
@@ -549,6 +641,7 @@ Shape {
                             member: Named(
                                 "size",
                             ),
+                            serialize_name: "size",
                             deserialize_name: "size",
                             deserialize_aliases: [
                                 "size",
@@ -558,7 +651,10 @@ Shape {
                             ),
                             default: None,
                             flatten: false,
+                            skip_serializing: false,
+                            skip_serializing_if: None,
                             skip_deserializing: false,
+                            custom_serializer: false,
                             custom_deserializer: false,
                             transparent: false,
                         },
@@ -582,6 +678,7 @@ Shape {
             type_name: TypeName {
                 rust_name: "env_vars::CounterMode",
                 serde_name: "CounterMode",
+                serialize_name: "CounterMode",
             },
             kind: Enum(
                 EnumShape {
@@ -589,26 +686,32 @@ Shape {
                     variants: [
                         VariantShape {
                             rust_name: "Window",
+                            serialize_name: "window",
                             deserialize_name: "window",
                             deserialize_aliases: [
                                 "window",
                             ],
                             style: Unit,
                             fields: [],
+                            skip_serializing: false,
                             skip_deserializing: false,
+                            custom_serializer: false,
                             custom_deserializer: false,
                             other: false,
                             untagged: false,
                         },
                         VariantShape {
                             rust_name: "LeakyBucket",
+                            serialize_name: "leaky_bucket",
                             deserialize_name: "leaky_bucket",
                             deserialize_aliases: [
                                 "leaky_bucket",
                             ],
                             style: Unit,
                             fields: [],
+                            skip_serializing: false,
                             skip_deserializing: false,
+                            custom_serializer: false,
                             custom_deserializer: false,
                             other: false,
                             untagged: false,
@@ -633,6 +736,7 @@ Shape {
             type_name: TypeName {
                 rust_name: "env_vars::TelemetryConfig",
                 serde_name: "TelemetryConfig",
+                serialize_name: "TelemetryConfig",
             },
             kind: Struct(
                 StructShape {
@@ -642,6 +746,7 @@ Shape {
                             member: Named(
                                 "logs",
                             ),
+                            serialize_name: "logs",
                             deserialize_name: "logs",
                             deserialize_aliases: [
                                 "logs",
@@ -655,7 +760,10 @@ Shape {
                             ),
                             default: Default,
                             flatten: false,
+                            skip_serializing: false,
+                            skip_serializing_if: None,
                             skip_deserializing: false,
+                            custom_serializer: false,
                             custom_deserializer: false,
                             transparent: false,
                         },
@@ -663,6 +771,7 @@ Shape {
                             member: Named(
                                 "traces",
                             ),
+                            serialize_name: "traces",
                             deserialize_name: "traces",
                             deserialize_aliases: [
                                 "traces",
@@ -678,7 +787,12 @@ Shape {
                             ),
                             default: None,
                             flatten: false,
+                            skip_serializing: false,
+                            skip_serializing_if: Some(
+                                "Option::is_none",
+                            ),
                             skip_deserializing: false,
+                            custom_serializer: false,
                             custom_deserializer: false,
                             transparent: false,
                         },
@@ -686,6 +800,7 @@ Shape {
                             member: Named(
                                 "metrics",
                             ),
+                            serialize_name: "metrics",
                             deserialize_name: "metrics",
                             deserialize_aliases: [
                                 "metrics",
@@ -701,7 +816,12 @@ Shape {
                             ),
                             default: None,
                             flatten: false,
+                            skip_serializing: false,
+                            skip_serializing_if: Some(
+                                "Option::is_none",
+                            ),
                             skip_deserializing: false,
+                            custom_serializer: false,
                             custom_deserializer: false,
                             transparent: false,
                         },
@@ -725,6 +845,7 @@ Shape {
             type_name: TypeName {
                 rust_name: "env_vars::LogsConfig",
                 serde_name: "LogsConfig",
+                serialize_name: "LogsConfig",
             },
             kind: Struct(
                 StructShape {
@@ -734,6 +855,7 @@ Shape {
                             member: Named(
                                 "sink",
                             ),
+                            serialize_name: "sink",
                             deserialize_name: "sink",
                             deserialize_aliases: [
                                 "sink",
@@ -747,7 +869,10 @@ Shape {
                             ),
                             default: None,
                             flatten: true,
+                            skip_serializing: false,
+                            skip_serializing_if: None,
                             skip_deserializing: false,
+                            custom_serializer: false,
                             custom_deserializer: false,
                             transparent: false,
                         },
@@ -755,6 +880,7 @@ Shape {
                             member: Named(
                                 "filter",
                             ),
+                            serialize_name: "filter",
                             deserialize_name: "filter",
                             deserialize_aliases: [
                                 "filter",
@@ -764,7 +890,10 @@ Shape {
                             ),
                             default: None,
                             flatten: false,
+                            skip_serializing: false,
+                            skip_serializing_if: None,
                             skip_deserializing: false,
+                            custom_serializer: false,
                             custom_deserializer: false,
                             transparent: false,
                         },
@@ -788,6 +917,7 @@ Shape {
             type_name: TypeName {
                 rust_name: "env_vars::LogSink",
                 serde_name: "LogSink",
+                serialize_name: "LogSink",
             },
             kind: Enum(
                 EnumShape {
@@ -797,6 +927,7 @@ Shape {
                     variants: [
                         VariantShape {
                             rust_name: "File",
+                            serialize_name: "file",
                             deserialize_name: "file",
                             deserialize_aliases: [
                                 "file",
@@ -807,6 +938,7 @@ Shape {
                                     member: Named(
                                         "dir",
                                     ),
+                                    serialize_name: "dir",
                                     deserialize_name: "dir",
                                     deserialize_aliases: [
                                         "dir",
@@ -816,7 +948,10 @@ Shape {
                                     ),
                                     default: None,
                                     flatten: false,
+                                    skip_serializing: false,
+                                    skip_serializing_if: None,
                                     skip_deserializing: false,
+                                    custom_serializer: false,
                                     custom_deserializer: false,
                                     transparent: false,
                                 },
@@ -824,6 +959,7 @@ Shape {
                                     member: Named(
                                         "max_files",
                                     ),
+                                    serialize_name: "max_files",
                                     deserialize_name: "max_files",
                                     deserialize_aliases: [
                                         "max_files",
@@ -835,31 +971,42 @@ Shape {
                                     ),
                                     default: None,
                                     flatten: false,
+                                    skip_serializing: false,
+                                    skip_serializing_if: Some(
+                                        "Option::is_none",
+                                    ),
                                     skip_deserializing: false,
+                                    custom_serializer: false,
                                     custom_deserializer: false,
                                     transparent: false,
                                 },
                             ],
+                            skip_serializing: false,
                             skip_deserializing: false,
+                            custom_serializer: false,
                             custom_deserializer: false,
                             other: false,
                             untagged: false,
                         },
                         VariantShape {
                             rust_name: "Stderr",
+                            serialize_name: "stderr",
                             deserialize_name: "stderr",
                             deserialize_aliases: [
                                 "stderr",
                             ],
                             style: Unit,
                             fields: [],
+                            skip_serializing: false,
                             skip_deserializing: false,
+                            custom_serializer: false,
                             custom_deserializer: false,
                             other: false,
                             untagged: false,
                         },
                         VariantShape {
                             rust_name: "Opentelemetry",
+                            serialize_name: "opentelemetry",
                             deserialize_name: "opentelemetry",
                             deserialize_aliases: [
                                 "opentelemetry",
@@ -870,6 +1017,7 @@ Shape {
                                     member: Named(
                                         "otlp_endpoint",
                                     ),
+                                    serialize_name: "otlp_endpoint",
                                     deserialize_name: "otlp_endpoint",
                                     deserialize_aliases: [
                                         "otlp_endpoint",
@@ -879,12 +1027,17 @@ Shape {
                                     ),
                                     default: None,
                                     flatten: false,
+                                    skip_serializing: false,
+                                    skip_serializing_if: None,
                                     skip_deserializing: false,
+                                    custom_serializer: false,
                                     custom_deserializer: false,
                                     transparent: false,
                                 },
                             ],
+                            skip_serializing: false,
                             skip_deserializing: false,
+                            custom_serializer: false,
                             custom_deserializer: false,
                             other: false,
                             untagged: false,
@@ -911,6 +1064,7 @@ Shape {
             type_name: TypeName {
                 rust_name: "env_vars::TracesConfig",
                 serde_name: "TracesConfig",
+                serialize_name: "TracesConfig",
             },
             kind: Struct(
                 StructShape {
@@ -920,6 +1074,7 @@ Shape {
                             member: Named(
                                 "capture_log_filter",
                             ),
+                            serialize_name: "capture_log_filter",
                             deserialize_name: "capture_log_filter",
                             deserialize_aliases: [
                                 "capture_log_filter",
@@ -929,7 +1084,10 @@ Shape {
                             ),
                             default: None,
                             flatten: false,
+                            skip_serializing: false,
+                            skip_serializing_if: None,
                             skip_deserializing: false,
+                            custom_serializer: false,
                             custom_deserializer: false,
                             transparent: false,
                         },
@@ -937,6 +1095,7 @@ Shape {
                             member: Named(
                                 "opentelemetry",
                             ),
+                            serialize_name: "opentelemetry",
                             deserialize_name: "opentelemetry",
                             deserialize_aliases: [
                                 "opentelemetry",
@@ -952,7 +1111,12 @@ Shape {
                             ),
                             default: None,
                             flatten: false,
+                            skip_serializing: false,
+                            skip_serializing_if: Some(
+                                "Option::is_none",
+                            ),
                             skip_deserializing: false,
+                            custom_serializer: false,
                             custom_deserializer: false,
                             transparent: false,
                         },
@@ -976,6 +1140,7 @@ Shape {
             type_name: TypeName {
                 rust_name: "env_vars::OpentelemetryTracesConfig",
                 serde_name: "OpentelemetryTracesConfig",
+                serialize_name: "OpentelemetryTracesConfig",
             },
             kind: Struct(
                 StructShape {
@@ -985,6 +1150,7 @@ Shape {
                             member: Named(
                                 "otlp_endpoint",
                             ),
+                            serialize_name: "otlp_endpoint",
                             deserialize_name: "otlp_endpoint",
                             deserialize_aliases: [
                                 "otlp_endpoint",
@@ -994,7 +1160,10 @@ Shape {
                             ),
                             default: None,
                             flatten: false,
+                            skip_serializing: false,
+                            skip_serializing_if: None,
                             skip_deserializing: false,
+                            custom_serializer: false,
                             custom_deserializer: false,
                             transparent: false,
                         },
@@ -1018,6 +1187,7 @@ Shape {
             type_name: TypeName {
                 rust_name: "env_vars::MetricsConfig",
                 serde_name: "MetricsConfig",
+                serialize_name: "MetricsConfig",
             },
             kind: Struct(
                 StructShape {
@@ -1027,6 +1197,7 @@ Shape {
                             member: Named(
                                 "opentelemetry",
                             ),
+                            serialize_name: "opentelemetry",
                             deserialize_name: "opentelemetry",
                             deserialize_aliases: [
                                 "opentelemetry",
@@ -1042,7 +1213,12 @@ Shape {
                             ),
                             default: None,
                             flatten: false,
+                            skip_serializing: false,
+                            skip_serializing_if: Some(
+                                "Option::is_none",
+                            ),
                             skip_deserializing: false,
+                            custom_serializer: false,
                             custom_deserializer: false,
                             transparent: false,
                         },
@@ -1066,6 +1242,7 @@ Shape {
             type_name: TypeName {
                 rust_name: "env_vars::OpentelemetryMetricsConfig",
                 serde_name: "OpentelemetryMetricsConfig",
+                serialize_name: "OpentelemetryMetricsConfig",
             },
             kind: Struct(
                 StructShape {
@@ -1075,6 +1252,7 @@ Shape {
                             member: Named(
                                 "otlp_endpoint",
                             ),
+                            serialize_name: "otlp_endpoint",
                             deserialize_name: "otlp_endpoint",
                             deserialize_aliases: [
                                 "otlp_endpoint",
@@ -1084,7 +1262,10 @@ Shape {
                             ),
                             default: None,
                             flatten: false,
+                            skip_serializing: false,
+                            skip_serializing_if: None,
                             skip_deserializing: false,
+                            custom_serializer: false,
                             custom_deserializer: false,
                             transparent: false,
                         },
@@ -1092,6 +1273,7 @@ Shape {
                             member: Named(
                                 "push_interval",
                             ),
+                            serialize_name: "push_interval",
                             deserialize_name: "push_interval",
                             deserialize_aliases: [
                                 "push_interval",
@@ -1103,7 +1285,10 @@ Shape {
                                 "default_metrics_push_interval",
                             ),
                             flatten: false,
+                            skip_serializing: false,
+                            skip_serializing_if: None,
                             skip_deserializing: false,
+                            custom_serializer: false,
                             custom_deserializer: false,
                             transparent: false,
                         },

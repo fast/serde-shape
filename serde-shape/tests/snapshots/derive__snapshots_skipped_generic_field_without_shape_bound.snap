@@ -16,6 +16,7 @@ Shape {
             type_name: TypeName {
                 rust_name: "derive::SkipsGeneric<derive::NotShape>",
                 serde_name: "SkipsGeneric",
+                serialize_name: "SkipsGeneric",
             },
             kind: Struct(
                 StructShape {
@@ -25,6 +26,7 @@ Shape {
                             member: Named(
                                 "value",
                             ),
+                            serialize_name: "value",
                             deserialize_name: "value",
                             deserialize_aliases: [
                                 "value",
@@ -32,7 +34,10 @@ Shape {
                             shape: None,
                             default: Default,
                             flatten: false,
+                            skip_serializing: true,
+                            skip_serializing_if: None,
                             skip_deserializing: true,
+                            custom_serializer: false,
                             custom_deserializer: false,
                             transparent: false,
                         },

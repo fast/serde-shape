@@ -236,6 +236,7 @@ fn collect_return_type_params(
 
 fn shape_body(container: &ast::Container<'_>) -> TokenStream2 {
     let serde_name = lit(container.attrs.name().deserialize_name());
+    let serialize_name = lit(container.attrs.name().serialize_name());
     let kind = definition_kind(container);
 
     quote! {
@@ -243,6 +244,7 @@ fn shape_body(container: &ast::Container<'_>) -> TokenStream2 {
             ::serde_shape::TypeName {
                 rust_name: ::std::any::type_name::<Self>(),
                 serde_name: #serde_name,
+                serialize_name: #serialize_name,
             },
             |context| {
                 #kind
@@ -329,10 +331,13 @@ fn container_attributes(attrs: &attr::Container) -> TokenStream2 {
 
 fn variant_shape(variant: &ast::Variant<'_>) -> TokenStream2 {
     let rust_name = lit(variant.ident.to_string());
+    let serialize_name = lit(variant.attrs.name().serialize_name());
     let deserialize_name = lit(variant.attrs.name().deserialize_name());
     let deserialize_aliases = aliases(variant.attrs.aliases());
     let style = fields_style(variant.style);
+    let skip_serializing = variant.attrs.skip_serializing();
     let skip_deserializing = variant.attrs.skip_deserializing();
+    let custom_serializer = variant.attrs.serialize_with().is_some();
     let custom_deserializer = variant.attrs.deserialize_with().is_some();
     let other = variant.attrs.other();
     let untagged = variant.attrs.untagged();
@@ -345,11 +350,14 @@ fn variant_shape(variant: &ast::Variant<'_>) -> TokenStream2 {
     quote! {
         ::serde_shape::VariantShape {
             rust_name: #rust_name,
+            serialize_name: #serialize_name,
             deserialize_name: #deserialize_name,
             deserialize_aliases: #deserialize_aliases,
             style: #style,
             fields: ::std::vec![#(#fields),*],
+            skip_serializing: #skip_serializing,
             skip_deserializing: #skip_deserializing,
+            custom_serializer: #custom_serializer,
             custom_deserializer: #custom_deserializer,
             other: #other,
             untagged: #untagged,
@@ -359,9 +367,13 @@ fn variant_shape(variant: &ast::Variant<'_>) -> TokenStream2 {
 
 fn field_shape(field: &ast::Field<'_>) -> TokenStream2 {
     let member = field_member(&field.member);
+    let serialize_name = lit(field.attrs.name().serialize_name());
     let deserialize_name = lit(field.attrs.name().deserialize_name());
     let deserialize_aliases = aliases(field.attrs.aliases());
+    let skip_serializing = field.attrs.skip_serializing();
+    let skip_serializing_if = option_path(field.attrs.skip_serializing_if());
     let skip_deserializing = field.attrs.skip_deserializing();
+    let custom_serializer = field.attrs.serialize_with().is_some();
     let custom_deserializer = field.attrs.deserialize_with().is_some();
     let default = default_shape(field.attrs.default());
     let flatten = field.attrs.flatten();
@@ -376,12 +388,16 @@ fn field_shape(field: &ast::Field<'_>) -> TokenStream2 {
     quote! {
         ::serde_shape::FieldShape {
             member: #member,
+            serialize_name: #serialize_name,
             deserialize_name: #deserialize_name,
             deserialize_aliases: #deserialize_aliases,
             shape: #shape,
             default: #default,
             flatten: #flatten,
+            skip_serializing: #skip_serializing,
+            skip_serializing_if: #skip_serializing_if,
             skip_deserializing: #skip_deserializing,
+            custom_serializer: #custom_serializer,
             custom_deserializer: #custom_deserializer,
             transparent: #transparent,
         }
@@ -458,6 +474,16 @@ fn option_lit(value: Option<&str>) -> TokenStream2 {
     match value {
         Some(value) => {
             let value = lit(value);
+            quote!(::std::option::Option::Some(#value))
+        }
+        None => quote!(::std::option::Option::None),
+    }
+}
+
+fn option_path(value: Option<&syn::ExprPath>) -> TokenStream2 {
+    match value {
+        Some(value) => {
+            let value = lit(value.to_token_stream().to_string().replace(' ', ""));
             quote!(::std::option::Option::Some(#value))
         }
         None => quote!(::std::option::Option::None),

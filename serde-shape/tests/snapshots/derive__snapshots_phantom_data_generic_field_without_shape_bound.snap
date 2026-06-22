@@ -16,6 +16,7 @@ Shape {
             type_name: TypeName {
                 rust_name: "derive::Marker<derive::NotShape>",
                 serde_name: "Marker",
+                serialize_name: "Marker",
             },
             kind: Struct(
                 StructShape {
@@ -25,6 +26,7 @@ Shape {
                             member: Named(
                                 "marker",
                             ),
+                            serialize_name: "marker",
                             deserialize_name: "marker",
                             deserialize_aliases: [
                                 "marker",
@@ -34,7 +36,10 @@ Shape {
                             ),
                             default: None,
                             flatten: false,
+                            skip_serializing: false,
+                            skip_serializing_if: None,
                             skip_deserializing: false,
+                            custom_serializer: false,
                             custom_deserializer: false,
                             transparent: false,
                         },

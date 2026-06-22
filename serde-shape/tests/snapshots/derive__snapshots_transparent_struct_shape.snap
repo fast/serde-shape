@@ -16,6 +16,7 @@ Shape {
             type_name: TypeName {
                 rust_name: "derive::UserId",
                 serde_name: "UserId",
+                serialize_name: "UserId",
             },
             kind: Struct(
                 StructShape {
@@ -25,6 +26,7 @@ Shape {
                             member: Unnamed(
                                 0,
                             ),
+                            serialize_name: "0",
                             deserialize_name: "0",
                             deserialize_aliases: [
                                 "0",
@@ -34,7 +36,10 @@ Shape {
                             ),
                             default: None,
                             flatten: false,
+                            skip_serializing: false,
+                            skip_serializing_if: None,
                             skip_deserializing: false,
+                            custom_serializer: false,
                             custom_deserializer: false,
                             transparent: true,
                         },
