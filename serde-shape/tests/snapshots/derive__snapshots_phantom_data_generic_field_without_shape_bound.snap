@@ -1,45 +1,45 @@
 ---
 source: serde-shape/tests/derive.rs
-expression: "Marker::<NotShape>::shape()"
+expression: "Marker::<NotShape>::deserialize_shape()"
 ---
-Shape {
+DeserializeShapeGraph {
     root: Definition(
         ShapeId(
             0,
         ),
     ),
     definitions: [
-        DefinitionShape {
+        DeserializeDefinitionShape {
             id: ShapeId(
                 0,
             ),
-            type_name: TypeName {
+            type_name: DeserializeTypeName {
                 rust_name: "derive::Marker<derive::NotShape>",
-                serde_name: "Marker",
+                name: "Marker",
             },
             kind: Struct(
-                StructShape {
+                DeserializeStructShape {
                     style: Struct,
                     fields: [
-                        FieldShape {
+                        DeserializeFieldShape {
                             member: Named(
                                 "marker",
                             ),
-                            deserialize_name: "marker",
-                            deserialize_aliases: [
+                            name: "marker",
+                            aliases: [
                                 "marker",
                             ],
-                            shape: Some(
+                            value_shape: Some(
                                 Unit,
                             ),
                             default: None,
                             flatten: false,
-                            skip_deserializing: false,
+                            skip: false,
                             custom_deserializer: false,
                             transparent: false,
                         },
                     ],
-                    attributes: ContainerAttributes {
+                    attributes: DeserializeContainerAttributes {
                         tagging: External,
                         deny_unknown_fields: false,
                         default: None,
