@@ -18,14 +18,6 @@
 
 `serde-shape` is a crate to reflect the shape of a Serde-derived type.
 
-## Examples
-
-Generate environment variable entries from a Serde-derived configuration shape:
-
-```shell
-cargo run -p serde-shape --example env_vars
-```
-
 ## Minimum Rust version policy
 
 This crate's minimum supported `rustc` version is `1.85.0`.

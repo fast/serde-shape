@@ -12,6 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#![cfg(feature = "derive")]
 #![allow(dead_code)]
 
 use std::collections::BTreeMap;
@@ -215,19 +216,14 @@ fn default_metrics_push_interval() -> HumanDuration {
     HumanDuration(30)
 }
 
-fn main() {
-    for option in env_options::<Config>("PERCAS_CONFIG") {
-        let optional = if option.optional {
-            "optional"
-        } else {
-            "required"
-        };
-        let condition = option.condition.as_deref().unwrap_or("-");
-        println!(
-            "{:<72} {:<56} {:<18} {:<8} {}",
-            option.env_name, option.config_path, option.value_kind, optional, condition
-        );
-    }
+#[test]
+fn snapshots_config_shape() {
+    insta::assert_debug_snapshot!(Config::shape());
+}
+
+#[test]
+fn snapshots_env_options() {
+    insta::assert_debug_snapshot!(env_options::<Config>("PERCAS_CONFIG"));
 }
 
 fn env_options<T: SerdeShape>(env_prefix: &str) -> Vec<EnvOption> {
