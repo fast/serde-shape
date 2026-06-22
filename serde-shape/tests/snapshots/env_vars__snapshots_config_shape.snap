@@ -1,37 +1,35 @@
 ---
 source: serde-shape/tests/env_vars.rs
-expression: "Config::shape()"
+expression: "Config::deserialize_shape()"
 ---
-Shape {
+DeserializeShapeGraph {
     root: Definition(
         ShapeId(
             0,
         ),
     ),
     definitions: [
-        DefinitionShape {
+        DeserializeDefinitionShape {
             id: ShapeId(
                 0,
             ),
-            type_name: TypeName {
+            type_name: DeserializeTypeName {
                 rust_name: "env_vars::Config",
-                serde_name: "Config",
-                serialize_name: "Config",
+                name: "Config",
             },
             kind: Struct(
-                StructShape {
+                DeserializeStructShape {
                     style: Struct,
                     fields: [
-                        FieldShape {
+                        DeserializeFieldShape {
                             member: Named(
                                 "server",
                             ),
-                            serialize_name: "server",
-                            deserialize_name: "server",
-                            deserialize_aliases: [
+                            name: "server",
+                            aliases: [
                                 "server",
                             ],
-                            shape: Some(
+                            value_shape: Some(
                                 Definition(
                                     ShapeId(
                                         1,
@@ -40,23 +38,19 @@ Shape {
                             ),
                             default: None,
                             flatten: false,
-                            skip_serializing: false,
-                            skip_serializing_if: None,
-                            skip_deserializing: false,
-                            custom_serializer: false,
+                            skip: false,
                             custom_deserializer: false,
                             transparent: false,
                         },
-                        FieldShape {
+                        DeserializeFieldShape {
                             member: Named(
                                 "storage",
                             ),
-                            serialize_name: "storage",
-                            deserialize_name: "storage",
-                            deserialize_aliases: [
+                            name: "storage",
+                            aliases: [
                                 "storage",
                             ],
-                            shape: Some(
+                            value_shape: Some(
                                 Definition(
                                     ShapeId(
                                         2,
@@ -65,23 +59,19 @@ Shape {
                             ),
                             default: None,
                             flatten: false,
-                            skip_serializing: false,
-                            skip_serializing_if: None,
-                            skip_deserializing: false,
-                            custom_serializer: false,
+                            skip: false,
                             custom_deserializer: false,
                             transparent: false,
                         },
-                        FieldShape {
+                        DeserializeFieldShape {
                             member: Named(
                                 "telemetry",
                             ),
-                            serialize_name: "telemetry",
-                            deserialize_name: "telemetry",
-                            deserialize_aliases: [
+                            name: "telemetry",
+                            aliases: [
                                 "telemetry",
                             ],
-                            shape: Some(
+                            value_shape: Some(
                                 Definition(
                                     ShapeId(
                                         7,
@@ -90,15 +80,12 @@ Shape {
                             ),
                             default: None,
                             flatten: false,
-                            skip_serializing: false,
-                            skip_serializing_if: None,
-                            skip_deserializing: false,
-                            custom_serializer: false,
+                            skip: false,
                             custom_deserializer: false,
                             transparent: false,
                         },
                     ],
-                    attributes: ContainerAttributes {
+                    attributes: DeserializeContainerAttributes {
                         tagging: External,
                         deny_unknown_fields: true,
                         default: None,
@@ -110,138 +97,115 @@ Shape {
                 },
             ),
         },
-        DefinitionShape {
+        DeserializeDefinitionShape {
             id: ShapeId(
                 1,
             ),
-            type_name: TypeName {
+            type_name: DeserializeTypeName {
                 rust_name: "env_vars::ServerConfig",
-                serde_name: "ServerConfig",
-                serialize_name: "ServerConfig",
+                name: "ServerConfig",
             },
             kind: Struct(
-                StructShape {
+                DeserializeStructShape {
                     style: Struct,
                     fields: [
-                        FieldShape {
+                        DeserializeFieldShape {
                             member: Named(
                                 "dir",
                             ),
-                            serialize_name: "dir",
-                            deserialize_name: "dir",
-                            deserialize_aliases: [
+                            name: "dir",
+                            aliases: [
                                 "dir",
                             ],
-                            shape: Some(
+                            value_shape: Some(
                                 String,
                             ),
                             default: Path(
                                 "default_dir",
                             ),
                             flatten: false,
-                            skip_serializing: false,
-                            skip_serializing_if: None,
-                            skip_deserializing: false,
-                            custom_serializer: false,
+                            skip: false,
                             custom_deserializer: false,
                             transparent: false,
                         },
-                        FieldShape {
+                        DeserializeFieldShape {
                             member: Named(
                                 "listen_data_addr",
                             ),
-                            serialize_name: "listen_data_addr",
-                            deserialize_name: "listen_data_addr",
-                            deserialize_aliases: [
+                            name: "listen_data_addr",
+                            aliases: [
                                 "listen_data_addr",
                             ],
-                            shape: Some(
+                            value_shape: Some(
                                 String,
                             ),
                             default: Path(
                                 "default_listen_data_addr",
                             ),
                             flatten: false,
-                            skip_serializing: false,
-                            skip_serializing_if: None,
-                            skip_deserializing: false,
-                            custom_serializer: false,
+                            skip: false,
                             custom_deserializer: false,
                             transparent: false,
                         },
-                        FieldShape {
+                        DeserializeFieldShape {
                             member: Named(
                                 "advertise_data_addr",
                             ),
-                            serialize_name: "advertise_data_addr",
-                            deserialize_name: "advertise_data_addr",
-                            deserialize_aliases: [
+                            name: "advertise_data_addr",
+                            aliases: [
                                 "advertise_data_addr",
                             ],
-                            shape: Some(
+                            value_shape: Some(
                                 Option(
                                     String,
                                 ),
                             ),
                             default: None,
                             flatten: false,
-                            skip_serializing: false,
-                            skip_serializing_if: Some(
-                                "Option::is_none",
-                            ),
-                            skip_deserializing: false,
-                            custom_serializer: false,
+                            skip: false,
                             custom_deserializer: false,
                             transparent: false,
                         },
-                        FieldShape {
+                        DeserializeFieldShape {
                             member: Named(
                                 "initial_peers",
                             ),
-                            serialize_name: "initial_peers",
-                            deserialize_name: "initial_peers",
-                            deserialize_aliases: [
+                            name: "initial_peers",
+                            aliases: [
                                 "initial_peers",
                             ],
-                            shape: Some(
+                            value_shape: Some(
                                 Seq(
                                     String,
                                 ),
                             ),
                             default: Default,
                             flatten: false,
-                            skip_serializing: false,
-                            skip_serializing_if: None,
-                            skip_deserializing: false,
-                            custom_serializer: false,
+                            skip: false,
                             custom_deserializer: false,
                             transparent: false,
                         },
-                        FieldShape {
+                        DeserializeFieldShape {
                             member: Named(
                                 "cluster_id",
                             ),
-                            serialize_name: "cluster_id",
-                            deserialize_name: "cluster_id",
-                            deserialize_aliases: [
+                            name: "cluster_id",
+                            aliases: [
                                 "cluster_id",
                             ],
-                            shape: Some(
+                            value_shape: Some(
                                 String,
                             ),
                             default: Path(
                                 "default_cluster_id",
                             ),
                             flatten: false,
-                            skip_serializing: false,
-                            skip_serializing_if: None,
-                            skip_deserializing: false,
-                            custom_serializer: false,
+                            skip: false,
                             custom_deserializer: false,
                             transparent: false,
                         },
                     ],
-                    attributes: ContainerAttributes {
+                    attributes: DeserializeContainerAttributes {
                         tagging: External,
                         deny_unknown_fields: true,
                         default: None,
@@ -253,29 +217,27 @@ Shape {
                 },
             ),
         },
-        DefinitionShape {
+        DeserializeDefinitionShape {
             id: ShapeId(
                 2,
             ),
-            type_name: TypeName {
+            type_name: DeserializeTypeName {
                 rust_name: "env_vars::StorageConfig",
-                serde_name: "StorageConfig",
-                serialize_name: "StorageConfig",
+                name: "StorageConfig",
             },
             kind: Struct(
-                StructShape {
+                DeserializeStructShape {
                     style: Struct,
                     fields: [
-                        FieldShape {
+                        DeserializeFieldShape {
                             member: Named(
                                 "backend",
                             ),
-                            serialize_name: "backend",
-                            deserialize_name: "backend",
-                            deserialize_aliases: [
+                            name: "backend",
+                            aliases: [
                                 "backend",
                             ],
-                            shape: Some(
+                            value_shape: Some(
                                 Definition(
                                     ShapeId(
                                         3,
@@ -284,69 +246,57 @@ Shape {
                             ),
                             default: Default,
                             flatten: false,
-                            skip_serializing: false,
-                            skip_serializing_if: None,
-                            skip_deserializing: false,
-                            custom_serializer: false,
+                            skip: false,
                             custom_deserializer: false,
                             transparent: false,
                         },
-                        FieldShape {
+                        DeserializeFieldShape {
                             member: Named(
                                 "disk_capacity",
                             ),
-                            serialize_name: "disk_capacity",
-                            deserialize_name: "disk_capacity",
-                            deserialize_aliases: [
+                            name: "disk_capacity",
+                            aliases: [
                                 "disk_capacity",
                             ],
-                            shape: Some(
+                            value_shape: Some(
                                 String,
                             ),
                             default: Path(
                                 "default_disk_capacity",
                             ),
                             flatten: false,
-                            skip_serializing: false,
-                            skip_serializing_if: None,
-                            skip_deserializing: false,
-                            custom_serializer: false,
+                            skip: false,
                             custom_deserializer: false,
                             transparent: false,
                         },
-                        FieldShape {
+                        DeserializeFieldShape {
                             member: Named(
                                 "memory_capacity",
                             ),
-                            serialize_name: "memory_capacity",
-                            deserialize_name: "memory_capacity",
-                            deserialize_aliases: [
+                            name: "memory_capacity",
+                            aliases: [
                                 "memory_capacity",
                             ],
-                            shape: Some(
+                            value_shape: Some(
                                 String,
                             ),
                             default: Path(
                                 "default_memory_capacity",
                             ),
                             flatten: false,
-                            skip_serializing: false,
-                            skip_serializing_if: None,
-                            skip_deserializing: false,
-                            custom_serializer: false,
+                            skip: false,
                             custom_deserializer: false,
                             transparent: false,
                         },
-                        FieldShape {
+                        DeserializeFieldShape {
                             member: Named(
                                 "disk_throttle",
                             ),
-                            serialize_name: "disk_throttle",
-                            deserialize_name: "disk_throttle",
-                            deserialize_aliases: [
+                            name: "disk_throttle",
+                            aliases: [
                                 "disk_throttle",
                             ],
-                            shape: Some(
+                            value_shape: Some(
                                 Option(
                                     Definition(
                                         ShapeId(
@@ -357,17 +307,12 @@ Shape {
                             ),
                             default: None,
                             flatten: false,
-                            skip_serializing: false,
-                            skip_serializing_if: Some(
-                                "Option::is_none",
-                            ),
-                            skip_deserializing: false,
-                            custom_serializer: false,
+                            skip: false,
                             custom_deserializer: false,
                             transparent: false,
                         },
                     ],
-                    attributes: ContainerAttributes {
+                    attributes: DeserializeContainerAttributes {
                         tagging: External,
                         deny_unknown_fields: true,
                         default: None,
@@ -379,120 +324,101 @@ Shape {
                 },
             ),
         },
-        DefinitionShape {
+        DeserializeDefinitionShape {
             id: ShapeId(
                 3,
             ),
-            type_name: TypeName {
+            type_name: DeserializeTypeName {
                 rust_name: "env_vars::StorageBackend",
-                serde_name: "StorageBackend",
-                serialize_name: "StorageBackend",
+                name: "StorageBackend",
             },
             kind: Enum(
-                EnumShape {
+                DeserializeEnumShape {
                     repr: Internal {
                         tag: "kind",
                     },
                     variants: [
-                        VariantShape {
+                        DeserializeVariantShape {
                             rust_name: "Local",
-                            serialize_name: "local",
-                            deserialize_name: "local",
-                            deserialize_aliases: [
+                            name: "local",
+                            aliases: [
                                 "local",
                             ],
                             style: Struct,
                             fields: [
-                                FieldShape {
+                                DeserializeFieldShape {
                                     member: Named(
                                         "data_dir",
                                     ),
-                                    serialize_name: "data_dir",
-                                    deserialize_name: "data_dir",
-                                    deserialize_aliases: [
+                                    name: "data_dir",
+                                    aliases: [
                                         "data_dir",
                                     ],
-                                    shape: Some(
+                                    value_shape: Some(
                                         String,
                                     ),
                                     default: None,
                                     flatten: false,
-                                    skip_serializing: false,
-                                    skip_serializing_if: None,
-                                    skip_deserializing: false,
-                                    custom_serializer: false,
+                                    skip: false,
                                     custom_deserializer: false,
                                     transparent: false,
                                 },
                             ],
-                            skip_serializing: false,
-                            skip_deserializing: false,
-                            custom_serializer: false,
+                            skip: false,
                             custom_deserializer: false,
                             other: false,
                             untagged: false,
                         },
-                        VariantShape {
+                        DeserializeVariantShape {
                             rust_name: "S3",
-                            serialize_name: "s3",
-                            deserialize_name: "s3",
-                            deserialize_aliases: [
+                            name: "s3",
+                            aliases: [
                                 "s3",
                             ],
                             style: Struct,
                             fields: [
-                                FieldShape {
+                                DeserializeFieldShape {
                                     member: Named(
                                         "bucket",
                                     ),
-                                    serialize_name: "bucket",
-                                    deserialize_name: "bucket",
-                                    deserialize_aliases: [
+                                    name: "bucket",
+                                    aliases: [
                                         "bucket",
                                     ],
-                                    shape: Some(
+                                    value_shape: Some(
                                         String,
                                     ),
                                     default: None,
                                     flatten: false,
-                                    skip_serializing: false,
-                                    skip_serializing_if: None,
-                                    skip_deserializing: false,
-                                    custom_serializer: false,
+                                    skip: false,
                                     custom_deserializer: false,
                                     transparent: false,
                                 },
-                                FieldShape {
+                                DeserializeFieldShape {
                                     member: Named(
                                         "region",
                                     ),
-                                    serialize_name: "region",
-                                    deserialize_name: "region",
-                                    deserialize_aliases: [
+                                    name: "region",
+                                    aliases: [
                                         "region",
                                     ],
-                                    shape: Some(
+                                    value_shape: Some(
                                         String,
                                     ),
                                     default: None,
                                     flatten: false,
-                                    skip_serializing: false,
-                                    skip_serializing_if: None,
-                                    skip_deserializing: false,
-                                    custom_serializer: false,
+                                    skip: false,
                                     custom_deserializer: false,
                                     transparent: false,
                                 },
                             ],
-                            skip_serializing: false,
-                            skip_deserializing: false,
-                            custom_serializer: false,
+                            skip: false,
                             custom_deserializer: false,
                             other: false,
                             untagged: false,
                         },
                     ],
-                    attributes: ContainerAttributes {
+                    attributes: DeserializeContainerAttributes {
                         tagging: Internal {
                             tag: "kind",
                         },
@@ -506,71 +432,61 @@ Shape {
                 },
             ),
         },
-        DefinitionShape {
+        DeserializeDefinitionShape {
             id: ShapeId(
                 4,
             ),
-            type_name: TypeName {
+            type_name: DeserializeTypeName {
                 rust_name: "env_vars::DiskThrottle",
-                serde_name: "DiskThrottle",
-                serialize_name: "DiskThrottle",
+                name: "DiskThrottle",
             },
             kind: Struct(
-                StructShape {
+                DeserializeStructShape {
                     style: Struct,
                     fields: [
-                        FieldShape {
+                        DeserializeFieldShape {
                             member: Named(
                                 "read_iops",
                             ),
-                            serialize_name: "read_iops",
-                            deserialize_name: "read_iops",
-                            deserialize_aliases: [
+                            name: "read_iops",
+                            aliases: [
                                 "read_iops",
                             ],
-                            shape: Some(
+                            value_shape: Some(
                                 U64,
                             ),
                             default: None,
                             flatten: false,
-                            skip_serializing: false,
-                            skip_serializing_if: None,
-                            skip_deserializing: false,
-                            custom_serializer: false,
+                            skip: false,
                             custom_deserializer: false,
                             transparent: false,
                         },
-                        FieldShape {
+                        DeserializeFieldShape {
                             member: Named(
                                 "write_iops",
                             ),
-                            serialize_name: "write_iops",
-                            deserialize_name: "write_iops",
-                            deserialize_aliases: [
+                            name: "write_iops",
+                            aliases: [
                                 "write_iops",
                             ],
-                            shape: Some(
+                            value_shape: Some(
                                 U64,
                             ),
                             default: None,
                             flatten: false,
-                            skip_serializing: false,
-                            skip_serializing_if: None,
-                            skip_deserializing: false,
-                            custom_serializer: false,
+                            skip: false,
                             custom_deserializer: false,
                             transparent: false,
                         },
-                        FieldShape {
+                        DeserializeFieldShape {
                             member: Named(
                                 "iops_counter",
                             ),
-                            serialize_name: "iops_counter",
-                            deserialize_name: "iops_counter",
-                            deserialize_aliases: [
+                            name: "iops_counter",
+                            aliases: [
                                 "iops_counter",
                             ],
-                            shape: Some(
+                            value_shape: Some(
                                 Definition(
                                     ShapeId(
                                         5,
@@ -579,15 +495,12 @@ Shape {
                             ),
                             default: None,
                             flatten: false,
-                            skip_serializing: false,
-                            skip_serializing_if: None,
-                            skip_deserializing: false,
-                            custom_serializer: false,
+                            skip: false,
                             custom_deserializer: false,
                             transparent: false,
                         },
                     ],
-                    attributes: ContainerAttributes {
+                    attributes: DeserializeContainerAttributes {
                         tagging: External,
                         deny_unknown_fields: true,
                         default: None,
@@ -599,29 +512,27 @@ Shape {
                 },
             ),
         },
-        DefinitionShape {
+        DeserializeDefinitionShape {
             id: ShapeId(
                 5,
             ),
-            type_name: TypeName {
+            type_name: DeserializeTypeName {
                 rust_name: "env_vars::CounterConfig",
-                serde_name: "CounterConfig",
-                serialize_name: "CounterConfig",
+                name: "CounterConfig",
             },
             kind: Struct(
-                StructShape {
+                DeserializeStructShape {
                     style: Struct,
                     fields: [
-                        FieldShape {
+                        DeserializeFieldShape {
                             member: Named(
                                 "mode",
                             ),
-                            serialize_name: "mode",
-                            deserialize_name: "mode",
-                            deserialize_aliases: [
+                            name: "mode",
+                            aliases: [
                                 "mode",
                             ],
-                            shape: Some(
+                            value_shape: Some(
                                 Definition(
                                     ShapeId(
                                         6,
@@ -630,36 +541,29 @@ Shape {
                             ),
                             default: None,
                             flatten: false,
-                            skip_serializing: false,
-                            skip_serializing_if: None,
-                            skip_deserializing: false,
-                            custom_serializer: false,
+                            skip: false,
                             custom_deserializer: false,
                             transparent: false,
                         },
-                        FieldShape {
+                        DeserializeFieldShape {
                             member: Named(
                                 "size",
                             ),
-                            serialize_name: "size",
-                            deserialize_name: "size",
-                            deserialize_aliases: [
+                            name: "size",
+                            aliases: [
                                 "size",
                             ],
-                            shape: Some(
+                            value_shape: Some(
                                 Usize,
                             ),
                             default: None,
                             flatten: false,
-                            skip_serializing: false,
-                            skip_serializing_if: None,
-                            skip_deserializing: false,
-                            custom_serializer: false,
+                            skip: false,
                             custom_deserializer: false,
                             transparent: false,
                         },
                     ],
-                    attributes: ContainerAttributes {
+                    attributes: DeserializeContainerAttributes {
                         tagging: External,
                         deny_unknown_fields: true,
                         default: None,
@@ -671,53 +575,46 @@ Shape {
                 },
             ),
         },
-        DefinitionShape {
+        DeserializeDefinitionShape {
             id: ShapeId(
                 6,
             ),
-            type_name: TypeName {
+            type_name: DeserializeTypeName {
                 rust_name: "env_vars::CounterMode",
-                serde_name: "CounterMode",
-                serialize_name: "CounterMode",
+                name: "CounterMode",
             },
             kind: Enum(
-                EnumShape {
+                DeserializeEnumShape {
                     repr: External,
                     variants: [
-                        VariantShape {
+                        DeserializeVariantShape {
                             rust_name: "Window",
-                            serialize_name: "window",
-                            deserialize_name: "window",
-                            deserialize_aliases: [
+                            name: "window",
+                            aliases: [
                                 "window",
                             ],
                             style: Unit,
                             fields: [],
-                            skip_serializing: false,
-                            skip_deserializing: false,
-                            custom_serializer: false,
+                            skip: false,
                             custom_deserializer: false,
                             other: false,
                             untagged: false,
                         },
-                        VariantShape {
+                        DeserializeVariantShape {
                             rust_name: "LeakyBucket",
-                            serialize_name: "leaky_bucket",
-                            deserialize_name: "leaky_bucket",
-                            deserialize_aliases: [
+                            name: "leaky_bucket",
+                            aliases: [
                                 "leaky_bucket",
                             ],
                             style: Unit,
                             fields: [],
-                            skip_serializing: false,
-                            skip_deserializing: false,
-                            custom_serializer: false,
+                            skip: false,
                             custom_deserializer: false,
                             other: false,
                             untagged: false,
                         },
                     ],
-                    attributes: ContainerAttributes {
+                    attributes: DeserializeContainerAttributes {
                         tagging: External,
                         deny_unknown_fields: false,
                         default: None,
@@ -729,29 +626,27 @@ Shape {
                 },
             ),
         },
-        DefinitionShape {
+        DeserializeDefinitionShape {
             id: ShapeId(
                 7,
             ),
-            type_name: TypeName {
+            type_name: DeserializeTypeName {
                 rust_name: "env_vars::TelemetryConfig",
-                serde_name: "TelemetryConfig",
-                serialize_name: "TelemetryConfig",
+                name: "TelemetryConfig",
             },
             kind: Struct(
-                StructShape {
+                DeserializeStructShape {
                     style: Struct,
                     fields: [
-                        FieldShape {
+                        DeserializeFieldShape {
                             member: Named(
                                 "logs",
                             ),
-                            serialize_name: "logs",
-                            deserialize_name: "logs",
-                            deserialize_aliases: [
+                            name: "logs",
+                            aliases: [
                                 "logs",
                             ],
-                            shape: Some(
+                            value_shape: Some(
                                 Definition(
                                     ShapeId(
                                         8,
@@ -760,23 +655,19 @@ Shape {
                             ),
                             default: Default,
                             flatten: false,
-                            skip_serializing: false,
-                            skip_serializing_if: None,
-                            skip_deserializing: false,
-                            custom_serializer: false,
+                            skip: false,
                             custom_deserializer: false,
                             transparent: false,
                         },
-                        FieldShape {
+                        DeserializeFieldShape {
                             member: Named(
                                 "traces",
                             ),
-                            serialize_name: "traces",
-                            deserialize_name: "traces",
-                            deserialize_aliases: [
+                            name: "traces",
+                            aliases: [
                                 "traces",
                             ],
-                            shape: Some(
+                            value_shape: Some(
                                 Option(
                                     Definition(
                                         ShapeId(
@@ -787,25 +678,19 @@ Shape {
                             ),
                             default: None,
                             flatten: false,
-                            skip_serializing: false,
-                            skip_serializing_if: Some(
-                                "Option::is_none",
-                            ),
-                            skip_deserializing: false,
-                            custom_serializer: false,
+                            skip: false,
                             custom_deserializer: false,
                             transparent: false,
                         },
-                        FieldShape {
+                        DeserializeFieldShape {
                             member: Named(
                                 "metrics",
                             ),
-                            serialize_name: "metrics",
-                            deserialize_name: "metrics",
-                            deserialize_aliases: [
+                            name: "metrics",
+                            aliases: [
                                 "metrics",
                             ],
-                            shape: Some(
+                            value_shape: Some(
                                 Option(
                                     Definition(
                                         ShapeId(
@@ -816,17 +701,12 @@ Shape {
                             ),
                             default: None,
                             flatten: false,
-                            skip_serializing: false,
-                            skip_serializing_if: Some(
-                                "Option::is_none",
-                            ),
-                            skip_deserializing: false,
-                            custom_serializer: false,
+                            skip: false,
                             custom_deserializer: false,
                             transparent: false,
                         },
                     ],
-                    attributes: ContainerAttributes {
+                    attributes: DeserializeContainerAttributes {
                         tagging: External,
                         deny_unknown_fields: true,
                         default: None,
@@ -838,29 +718,27 @@ Shape {
                 },
             ),
         },
-        DefinitionShape {
+        DeserializeDefinitionShape {
             id: ShapeId(
                 8,
             ),
-            type_name: TypeName {
+            type_name: DeserializeTypeName {
                 rust_name: "env_vars::LogsConfig",
-                serde_name: "LogsConfig",
-                serialize_name: "LogsConfig",
+                name: "LogsConfig",
             },
             kind: Struct(
-                StructShape {
+                DeserializeStructShape {
                     style: Struct,
                     fields: [
-                        FieldShape {
+                        DeserializeFieldShape {
                             member: Named(
                                 "sink",
                             ),
-                            serialize_name: "sink",
-                            deserialize_name: "sink",
-                            deserialize_aliases: [
+                            name: "sink",
+                            aliases: [
                                 "sink",
                             ],
-                            shape: Some(
+                            value_shape: Some(
                                 Definition(
                                     ShapeId(
                                         9,
@@ -869,36 +747,29 @@ Shape {
                             ),
                             default: None,
                             flatten: true,
-                            skip_serializing: false,
-                            skip_serializing_if: None,
-                            skip_deserializing: false,
-                            custom_serializer: false,
+                            skip: false,
                             custom_deserializer: false,
                             transparent: false,
                         },
-                        FieldShape {
+                        DeserializeFieldShape {
                             member: Named(
                                 "filter",
                             ),
-                            serialize_name: "filter",
-                            deserialize_name: "filter",
-                            deserialize_aliases: [
+                            name: "filter",
+                            aliases: [
                                 "filter",
                             ],
-                            shape: Some(
+                            value_shape: Some(
                                 String,
                             ),
                             default: None,
                             flatten: false,
-                            skip_serializing: false,
-                            skip_serializing_if: None,
-                            skip_deserializing: false,
-                            custom_serializer: false,
+                            skip: false,
                             custom_deserializer: false,
                             transparent: false,
                         },
                     ],
-                    attributes: ContainerAttributes {
+                    attributes: DeserializeContainerAttributes {
                         tagging: External,
                         deny_unknown_fields: true,
                         default: None,
@@ -910,140 +781,116 @@ Shape {
                 },
             ),
         },
-        DefinitionShape {
+        DeserializeDefinitionShape {
             id: ShapeId(
                 9,
             ),
-            type_name: TypeName {
+            type_name: DeserializeTypeName {
                 rust_name: "env_vars::LogSink",
-                serde_name: "LogSink",
-                serialize_name: "LogSink",
+                name: "LogSink",
             },
             kind: Enum(
-                EnumShape {
+                DeserializeEnumShape {
                     repr: Internal {
                         tag: "kind",
                     },
                     variants: [
-                        VariantShape {
+                        DeserializeVariantShape {
                             rust_name: "File",
-                            serialize_name: "file",
-                            deserialize_name: "file",
-                            deserialize_aliases: [
+                            name: "file",
+                            aliases: [
                                 "file",
                             ],
                             style: Struct,
                             fields: [
-                                FieldShape {
+                                DeserializeFieldShape {
                                     member: Named(
                                         "dir",
                                     ),
-                                    serialize_name: "dir",
-                                    deserialize_name: "dir",
-                                    deserialize_aliases: [
+                                    name: "dir",
+                                    aliases: [
                                         "dir",
                                     ],
-                                    shape: Some(
+                                    value_shape: Some(
                                         String,
                                     ),
                                     default: None,
                                     flatten: false,
-                                    skip_serializing: false,
-                                    skip_serializing_if: None,
-                                    skip_deserializing: false,
-                                    custom_serializer: false,
+                                    skip: false,
                                     custom_deserializer: false,
                                     transparent: false,
                                 },
-                                FieldShape {
+                                DeserializeFieldShape {
                                     member: Named(
                                         "max_files",
                                     ),
-                                    serialize_name: "max_files",
-                                    deserialize_name: "max_files",
-                                    deserialize_aliases: [
+                                    name: "max_files",
+                                    aliases: [
                                         "max_files",
                                     ],
-                                    shape: Some(
+                                    value_shape: Some(
                                         Option(
                                             Usize,
                                         ),
                                     ),
                                     default: None,
                                     flatten: false,
-                                    skip_serializing: false,
-                                    skip_serializing_if: Some(
-                                        "Option::is_none",
-                                    ),
-                                    skip_deserializing: false,
-                                    custom_serializer: false,
+                                    skip: false,
                                     custom_deserializer: false,
                                     transparent: false,
                                 },
                             ],
-                            skip_serializing: false,
-                            skip_deserializing: false,
-                            custom_serializer: false,
+                            skip: false,
                             custom_deserializer: false,
                             other: false,
                             untagged: false,
                         },
-                        VariantShape {
+                        DeserializeVariantShape {
                             rust_name: "Stderr",
-                            serialize_name: "stderr",
-                            deserialize_name: "stderr",
-                            deserialize_aliases: [
+                            name: "stderr",
+                            aliases: [
                                 "stderr",
                             ],
                             style: Unit,
                             fields: [],
-                            skip_serializing: false,
-                            skip_deserializing: false,
-                            custom_serializer: false,
+                            skip: false,
                             custom_deserializer: false,
                             other: false,
                             untagged: false,
                         },
-                        VariantShape {
+                        DeserializeVariantShape {
                             rust_name: "Opentelemetry",
-                            serialize_name: "opentelemetry",
-                            deserialize_name: "opentelemetry",
-                            deserialize_aliases: [
+                            name: "opentelemetry",
+                            aliases: [
                                 "opentelemetry",
                             ],
                             style: Struct,
                             fields: [
-                                FieldShape {
+                                DeserializeFieldShape {
                                     member: Named(
                                         "otlp_endpoint",
                                     ),
-                                    serialize_name: "otlp_endpoint",
-                                    deserialize_name: "otlp_endpoint",
-                                    deserialize_aliases: [
+                                    name: "otlp_endpoint",
+                                    aliases: [
                                         "otlp_endpoint",
                                     ],
-                                    shape: Some(
+                                    value_shape: Some(
                                         String,
                                     ),
                                     default: None,
                                     flatten: false,
-                                    skip_serializing: false,
-                                    skip_serializing_if: None,
-                                    skip_deserializing: false,
-                                    custom_serializer: false,
+                                    skip: false,
                                     custom_deserializer: false,
                                     transparent: false,
                                 },
                             ],
-                            skip_serializing: false,
-                            skip_deserializing: false,
-                            custom_serializer: false,
+                            skip: false,
                             custom_deserializer: false,
                             other: false,
                             untagged: false,
                         },
                     ],
-                    attributes: ContainerAttributes {
+                    attributes: DeserializeContainerAttributes {
                         tagging: Internal {
                             tag: "kind",
                         },
@@ -1057,50 +904,44 @@ Shape {
                 },
             ),
         },
-        DefinitionShape {
+        DeserializeDefinitionShape {
             id: ShapeId(
                 10,
             ),
-            type_name: TypeName {
+            type_name: DeserializeTypeName {
                 rust_name: "env_vars::TracesConfig",
-                serde_name: "TracesConfig",
-                serialize_name: "TracesConfig",
+                name: "TracesConfig",
             },
             kind: Struct(
-                StructShape {
+                DeserializeStructShape {
                     style: Struct,
                     fields: [
-                        FieldShape {
+                        DeserializeFieldShape {
                             member: Named(
                                 "capture_log_filter",
                             ),
-                            serialize_name: "capture_log_filter",
-                            deserialize_name: "capture_log_filter",
-                            deserialize_aliases: [
+                            name: "capture_log_filter",
+                            aliases: [
                                 "capture_log_filter",
                             ],
-                            shape: Some(
+                            value_shape: Some(
                                 String,
                             ),
                             default: None,
                             flatten: false,
-                            skip_serializing: false,
-                            skip_serializing_if: None,
-                            skip_deserializing: false,
-                            custom_serializer: false,
+                            skip: false,
                             custom_deserializer: false,
                             transparent: false,
                         },
-                        FieldShape {
+                        DeserializeFieldShape {
                             member: Named(
                                 "opentelemetry",
                             ),
-                            serialize_name: "opentelemetry",
-                            deserialize_name: "opentelemetry",
-                            deserialize_aliases: [
+                            name: "opentelemetry",
+                            aliases: [
                                 "opentelemetry",
                             ],
-                            shape: Some(
+                            value_shape: Some(
                                 Option(
                                     Definition(
                                         ShapeId(
@@ -1111,17 +952,12 @@ Shape {
                             ),
                             default: None,
                             flatten: false,
-                            skip_serializing: false,
-                            skip_serializing_if: Some(
-                                "Option::is_none",
-                            ),
-                            skip_deserializing: false,
-                            custom_serializer: false,
+                            skip: false,
                             custom_deserializer: false,
                             transparent: false,
                         },
                     ],
-                    attributes: ContainerAttributes {
+                    attributes: DeserializeContainerAttributes {
                         tagging: External,
                         deny_unknown_fields: true,
                         default: None,
@@ -1133,42 +969,37 @@ Shape {
                 },
             ),
         },
-        DefinitionShape {
+        DeserializeDefinitionShape {
             id: ShapeId(
                 11,
             ),
-            type_name: TypeName {
+            type_name: DeserializeTypeName {
                 rust_name: "env_vars::OpentelemetryTracesConfig",
-                serde_name: "OpentelemetryTracesConfig",
-                serialize_name: "OpentelemetryTracesConfig",
+                name: "OpentelemetryTracesConfig",
             },
             kind: Struct(
-                StructShape {
+                DeserializeStructShape {
                     style: Struct,
                     fields: [
-                        FieldShape {
+                        DeserializeFieldShape {
                             member: Named(
                                 "otlp_endpoint",
                             ),
-                            serialize_name: "otlp_endpoint",
-                            deserialize_name: "otlp_endpoint",
-                            deserialize_aliases: [
+                            name: "otlp_endpoint",
+                            aliases: [
                                 "otlp_endpoint",
                             ],
-                            shape: Some(
+                            value_shape: Some(
                                 String,
                             ),
                             default: None,
                             flatten: false,
-                            skip_serializing: false,
-                            skip_serializing_if: None,
-                            skip_deserializing: false,
-                            custom_serializer: false,
+                            skip: false,
                             custom_deserializer: false,
                             transparent: false,
                         },
                     ],
-                    attributes: ContainerAttributes {
+                    attributes: DeserializeContainerAttributes {
                         tagging: External,
                         deny_unknown_fields: true,
                         default: None,
@@ -1180,29 +1011,27 @@ Shape {
                 },
             ),
         },
-        DefinitionShape {
+        DeserializeDefinitionShape {
             id: ShapeId(
                 12,
             ),
-            type_name: TypeName {
+            type_name: DeserializeTypeName {
                 rust_name: "env_vars::MetricsConfig",
-                serde_name: "MetricsConfig",
-                serialize_name: "MetricsConfig",
+                name: "MetricsConfig",
             },
             kind: Struct(
-                StructShape {
+                DeserializeStructShape {
                     style: Struct,
                     fields: [
-                        FieldShape {
+                        DeserializeFieldShape {
                             member: Named(
                                 "opentelemetry",
                             ),
-                            serialize_name: "opentelemetry",
-                            deserialize_name: "opentelemetry",
-                            deserialize_aliases: [
+                            name: "opentelemetry",
+                            aliases: [
                                 "opentelemetry",
                             ],
-                            shape: Some(
+                            value_shape: Some(
                                 Option(
                                     Definition(
                                         ShapeId(
@@ -1213,17 +1042,12 @@ Shape {
                             ),
                             default: None,
                             flatten: false,
-                            skip_serializing: false,
-                            skip_serializing_if: Some(
-                                "Option::is_none",
-                            ),
-                            skip_deserializing: false,
-                            custom_serializer: false,
+                            skip: false,
                             custom_deserializer: false,
                             transparent: false,
                         },
                     ],
-                    attributes: ContainerAttributes {
+                    attributes: DeserializeContainerAttributes {
                         tagging: External,
                         deny_unknown_fields: true,
                         default: None,
@@ -1235,65 +1059,56 @@ Shape {
                 },
             ),
         },
-        DefinitionShape {
+        DeserializeDefinitionShape {
             id: ShapeId(
                 13,
             ),
-            type_name: TypeName {
+            type_name: DeserializeTypeName {
                 rust_name: "env_vars::OpentelemetryMetricsConfig",
-                serde_name: "OpentelemetryMetricsConfig",
-                serialize_name: "OpentelemetryMetricsConfig",
+                name: "OpentelemetryMetricsConfig",
             },
             kind: Struct(
-                StructShape {
+                DeserializeStructShape {
                     style: Struct,
                     fields: [
-                        FieldShape {
+                        DeserializeFieldShape {
                             member: Named(
                                 "otlp_endpoint",
                             ),
-                            serialize_name: "otlp_endpoint",
-                            deserialize_name: "otlp_endpoint",
-                            deserialize_aliases: [
+                            name: "otlp_endpoint",
+                            aliases: [
                                 "otlp_endpoint",
                             ],
-                            shape: Some(
+                            value_shape: Some(
                                 String,
                             ),
                             default: None,
                             flatten: false,
-                            skip_serializing: false,
-                            skip_serializing_if: None,
-                            skip_deserializing: false,
-                            custom_serializer: false,
+                            skip: false,
                             custom_deserializer: false,
                             transparent: false,
                         },
-                        FieldShape {
+                        DeserializeFieldShape {
                             member: Named(
                                 "push_interval",
                             ),
-                            serialize_name: "push_interval",
-                            deserialize_name: "push_interval",
-                            deserialize_aliases: [
+                            name: "push_interval",
+                            aliases: [
                                 "push_interval",
                             ],
-                            shape: Some(
+                            value_shape: Some(
                                 String,
                             ),
                             default: Path(
                                 "default_metrics_push_interval",
                             ),
                             flatten: false,
-                            skip_serializing: false,
-                            skip_serializing_if: None,
-                            skip_deserializing: false,
-                            custom_serializer: false,
+                            skip: false,
                             custom_deserializer: false,
                             transparent: false,
                         },
                     ],
-                    attributes: ContainerAttributes {
+                    attributes: DeserializeContainerAttributes {
                         tagging: External,
                         deny_unknown_fields: true,
                         default: None,

@@ -20,14 +20,15 @@ use std::net::SocketAddr;
 use std::num::NonZeroUsize;
 use std::path::PathBuf;
 
-use serde_shape::DefinitionKind;
-use serde_shape::EnumShape;
+use serde_shape::DeserializeDefinitionKind;
+use serde_shape::DeserializeEnumShape;
+use serde_shape::DeserializeShape;
+use serde_shape::DeserializeShapeContext;
+use serde_shape::DeserializeShapeGraph;
+use serde_shape::DeserializeStructShape;
 use serde_shape::FieldsStyle;
-use serde_shape::SerdeShape;
-use serde_shape::Shape;
 use serde_shape::ShapeId;
 use serde_shape::ShapeRef;
-use serde_shape::StructShape;
 use serde_shape::Tagging;
 
 #[derive(Clone, Debug, Eq, PartialEq)]
@@ -39,7 +40,7 @@ struct EnvOption {
     condition: Option<String>,
 }
 
-#[derive(SerdeShape)]
+#[derive(DeserializeShape)]
 #[serde(deny_unknown_fields)]
 struct Config {
     server: ServerConfig,
@@ -47,7 +48,7 @@ struct Config {
     telemetry: TelemetryConfig,
 }
 
-#[derive(SerdeShape)]
+#[derive(DeserializeShape)]
 #[serde(deny_unknown_fields)]
 struct ServerConfig {
     #[serde(default = "default_dir")]
@@ -62,7 +63,7 @@ struct ServerConfig {
     cluster_id: String,
 }
 
-#[derive(SerdeShape)]
+#[derive(DeserializeShape)]
 #[serde(deny_unknown_fields)]
 struct StorageConfig {
     #[serde(default)]
@@ -75,7 +76,7 @@ struct StorageConfig {
     disk_throttle: Option<DiskThrottle>,
 }
 
-#[derive(SerdeShape)]
+#[derive(DeserializeShape)]
 #[serde(
     tag = "kind",
     rename_all = "snake_case",
@@ -86,7 +87,7 @@ enum StorageBackend {
     S3 { bucket: String, region: String },
 }
 
-#[derive(SerdeShape)]
+#[derive(DeserializeShape)]
 #[serde(deny_unknown_fields)]
 struct DiskThrottle {
     read_iops: u64,
@@ -94,21 +95,21 @@ struct DiskThrottle {
     iops_counter: CounterConfig,
 }
 
-#[derive(SerdeShape)]
+#[derive(DeserializeShape)]
 #[serde(deny_unknown_fields)]
 struct CounterConfig {
     mode: CounterMode,
     size: NonZeroUsize,
 }
 
-#[derive(SerdeShape)]
+#[derive(DeserializeShape)]
 #[serde(rename_all = "snake_case")]
 enum CounterMode {
     Window,
     LeakyBucket,
 }
 
-#[derive(SerdeShape)]
+#[derive(DeserializeShape)]
 #[serde(deny_unknown_fields)]
 struct TelemetryConfig {
     #[serde(default)]
@@ -119,7 +120,7 @@ struct TelemetryConfig {
     metrics: Option<MetricsConfig>,
 }
 
-#[derive(SerdeShape)]
+#[derive(DeserializeShape)]
 #[serde(deny_unknown_fields)]
 struct LogsConfig {
     #[serde(flatten)]
@@ -127,7 +128,7 @@ struct LogsConfig {
     filter: String,
 }
 
-#[derive(SerdeShape)]
+#[derive(DeserializeShape)]
 #[serde(
     tag = "kind",
     rename_all = "snake_case",
@@ -145,7 +146,7 @@ enum LogSink {
     },
 }
 
-#[derive(SerdeShape)]
+#[derive(DeserializeShape)]
 #[serde(deny_unknown_fields)]
 struct TracesConfig {
     capture_log_filter: String,
@@ -153,20 +154,20 @@ struct TracesConfig {
     opentelemetry: Option<OpentelemetryTracesConfig>,
 }
 
-#[derive(SerdeShape)]
+#[derive(DeserializeShape)]
 #[serde(deny_unknown_fields)]
 struct OpentelemetryTracesConfig {
     otlp_endpoint: String,
 }
 
-#[derive(SerdeShape)]
+#[derive(DeserializeShape)]
 #[serde(deny_unknown_fields)]
 struct MetricsConfig {
     #[serde(skip_serializing_if = "Option::is_none")]
     opentelemetry: Option<OpentelemetryMetricsConfig>,
 }
 
-#[derive(SerdeShape)]
+#[derive(DeserializeShape)]
 #[serde(deny_unknown_fields)]
 struct OpentelemetryMetricsConfig {
     otlp_endpoint: String,
@@ -177,8 +178,8 @@ struct OpentelemetryMetricsConfig {
 #[derive(Clone, Copy, Debug)]
 struct ByteSize(u64);
 
-impl SerdeShape for ByteSize {
-    fn shape_in(_context: &mut serde_shape::ShapeContext) -> ShapeRef {
+impl DeserializeShape for ByteSize {
+    fn deserialize_shape_in(_context: &mut DeserializeShapeContext) -> ShapeRef {
         ShapeRef::String
     }
 }
@@ -186,8 +187,8 @@ impl SerdeShape for ByteSize {
 #[derive(Clone, Copy, Debug)]
 struct HumanDuration(u64);
 
-impl SerdeShape for HumanDuration {
-    fn shape_in(_context: &mut serde_shape::ShapeContext) -> ShapeRef {
+impl DeserializeShape for HumanDuration {
+    fn deserialize_shape_in(_context: &mut DeserializeShapeContext) -> ShapeRef {
         ShapeRef::String
     }
 }
@@ -218,7 +219,7 @@ fn default_metrics_push_interval() -> HumanDuration {
 
 #[test]
 fn snapshots_config_shape() {
-    insta::assert_debug_snapshot!(Config::shape());
+    insta::assert_debug_snapshot!(Config::deserialize_shape());
 }
 
 #[test]
@@ -226,8 +227,8 @@ fn snapshots_env_options() {
     insta::assert_debug_snapshot!(env_options::<Config>("PERCAS_CONFIG"));
 }
 
-fn env_options<T: SerdeShape>(env_prefix: &str) -> Vec<EnvOption> {
-    let shape = Shape::for_type::<T>();
+fn env_options<T: DeserializeShape>(env_prefix: &str) -> Vec<EnvOption> {
+    let shape = DeserializeShapeGraph::for_type::<T>();
     let mut collector = EnvCollector {
         shape: &shape,
         env_prefix,
@@ -238,7 +239,7 @@ fn env_options<T: SerdeShape>(env_prefix: &str) -> Vec<EnvOption> {
 }
 
 struct EnvCollector<'a> {
-    shape: &'a Shape,
+    shape: &'a DeserializeShapeGraph,
     env_prefix: &'a str,
     options: BTreeMap<String, EnvOption>,
 }
@@ -290,13 +291,13 @@ impl EnvCollector<'_> {
     ) {
         let definition = self.shape.definition(id).expect("shape definition exists");
         match &definition.kind {
-            DefinitionKind::Struct(shape) => {
+            DeserializeDefinitionKind::Struct(shape) => {
                 self.visit_struct(shape, path, optional, condition);
             }
-            DefinitionKind::Enum(shape) => {
+            DeserializeDefinitionKind::Enum(shape) => {
                 self.visit_enum(shape, path, optional, condition);
             }
-            DefinitionKind::Opaque(opaque) => {
+            DeserializeDefinitionKind::Opaque(opaque) => {
                 self.push_leaf(
                     path,
                     &format!("opaque({:?})", opaque.reason),
@@ -309,7 +310,7 @@ impl EnvCollector<'_> {
 
     fn visit_struct(
         &mut self,
-        shape: &StructShape,
+        shape: &DeserializeStructShape,
         path: &mut Vec<String>,
         optional: bool,
         condition: Option<String>,
@@ -317,21 +318,21 @@ impl EnvCollector<'_> {
         match shape.style {
             FieldsStyle::Struct => {
                 for field in &shape.fields {
-                    let Some(field_shape) = &field.shape else {
+                    let Some(field_shape) = &field.value_shape else {
                         continue;
                     };
                     let field_optional = optional || !field.default.is_none();
                     if field.flatten {
                         self.visit_shape_ref(field_shape, path, field_optional, condition.clone());
                     } else {
-                        path.push(field.deserialize_name.to_owned());
+                        path.push(field.name.to_owned());
                         self.visit_shape_ref(field_shape, path, field_optional, condition.clone());
                         path.pop();
                     }
                 }
             }
             FieldsStyle::Newtype if shape.fields.len() == 1 => {
-                if let Some(field_shape) = &shape.fields[0].shape {
+                if let Some(field_shape) = &shape.fields[0].value_shape {
                     self.visit_shape_ref(field_shape, path, optional, condition);
                 }
             }
@@ -343,7 +344,7 @@ impl EnvCollector<'_> {
 
     fn visit_enum(
         &mut self,
-        shape: &EnumShape,
+        shape: &DeserializeEnumShape,
         path: &mut Vec<String>,
         optional: bool,
         condition: Option<String>,
@@ -351,8 +352,8 @@ impl EnvCollector<'_> {
         let variants = shape
             .variants
             .iter()
-            .filter(|variant| !variant.skip_deserializing)
-            .map(|variant| variant.deserialize_name)
+            .filter(|variant| !variant.skip)
+            .map(|variant| variant.name)
             .collect::<Vec<_>>();
 
         if shape
@@ -379,22 +380,21 @@ impl EnvCollector<'_> {
             );
 
             for variant in &shape.variants {
-                if variant.skip_deserializing {
+                if variant.skip {
                     continue;
                 }
 
-                let variant_condition =
-                    format!("{}={}", tag_path.join("."), variant.deserialize_name);
+                let variant_condition = format!("{}={}", tag_path.join("."), variant.name);
                 let variant_condition = Some(merge_conditions(
                     condition.as_deref(),
                     variant_condition.as_str(),
                 ));
 
                 for field in &variant.fields {
-                    let Some(field_shape) = &field.shape else {
+                    let Some(field_shape) = &field.value_shape else {
                         continue;
                     };
-                    path.push(field.deserialize_name.to_owned());
+                    path.push(field.name.to_owned());
                     self.visit_shape_ref(field_shape, path, optional, variant_condition.clone());
                     path.pop();
                 }

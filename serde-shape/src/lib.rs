@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-//! Reflect the Serde deserialization shape and selected serialization metadata of Rust types.
+//! Reflect the shapes used by Serde serialization and deserialization.
 
 #![cfg_attr(docsrs, feature(doc_cfg))]
 #![deny(missing_docs)]
@@ -21,39 +21,56 @@ use std::collections::BTreeMap;
 
 #[cfg(feature = "derive")]
 #[cfg_attr(docsrs, doc(cfg(feature = "derive")))]
-pub use serde_shape_derive::SerdeShape;
+pub use serde_shape_derive::DeserializeShape;
+#[cfg(feature = "derive")]
+#[cfg_attr(docsrs, doc(cfg(feature = "derive")))]
+pub use serde_shape_derive::SerializeShape;
 
-/// A type that can describe the shape accepted by its Serde deserializer.
-pub trait SerdeShape {
-    /// Build this type's shape inside the provided context.
-    fn shape_in(context: &mut ShapeContext) -> ShapeRef;
+/// A type that can describe the shape emitted by its Serde serializer.
+pub trait SerializeShape {
+    /// Build this type's serialization shape inside the provided context.
+    fn serialize_shape_in(context: &mut SerializeShapeContext) -> ShapeRef;
 
-    /// Build a complete shape graph rooted at this type.
-    fn shape() -> Shape
+    /// Build a complete serialization shape graph rooted at this type.
+    fn serialize_shape() -> SerializeShapeGraph
     where
         Self: Sized,
     {
-        Shape::for_type::<Self>()
+        SerializeShapeGraph::for_type::<Self>()
     }
 }
 
-/// A complete shape graph rooted at one type.
+/// A type that can describe the shape accepted by its Serde deserializer.
+pub trait DeserializeShape {
+    /// Build this type's deserialization shape inside the provided context.
+    fn deserialize_shape_in(context: &mut DeserializeShapeContext) -> ShapeRef;
+
+    /// Build a complete deserialization shape graph rooted at this type.
+    fn deserialize_shape() -> DeserializeShapeGraph
+    where
+        Self: Sized,
+    {
+        DeserializeShapeGraph::for_type::<Self>()
+    }
+}
+
+/// A complete serialization shape graph rooted at one type.
 #[derive(Clone, Debug, Eq, PartialEq)]
-pub struct Shape {
+pub struct SerializeShapeGraph {
     /// The root shape reference.
     pub root: ShapeRef,
     /// Named type definitions reachable from the root.
-    pub definitions: Vec<DefinitionShape>,
+    pub definitions: Vec<SerializeDefinitionShape>,
 }
 
-impl Shape {
-    /// Build a complete shape graph rooted at `T`.
+impl SerializeShapeGraph {
+    /// Build a complete serialization shape graph rooted at `T`.
     pub fn for_type<T>() -> Self
     where
-        T: SerdeShape + ?Sized,
+        T: SerializeShape + ?Sized,
     {
-        let mut context = ShapeContext::default();
-        let root = T::shape_in(&mut context);
+        let mut context = SerializeShapeContext::default();
+        let root = T::serialize_shape_in(&mut context);
         Self {
             root,
             definitions: context.finish(),
@@ -61,23 +78,52 @@ impl Shape {
     }
 
     /// Return a definition by id.
-    pub fn definition(&self, id: ShapeId) -> Option<&DefinitionShape> {
+    pub fn definition(&self, id: ShapeId) -> Option<&SerializeDefinitionShape> {
         self.definitions.get(id.0)
     }
 }
 
-/// Accumulates named definitions while a shape graph is built.
+/// A complete deserialization shape graph rooted at one type.
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct DeserializeShapeGraph {
+    /// The root shape reference.
+    pub root: ShapeRef,
+    /// Named type definitions reachable from the root.
+    pub definitions: Vec<DeserializeDefinitionShape>,
+}
+
+impl DeserializeShapeGraph {
+    /// Build a complete deserialization shape graph rooted at `T`.
+    pub fn for_type<T>() -> Self
+    where
+        T: DeserializeShape + ?Sized,
+    {
+        let mut context = DeserializeShapeContext::default();
+        let root = T::deserialize_shape_in(&mut context);
+        Self {
+            root,
+            definitions: context.finish(),
+        }
+    }
+
+    /// Return a definition by id.
+    pub fn definition(&self, id: ShapeId) -> Option<&DeserializeDefinitionShape> {
+        self.definitions.get(id.0)
+    }
+}
+
+/// Accumulates named serialization definitions while a shape graph is built.
 #[derive(Debug, Default)]
-pub struct ShapeContext {
-    definitions: Vec<Option<DefinitionShape>>,
+pub struct SerializeShapeContext {
+    definitions: Vec<Option<SerializeDefinitionShape>>,
     definitions_by_rust_name: BTreeMap<&'static str, ShapeId>,
 }
 
-impl ShapeContext {
+impl SerializeShapeContext {
     /// Define a named type once and return a reference to its definition.
-    pub fn define_named_type<F>(&mut self, type_name: TypeName, build: F) -> ShapeRef
+    pub fn define_named_type<F>(&mut self, type_name: SerializeTypeName, build: F) -> ShapeRef
     where
-        F: FnOnce(&mut Self) -> DefinitionKind,
+        F: FnOnce(&mut Self) -> SerializeDefinitionKind,
     {
         if let Some(id) = self.definitions_by_rust_name.get(type_name.rust_name) {
             return ShapeRef::Definition(*id);
@@ -89,7 +135,7 @@ impl ShapeContext {
         self.definitions.push(None);
 
         let kind = build(self);
-        self.definitions[id.0] = Some(DefinitionShape {
+        self.definitions[id.0] = Some(SerializeDefinitionShape {
             id,
             type_name,
             kind,
@@ -97,7 +143,46 @@ impl ShapeContext {
         ShapeRef::Definition(id)
     }
 
-    fn finish(self) -> Vec<DefinitionShape> {
+    fn finish(self) -> Vec<SerializeDefinitionShape> {
+        self.definitions
+            .into_iter()
+            .map(|definition| definition.expect("shape definition was reserved but not filled"))
+            .collect()
+    }
+}
+
+/// Accumulates named deserialization definitions while a shape graph is built.
+#[derive(Debug, Default)]
+pub struct DeserializeShapeContext {
+    definitions: Vec<Option<DeserializeDefinitionShape>>,
+    definitions_by_rust_name: BTreeMap<&'static str, ShapeId>,
+}
+
+impl DeserializeShapeContext {
+    /// Define a named type once and return a reference to its definition.
+    pub fn define_named_type<F>(&mut self, type_name: DeserializeTypeName, build: F) -> ShapeRef
+    where
+        F: FnOnce(&mut Self) -> DeserializeDefinitionKind,
+    {
+        if let Some(id) = self.definitions_by_rust_name.get(type_name.rust_name) {
+            return ShapeRef::Definition(*id);
+        }
+
+        let id = ShapeId(self.definitions.len());
+        self.definitions_by_rust_name
+            .insert(type_name.rust_name, id);
+        self.definitions.push(None);
+
+        let kind = build(self);
+        self.definitions[id.0] = Some(DeserializeDefinitionShape {
+            id,
+            type_name,
+            kind,
+        });
+        ShapeRef::Definition(id)
+    }
+
+    fn finish(self) -> Vec<DeserializeDefinitionShape> {
         self.definitions
             .into_iter()
             .map(|definition| definition.expect("shape definition was reserved but not filled"))
@@ -109,15 +194,22 @@ impl ShapeContext {
 #[derive(Clone, Copy, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
 pub struct ShapeId(pub usize);
 
-/// Names associated with a Rust type and its Serde container.
+/// Names associated with a Rust type and its Serde serializer.
 #[derive(Clone, Debug, Eq, PartialEq)]
-pub struct TypeName {
+pub struct SerializeTypeName {
+    /// The fully qualified Rust type name, including generic arguments.
+    pub rust_name: &'static str,
+    /// The Serde serialize name after container rename rules are applied.
+    pub name: &'static str,
+}
+
+/// Names associated with a Rust type and its Serde deserializer.
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct DeserializeTypeName {
     /// The fully qualified Rust type name, including generic arguments.
     pub rust_name: &'static str,
     /// The Serde deserialize name after container rename rules are applied.
-    pub serde_name: &'static str,
-    /// The Serde serialize name after container rename rules are applied.
-    pub serialize_name: &'static str,
+    pub name: &'static str,
 }
 
 /// A reference to a shape node.
@@ -220,31 +312,66 @@ impl ShapeRef {
     }
 }
 
-/// A named type definition in a shape graph.
+/// A named type definition in a serialization shape graph.
 #[derive(Clone, Debug, Eq, PartialEq)]
-pub struct DefinitionShape {
+pub struct SerializeDefinitionShape {
     /// The stable id of this definition inside its graph.
     pub id: ShapeId,
     /// The Rust and Serde names for this definition.
-    pub type_name: TypeName,
+    pub type_name: SerializeTypeName,
     /// The definition body.
-    pub kind: DefinitionKind,
+    pub kind: SerializeDefinitionKind,
 }
 
-/// The body of a named type definition.
+/// A named type definition in a deserialization shape graph.
 #[derive(Clone, Debug, Eq, PartialEq)]
-pub enum DefinitionKind {
+pub struct DeserializeDefinitionShape {
+    /// The stable id of this definition inside its graph.
+    pub id: ShapeId,
+    /// The Rust and Serde names for this definition.
+    pub type_name: DeserializeTypeName,
+    /// The definition body.
+    pub kind: DeserializeDefinitionKind,
+}
+
+/// The body of a named serialization definition.
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub enum SerializeDefinitionKind {
+    /// Struct-like Serde output.
+    Struct(SerializeStructShape),
+    /// Enum-like Serde output.
+    Enum(SerializeEnumShape),
+    /// Output shape that cannot be inferred faithfully.
+    Opaque(OpaqueShape),
+}
+
+/// The body of a named deserialization definition.
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub enum DeserializeDefinitionKind {
     /// Struct-like Serde input.
-    Struct(StructShape),
+    Struct(DeserializeStructShape),
     /// Enum-like Serde input.
-    Enum(EnumShape),
+    Enum(DeserializeEnumShape),
     /// Input shape that cannot be inferred faithfully.
     Opaque(OpaqueShape),
 }
 
-/// Serde attributes that apply to a whole container.
+/// Serde attributes that apply to a whole serialized container.
 #[derive(Clone, Debug, Eq, PartialEq)]
-pub struct ContainerAttributes {
+pub struct SerializeContainerAttributes {
+    /// The container tagging representation.
+    pub tagging: Tagging,
+    /// Whether any field is flattened.
+    pub has_flatten: bool,
+    /// Whether the container uses `#[serde(transparent)]`.
+    pub transparent: bool,
+    /// Whether the Rust item is marked `#[non_exhaustive]`.
+    pub non_exhaustive: bool,
+}
+
+/// Serde attributes that apply to a whole deserialized container.
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct DeserializeContainerAttributes {
     /// The container tagging representation.
     pub tagging: Tagging,
     /// Whether unknown fields are rejected.
@@ -282,26 +409,48 @@ pub enum Tagging {
     Untagged,
 }
 
-/// Struct-like shape metadata.
+/// Struct-like serialization metadata.
 #[derive(Clone, Debug, Eq, PartialEq)]
-pub struct StructShape {
+pub struct SerializeStructShape {
+    /// The struct field style.
+    pub style: FieldsStyle,
+    /// The serialized fields.
+    pub fields: Vec<SerializeFieldShape>,
+    /// Container-level Serde serialization attributes.
+    pub attributes: SerializeContainerAttributes,
+}
+
+/// Struct-like deserialization metadata.
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct DeserializeStructShape {
     /// The struct field style.
     pub style: FieldsStyle,
     /// The accepted deserialization fields.
-    pub fields: Vec<FieldShape>,
-    /// Container-level Serde attributes.
-    pub attributes: ContainerAttributes,
+    pub fields: Vec<DeserializeFieldShape>,
+    /// Container-level Serde deserialization attributes.
+    pub attributes: DeserializeContainerAttributes,
 }
 
-/// Enum-like shape metadata.
+/// Enum-like serialization metadata.
 #[derive(Clone, Debug, Eq, PartialEq)]
-pub struct EnumShape {
+pub struct SerializeEnumShape {
+    /// The enum representation.
+    pub repr: Tagging,
+    /// The serialized variants.
+    pub variants: Vec<SerializeVariantShape>,
+    /// Container-level Serde serialization attributes.
+    pub attributes: SerializeContainerAttributes,
+}
+
+/// Enum-like deserialization metadata.
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct DeserializeEnumShape {
     /// The enum representation.
     pub repr: Tagging,
     /// The accepted deserialization variants.
-    pub variants: Vec<VariantShape>,
-    /// Container-level Serde attributes.
-    pub attributes: ContainerAttributes,
+    pub variants: Vec<DeserializeVariantShape>,
+    /// Container-level Serde deserialization attributes.
+    pub attributes: DeserializeContainerAttributes,
 }
 
 /// The style of a struct, variant, or tuple field list.
@@ -317,31 +466,44 @@ pub enum FieldsStyle {
     Unit,
 }
 
-/// Field-level shape metadata.
+/// Field-level serialization metadata.
 #[derive(Clone, Debug, Eq, PartialEq)]
-pub struct FieldShape {
+pub struct SerializeFieldShape {
     /// The original Rust field member.
     pub member: FieldMember,
     /// The primary Serde serialize name.
-    pub serialize_name: &'static str,
+    pub name: &'static str,
+    /// The field output shape, or `None` when the field has no inferred output.
+    pub value_shape: Option<ShapeRef>,
+    /// Whether the field is flattened into the containing map.
+    pub flatten: bool,
+    /// Whether Serde skips this field during serialization.
+    pub skip: bool,
+    /// The predicate used to skip this field during serialization.
+    pub skip_if: Option<&'static str>,
+    /// Whether this field uses a custom serializer.
+    pub custom_serializer: bool,
+    /// Whether this is the transparent field of a transparent container.
+    pub transparent: bool,
+}
+
+/// Field-level deserialization metadata.
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct DeserializeFieldShape {
+    /// The original Rust field member.
+    pub member: FieldMember,
     /// The primary Serde deserialize name.
-    pub deserialize_name: &'static str,
+    pub name: &'static str,
     /// All accepted Serde deserialize names, including the primary name.
-    pub deserialize_aliases: Vec<&'static str>,
+    pub aliases: Vec<&'static str>,
     /// The field input shape, or `None` when the field has no inferred input.
-    pub shape: Option<ShapeRef>,
+    pub value_shape: Option<ShapeRef>,
     /// The default used if this field is missing.
     pub default: DefaultShape,
     /// Whether the field is flattened into the containing map.
     pub flatten: bool,
-    /// Whether Serde skips this field during serialization.
-    pub skip_serializing: bool,
-    /// The predicate used to skip this field during serialization.
-    pub skip_serializing_if: Option<&'static str>,
     /// Whether Serde skips this field during deserialization.
-    pub skip_deserializing: bool,
-    /// Whether this field uses a custom serializer.
-    pub custom_serializer: bool,
+    pub skip: bool,
     /// Whether this field uses a custom deserializer.
     pub custom_deserializer: bool,
     /// Whether this is the transparent field of a transparent container.
@@ -357,27 +519,40 @@ pub enum FieldMember {
     Unnamed(usize),
 }
 
-/// Variant-level shape metadata.
+/// Variant-level serialization metadata.
 #[derive(Clone, Debug, Eq, PartialEq)]
-pub struct VariantShape {
+pub struct SerializeVariantShape {
     /// The original Rust variant name.
     pub rust_name: &'static str,
     /// The primary Serde serialize name.
-    pub serialize_name: &'static str,
+    pub name: &'static str,
+    /// The variant field style.
+    pub style: FieldsStyle,
+    /// The variant fields, if their output shape can be inferred.
+    pub fields: Vec<SerializeFieldShape>,
+    /// Whether Serde skips this variant during serialization.
+    pub skip: bool,
+    /// Whether this variant uses a custom serializer.
+    pub custom_serializer: bool,
+    /// Whether this variant is individually marked untagged.
+    pub untagged: bool,
+}
+
+/// Variant-level deserialization metadata.
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct DeserializeVariantShape {
+    /// The original Rust variant name.
+    pub rust_name: &'static str,
     /// The primary Serde deserialize name.
-    pub deserialize_name: &'static str,
+    pub name: &'static str,
     /// All accepted Serde deserialize names, including the primary name.
-    pub deserialize_aliases: Vec<&'static str>,
+    pub aliases: Vec<&'static str>,
     /// The variant field style.
     pub style: FieldsStyle,
     /// The variant fields, if their input shape can be inferred.
-    pub fields: Vec<FieldShape>,
-    /// Whether Serde skips this variant during serialization.
-    pub skip_serializing: bool,
+    pub fields: Vec<DeserializeFieldShape>,
     /// Whether Serde skips this variant during deserialization.
-    pub skip_deserializing: bool,
-    /// Whether this variant uses a custom serializer.
-    pub custom_serializer: bool,
+    pub skip: bool,
     /// Whether this variant uses a custom deserializer.
     pub custom_deserializer: bool,
     /// Whether this is a Serde `other` catch-all variant.
@@ -422,8 +597,12 @@ pub enum OpaqueReason {
     FromType,
     /// The type uses `#[serde(try_from = "...")]`.
     TryFromType,
+    /// The type uses `#[serde(into = "...")]`.
+    IntoType,
     /// The type uses `#[serde(remote = "...")]`.
     Remote,
+    /// A custom serializer controls the output.
+    CustomSerializer,
     /// A custom deserializer controls the input.
     CustomDeserializer,
     /// The type has no built-in shape implementation.
@@ -433,8 +612,14 @@ pub enum OpaqueReason {
 macro_rules! primitive_shape {
     ($($ty:ty => $shape:expr;)+) => {
         $(
-            impl SerdeShape for $ty {
-                fn shape_in(_context: &mut ShapeContext) -> ShapeRef {
+            impl SerializeShape for $ty {
+                fn serialize_shape_in(_context: &mut SerializeShapeContext) -> ShapeRef {
+                    $shape
+                }
+            }
+
+            impl DeserializeShape for $ty {
+                fn deserialize_shape_in(_context: &mut DeserializeShapeContext) -> ShapeRef {
                     $shape
                 }
             }
@@ -515,218 +700,431 @@ primitive_shape! {
     std::sync::atomic::AtomicUsize => ShapeRef::Usize;
 }
 
-impl SerdeShape for [u8] {
-    fn shape_in(_context: &mut ShapeContext) -> ShapeRef {
+impl SerializeShape for [u8] {
+    fn serialize_shape_in(_context: &mut SerializeShapeContext) -> ShapeRef {
         ShapeRef::Bytes
     }
 }
 
-impl<T> SerdeShape for &T
-where
-    T: SerdeShape + ?Sized,
-{
-    fn shape_in(context: &mut ShapeContext) -> ShapeRef {
-        T::shape_in(context)
+impl DeserializeShape for [u8] {
+    fn deserialize_shape_in(_context: &mut DeserializeShapeContext) -> ShapeRef {
+        ShapeRef::Bytes
     }
 }
 
-impl<T> SerdeShape for &mut T
+impl<T> SerializeShape for &T
 where
-    T: SerdeShape + ?Sized,
+    T: SerializeShape + ?Sized,
 {
-    fn shape_in(context: &mut ShapeContext) -> ShapeRef {
-        T::shape_in(context)
+    fn serialize_shape_in(context: &mut SerializeShapeContext) -> ShapeRef {
+        T::serialize_shape_in(context)
     }
 }
 
-impl<T> SerdeShape for Box<T>
+impl<T> DeserializeShape for &T
 where
-    T: SerdeShape + ?Sized,
+    T: DeserializeShape + ?Sized,
 {
-    fn shape_in(context: &mut ShapeContext) -> ShapeRef {
-        T::shape_in(context)
+    fn deserialize_shape_in(context: &mut DeserializeShapeContext) -> ShapeRef {
+        T::deserialize_shape_in(context)
     }
 }
 
-impl<'a, T> SerdeShape for std::borrow::Cow<'a, T>
+impl<T> SerializeShape for &mut T
+where
+    T: SerializeShape + ?Sized,
+{
+    fn serialize_shape_in(context: &mut SerializeShapeContext) -> ShapeRef {
+        T::serialize_shape_in(context)
+    }
+}
+
+impl<T> DeserializeShape for &mut T
+where
+    T: DeserializeShape + ?Sized,
+{
+    fn deserialize_shape_in(context: &mut DeserializeShapeContext) -> ShapeRef {
+        T::deserialize_shape_in(context)
+    }
+}
+
+impl<T> SerializeShape for Box<T>
+where
+    T: SerializeShape + ?Sized,
+{
+    fn serialize_shape_in(context: &mut SerializeShapeContext) -> ShapeRef {
+        T::serialize_shape_in(context)
+    }
+}
+
+impl<T> DeserializeShape for Box<T>
+where
+    T: DeserializeShape + ?Sized,
+{
+    fn deserialize_shape_in(context: &mut DeserializeShapeContext) -> ShapeRef {
+        T::deserialize_shape_in(context)
+    }
+}
+
+impl<'a, T> SerializeShape for std::borrow::Cow<'a, T>
 where
     T: ToOwned + ?Sized,
-    T::Owned: SerdeShape,
+    T::Owned: SerializeShape,
 {
-    fn shape_in(context: &mut ShapeContext) -> ShapeRef {
-        T::Owned::shape_in(context)
+    fn serialize_shape_in(context: &mut SerializeShapeContext) -> ShapeRef {
+        T::Owned::serialize_shape_in(context)
     }
 }
 
-impl<T> SerdeShape for std::cell::Cell<T>
+impl<'a, T> DeserializeShape for std::borrow::Cow<'a, T>
 where
-    T: Copy + SerdeShape,
+    T: ToOwned + ?Sized,
+    T::Owned: DeserializeShape,
 {
-    fn shape_in(context: &mut ShapeContext) -> ShapeRef {
-        T::shape_in(context)
+    fn deserialize_shape_in(context: &mut DeserializeShapeContext) -> ShapeRef {
+        T::Owned::deserialize_shape_in(context)
     }
 }
 
-impl<T> SerdeShape for std::cell::RefCell<T>
+impl<T> SerializeShape for std::cell::Cell<T>
 where
-    T: SerdeShape,
+    T: Copy + SerializeShape,
 {
-    fn shape_in(context: &mut ShapeContext) -> ShapeRef {
-        T::shape_in(context)
+    fn serialize_shape_in(context: &mut SerializeShapeContext) -> ShapeRef {
+        T::serialize_shape_in(context)
     }
 }
 
-impl<T> SerdeShape for std::sync::Mutex<T>
+impl<T> DeserializeShape for std::cell::Cell<T>
 where
-    T: SerdeShape,
+    T: Copy + DeserializeShape,
 {
-    fn shape_in(context: &mut ShapeContext) -> ShapeRef {
-        T::shape_in(context)
+    fn deserialize_shape_in(context: &mut DeserializeShapeContext) -> ShapeRef {
+        T::deserialize_shape_in(context)
     }
 }
 
-impl<T> SerdeShape for std::sync::RwLock<T>
+impl<T> SerializeShape for std::cell::RefCell<T>
 where
-    T: SerdeShape,
+    T: SerializeShape,
 {
-    fn shape_in(context: &mut ShapeContext) -> ShapeRef {
-        T::shape_in(context)
+    fn serialize_shape_in(context: &mut SerializeShapeContext) -> ShapeRef {
+        T::serialize_shape_in(context)
     }
 }
 
-impl<T> SerdeShape for std::num::Wrapping<T>
+impl<T> DeserializeShape for std::cell::RefCell<T>
 where
-    T: SerdeShape,
+    T: DeserializeShape,
 {
-    fn shape_in(context: &mut ShapeContext) -> ShapeRef {
-        T::shape_in(context)
+    fn deserialize_shape_in(context: &mut DeserializeShapeContext) -> ShapeRef {
+        T::deserialize_shape_in(context)
     }
 }
 
-impl<T> SerdeShape for std::cmp::Reverse<T>
+impl<T> SerializeShape for std::sync::Mutex<T>
 where
-    T: SerdeShape,
+    T: SerializeShape,
 {
-    fn shape_in(context: &mut ShapeContext) -> ShapeRef {
-        T::shape_in(context)
+    fn serialize_shape_in(context: &mut SerializeShapeContext) -> ShapeRef {
+        T::serialize_shape_in(context)
     }
 }
 
-impl<T> SerdeShape for Option<T>
+impl<T> DeserializeShape for std::sync::Mutex<T>
 where
-    T: SerdeShape,
+    T: DeserializeShape,
 {
-    fn shape_in(context: &mut ShapeContext) -> ShapeRef {
-        ShapeRef::Option(Box::new(T::shape_in(context)))
+    fn deserialize_shape_in(context: &mut DeserializeShapeContext) -> ShapeRef {
+        T::deserialize_shape_in(context)
     }
 }
 
-impl<T> SerdeShape for Vec<T>
+impl<T> SerializeShape for std::sync::RwLock<T>
 where
-    T: SerdeShape,
+    T: SerializeShape,
 {
-    fn shape_in(context: &mut ShapeContext) -> ShapeRef {
-        ShapeRef::Seq(Box::new(T::shape_in(context)))
+    fn serialize_shape_in(context: &mut SerializeShapeContext) -> ShapeRef {
+        T::serialize_shape_in(context)
     }
 }
 
-impl<T> SerdeShape for std::collections::VecDeque<T>
+impl<T> DeserializeShape for std::sync::RwLock<T>
 where
-    T: SerdeShape,
+    T: DeserializeShape,
 {
-    fn shape_in(context: &mut ShapeContext) -> ShapeRef {
-        ShapeRef::Seq(Box::new(T::shape_in(context)))
+    fn deserialize_shape_in(context: &mut DeserializeShapeContext) -> ShapeRef {
+        T::deserialize_shape_in(context)
     }
 }
 
-impl<T> SerdeShape for std::collections::LinkedList<T>
+impl<T> SerializeShape for std::num::Wrapping<T>
 where
-    T: SerdeShape,
+    T: SerializeShape,
 {
-    fn shape_in(context: &mut ShapeContext) -> ShapeRef {
-        ShapeRef::Seq(Box::new(T::shape_in(context)))
+    fn serialize_shape_in(context: &mut SerializeShapeContext) -> ShapeRef {
+        T::serialize_shape_in(context)
     }
 }
 
-impl<T> SerdeShape for std::collections::BinaryHeap<T>
+impl<T> DeserializeShape for std::num::Wrapping<T>
 where
-    T: Ord + SerdeShape,
+    T: DeserializeShape,
 {
-    fn shape_in(context: &mut ShapeContext) -> ShapeRef {
-        ShapeRef::Seq(Box::new(T::shape_in(context)))
+    fn deserialize_shape_in(context: &mut DeserializeShapeContext) -> ShapeRef {
+        T::deserialize_shape_in(context)
     }
 }
 
-impl<T, const N: usize> SerdeShape for [T; N]
+impl<T> SerializeShape for std::cmp::Reverse<T>
 where
-    T: SerdeShape,
+    T: SerializeShape,
 {
-    fn shape_in(context: &mut ShapeContext) -> ShapeRef {
+    fn serialize_shape_in(context: &mut SerializeShapeContext) -> ShapeRef {
+        T::serialize_shape_in(context)
+    }
+}
+
+impl<T> DeserializeShape for std::cmp::Reverse<T>
+where
+    T: DeserializeShape,
+{
+    fn deserialize_shape_in(context: &mut DeserializeShapeContext) -> ShapeRef {
+        T::deserialize_shape_in(context)
+    }
+}
+
+impl<T> SerializeShape for Option<T>
+where
+    T: SerializeShape,
+{
+    fn serialize_shape_in(context: &mut SerializeShapeContext) -> ShapeRef {
+        ShapeRef::Option(Box::new(T::serialize_shape_in(context)))
+    }
+}
+
+impl<T> DeserializeShape for Option<T>
+where
+    T: DeserializeShape,
+{
+    fn deserialize_shape_in(context: &mut DeserializeShapeContext) -> ShapeRef {
+        ShapeRef::Option(Box::new(T::deserialize_shape_in(context)))
+    }
+}
+
+impl<T> SerializeShape for Vec<T>
+where
+    T: SerializeShape,
+{
+    fn serialize_shape_in(context: &mut SerializeShapeContext) -> ShapeRef {
+        ShapeRef::Seq(Box::new(T::serialize_shape_in(context)))
+    }
+}
+
+impl<T> DeserializeShape for Vec<T>
+where
+    T: DeserializeShape,
+{
+    fn deserialize_shape_in(context: &mut DeserializeShapeContext) -> ShapeRef {
+        ShapeRef::Seq(Box::new(T::deserialize_shape_in(context)))
+    }
+}
+
+impl<T> SerializeShape for std::collections::VecDeque<T>
+where
+    T: SerializeShape,
+{
+    fn serialize_shape_in(context: &mut SerializeShapeContext) -> ShapeRef {
+        ShapeRef::Seq(Box::new(T::serialize_shape_in(context)))
+    }
+}
+
+impl<T> DeserializeShape for std::collections::VecDeque<T>
+where
+    T: DeserializeShape,
+{
+    fn deserialize_shape_in(context: &mut DeserializeShapeContext) -> ShapeRef {
+        ShapeRef::Seq(Box::new(T::deserialize_shape_in(context)))
+    }
+}
+
+impl<T> SerializeShape for std::collections::LinkedList<T>
+where
+    T: SerializeShape,
+{
+    fn serialize_shape_in(context: &mut SerializeShapeContext) -> ShapeRef {
+        ShapeRef::Seq(Box::new(T::serialize_shape_in(context)))
+    }
+}
+
+impl<T> DeserializeShape for std::collections::LinkedList<T>
+where
+    T: DeserializeShape,
+{
+    fn deserialize_shape_in(context: &mut DeserializeShapeContext) -> ShapeRef {
+        ShapeRef::Seq(Box::new(T::deserialize_shape_in(context)))
+    }
+}
+
+impl<T> SerializeShape for std::collections::BinaryHeap<T>
+where
+    T: Ord + SerializeShape,
+{
+    fn serialize_shape_in(context: &mut SerializeShapeContext) -> ShapeRef {
+        ShapeRef::Seq(Box::new(T::serialize_shape_in(context)))
+    }
+}
+
+impl<T> DeserializeShape for std::collections::BinaryHeap<T>
+where
+    T: Ord + DeserializeShape,
+{
+    fn deserialize_shape_in(context: &mut DeserializeShapeContext) -> ShapeRef {
+        ShapeRef::Seq(Box::new(T::deserialize_shape_in(context)))
+    }
+}
+
+impl<T, const N: usize> SerializeShape for [T; N]
+where
+    T: SerializeShape,
+{
+    fn serialize_shape_in(context: &mut SerializeShapeContext) -> ShapeRef {
         ShapeRef::Array {
-            item: Box::new(T::shape_in(context)),
+            item: Box::new(T::serialize_shape_in(context)),
             len: N,
         }
     }
 }
 
-impl<K, V> SerdeShape for BTreeMap<K, V>
+impl<T, const N: usize> DeserializeShape for [T; N]
 where
-    K: SerdeShape,
-    V: SerdeShape,
+    T: DeserializeShape,
 {
-    fn shape_in(context: &mut ShapeContext) -> ShapeRef {
-        ShapeRef::Map {
-            key: Box::new(K::shape_in(context)),
-            value: Box::new(V::shape_in(context)),
+    fn deserialize_shape_in(context: &mut DeserializeShapeContext) -> ShapeRef {
+        ShapeRef::Array {
+            item: Box::new(T::deserialize_shape_in(context)),
+            len: N,
         }
     }
 }
 
-impl<K, V, S> SerdeShape for std::collections::HashMap<K, V, S>
+impl<K, V> SerializeShape for BTreeMap<K, V>
 where
-    K: SerdeShape,
-    V: SerdeShape,
+    K: SerializeShape,
+    V: SerializeShape,
 {
-    fn shape_in(context: &mut ShapeContext) -> ShapeRef {
+    fn serialize_shape_in(context: &mut SerializeShapeContext) -> ShapeRef {
         ShapeRef::Map {
-            key: Box::new(K::shape_in(context)),
-            value: Box::new(V::shape_in(context)),
+            key: Box::new(K::serialize_shape_in(context)),
+            value: Box::new(V::serialize_shape_in(context)),
         }
     }
 }
 
-impl<T> SerdeShape for std::collections::BTreeSet<T>
+impl<K, V> DeserializeShape for BTreeMap<K, V>
 where
-    T: SerdeShape,
+    K: DeserializeShape,
+    V: DeserializeShape,
 {
-    fn shape_in(context: &mut ShapeContext) -> ShapeRef {
-        ShapeRef::Seq(Box::new(T::shape_in(context)))
+    fn deserialize_shape_in(context: &mut DeserializeShapeContext) -> ShapeRef {
+        ShapeRef::Map {
+            key: Box::new(K::deserialize_shape_in(context)),
+            value: Box::new(V::deserialize_shape_in(context)),
+        }
     }
 }
 
-impl<T, S> SerdeShape for std::collections::HashSet<T, S>
+impl<K, V, S> SerializeShape for std::collections::HashMap<K, V, S>
 where
-    T: SerdeShape,
+    K: SerializeShape,
+    V: SerializeShape,
 {
-    fn shape_in(context: &mut ShapeContext) -> ShapeRef {
-        ShapeRef::Seq(Box::new(T::shape_in(context)))
+    fn serialize_shape_in(context: &mut SerializeShapeContext) -> ShapeRef {
+        ShapeRef::Map {
+            key: Box::new(K::serialize_shape_in(context)),
+            value: Box::new(V::serialize_shape_in(context)),
+        }
     }
 }
 
-impl<T> SerdeShape for std::marker::PhantomData<T> {
-    fn shape_in(_context: &mut ShapeContext) -> ShapeRef {
+impl<K, V, S> DeserializeShape for std::collections::HashMap<K, V, S>
+where
+    K: DeserializeShape,
+    V: DeserializeShape,
+{
+    fn deserialize_shape_in(context: &mut DeserializeShapeContext) -> ShapeRef {
+        ShapeRef::Map {
+            key: Box::new(K::deserialize_shape_in(context)),
+            value: Box::new(V::deserialize_shape_in(context)),
+        }
+    }
+}
+
+impl<T> SerializeShape for std::collections::BTreeSet<T>
+where
+    T: SerializeShape,
+{
+    fn serialize_shape_in(context: &mut SerializeShapeContext) -> ShapeRef {
+        ShapeRef::Seq(Box::new(T::serialize_shape_in(context)))
+    }
+}
+
+impl<T> DeserializeShape for std::collections::BTreeSet<T>
+where
+    T: DeserializeShape,
+{
+    fn deserialize_shape_in(context: &mut DeserializeShapeContext) -> ShapeRef {
+        ShapeRef::Seq(Box::new(T::deserialize_shape_in(context)))
+    }
+}
+
+impl<T, S> SerializeShape for std::collections::HashSet<T, S>
+where
+    T: SerializeShape,
+{
+    fn serialize_shape_in(context: &mut SerializeShapeContext) -> ShapeRef {
+        ShapeRef::Seq(Box::new(T::serialize_shape_in(context)))
+    }
+}
+
+impl<T, S> DeserializeShape for std::collections::HashSet<T, S>
+where
+    T: DeserializeShape,
+{
+    fn deserialize_shape_in(context: &mut DeserializeShapeContext) -> ShapeRef {
+        ShapeRef::Seq(Box::new(T::deserialize_shape_in(context)))
+    }
+}
+
+impl<T> SerializeShape for std::marker::PhantomData<T> {
+    fn serialize_shape_in(_context: &mut SerializeShapeContext) -> ShapeRef {
+        ShapeRef::Unit
+    }
+}
+
+impl<T> DeserializeShape for std::marker::PhantomData<T> {
+    fn deserialize_shape_in(_context: &mut DeserializeShapeContext) -> ShapeRef {
         ShapeRef::Unit
     }
 }
 
 macro_rules! tuple_shape {
     ($($name:ident),+ $(,)?) => {
-        impl<$($name),+> SerdeShape for ($($name,)+)
+        impl<$($name),+> SerializeShape for ($($name,)+)
         where
-            $($name: SerdeShape,)+
+            $($name: SerializeShape,)+
         {
-            fn shape_in(context: &mut ShapeContext) -> ShapeRef {
-                ShapeRef::Tuple(vec![$($name::shape_in(context),)+])
+            fn serialize_shape_in(context: &mut SerializeShapeContext) -> ShapeRef {
+                ShapeRef::Tuple(vec![$($name::serialize_shape_in(context),)+])
+            }
+        }
+
+        impl<$($name),+> DeserializeShape for ($($name,)+)
+        where
+            $($name: DeserializeShape,)+
+        {
+            fn deserialize_shape_in(context: &mut DeserializeShapeContext) -> ShapeRef {
+                ShapeRef::Tuple(vec![$($name::deserialize_shape_in(context),)+])
             }
         }
     };
@@ -751,48 +1149,59 @@ mod tests {
 
     #[test]
     fn builds_map_shape() {
-        let shape = Shape::for_type::<BTreeMap<String, Option<u16>>>();
+        let serialize_shape = SerializeShapeGraph::for_type::<BTreeMap<String, Option<u16>>>();
+        let deserialize_shape = DeserializeShapeGraph::for_type::<BTreeMap<String, Option<u16>>>();
+        let expected = ShapeRef::Map {
+            key: Box::new(ShapeRef::String),
+            value: Box::new(ShapeRef::Option(Box::new(ShapeRef::U16))),
+        };
 
-        assert_eq!(
-            shape.root,
-            ShapeRef::Map {
-                key: Box::new(ShapeRef::String),
-                value: Box::new(ShapeRef::Option(Box::new(ShapeRef::U16))),
-            }
-        );
-        assert!(shape.definitions.is_empty());
+        assert_eq!(serialize_shape.root, expected);
+        assert!(serialize_shape.definitions.is_empty());
+        assert_eq!(deserialize_shape.root, expected);
+        assert!(deserialize_shape.definitions.is_empty());
     }
 
     #[test]
     fn maps_common_std_shapes() {
-        assert_eq!(Shape::for_type::<std::path::Path>().root, ShapeRef::String);
         assert_eq!(
-            Shape::for_type::<std::path::PathBuf>().root,
+            SerializeShapeGraph::for_type::<std::path::Path>().root,
             ShapeRef::String
         );
         assert_eq!(
-            Shape::for_type::<std::borrow::Cow<'static, str>>().root,
+            DeserializeShapeGraph::for_type::<std::path::Path>().root,
             ShapeRef::String
         );
-        assert_eq!(Shape::for_type::<std::cell::Cell<u8>>().root, ShapeRef::U8);
         assert_eq!(
-            Shape::for_type::<std::num::Wrapping<i16>>().root,
+            SerializeShapeGraph::for_type::<std::path::PathBuf>().root,
+            ShapeRef::String
+        );
+        assert_eq!(
+            DeserializeShapeGraph::for_type::<std::borrow::Cow<'static, str>>().root,
+            ShapeRef::String
+        );
+        assert_eq!(
+            SerializeShapeGraph::for_type::<std::cell::Cell<u8>>().root,
+            ShapeRef::U8
+        );
+        assert_eq!(
+            DeserializeShapeGraph::for_type::<std::num::Wrapping<i16>>().root,
             ShapeRef::I16
         );
         assert_eq!(
-            Shape::for_type::<std::cmp::Reverse<u32>>().root,
+            SerializeShapeGraph::for_type::<std::cmp::Reverse<u32>>().root,
             ShapeRef::U32
         );
         assert_eq!(
-            Shape::for_type::<std::collections::VecDeque<u8>>().root,
+            DeserializeShapeGraph::for_type::<std::collections::VecDeque<u8>>().root,
             ShapeRef::Seq(Box::new(ShapeRef::U8))
         );
         assert_eq!(
-            Shape::for_type::<std::collections::LinkedList<i32>>().root,
+            SerializeShapeGraph::for_type::<std::collections::LinkedList<i32>>().root,
             ShapeRef::Seq(Box::new(ShapeRef::I32))
         );
         assert_eq!(
-            Shape::for_type::<std::collections::BinaryHeap<u16>>().root,
+            DeserializeShapeGraph::for_type::<std::collections::BinaryHeap<u16>>().root,
             ShapeRef::Seq(Box::new(ShapeRef::U16))
         );
     }
@@ -812,7 +1221,11 @@ mod tests {
     #[test]
     fn maps_atomic_shapes() {
         assert_eq!(
-            Shape::for_type::<std::sync::atomic::AtomicUsize>().root,
+            SerializeShapeGraph::for_type::<std::sync::atomic::AtomicUsize>().root,
+            ShapeRef::Usize
+        );
+        assert_eq!(
+            DeserializeShapeGraph::for_type::<std::sync::atomic::AtomicUsize>().root,
             ShapeRef::Usize
         );
     }

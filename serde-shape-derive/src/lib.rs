@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-//! Derive macro for `serde-shape`.
+//! Derive macros for `serde-shape`.
 
 use std::collections::BTreeSet;
 
@@ -35,20 +35,69 @@ use syn::TypeParamBound;
 use syn::parse_macro_input;
 use syn::parse_quote;
 
-/// Derive `serde_shape::SerdeShape` from Serde derive metadata.
-#[proc_macro_derive(SerdeShape, attributes(serde))]
-pub fn derive_serde_shape(input: TokenStream) -> TokenStream {
+/// Derive `serde_shape::SerializeShape` from Serde serialize metadata.
+#[proc_macro_derive(SerializeShape, attributes(serde))]
+pub fn derive_serialize_shape(input: TokenStream) -> TokenStream {
     let input = parse_macro_input!(input as DeriveInput);
 
-    match expand_serde_shape(&input) {
+    match expand_serialize_shape(&input) {
         Ok(tokens) => tokens.into(),
         Err(err) => err.to_compile_error().into(),
     }
 }
 
-fn expand_serde_shape(input: &DeriveInput) -> syn::Result<TokenStream2> {
+/// Derive `serde_shape::DeserializeShape` from Serde deserialize metadata.
+#[proc_macro_derive(DeserializeShape, attributes(serde))]
+pub fn derive_deserialize_shape(input: TokenStream) -> TokenStream {
+    let input = parse_macro_input!(input as DeriveInput);
+
+    match expand_deserialize_shape(&input) {
+        Ok(tokens) => tokens.into(),
+        Err(err) => err.to_compile_error().into(),
+    }
+}
+
+fn expand_serialize_shape(input: &DeriveInput) -> syn::Result<TokenStream2> {
+    let container = parse_container(input, Derive::Serialize)?;
+    let ident = &input.ident;
+    let mut generics = input.generics.clone();
+    add_serialize_shape_bounds(&mut generics, &container);
+    let (impl_generics, ty_generics, where_clause) = generics.split_for_impl();
+    let body = serialize_shape_body(&container);
+
+    Ok(quote! {
+        impl #impl_generics ::serde_shape::SerializeShape for #ident #ty_generics #where_clause {
+            fn serialize_shape_in(
+                context: &mut ::serde_shape::SerializeShapeContext,
+            ) -> ::serde_shape::ShapeRef {
+                #body
+            }
+        }
+    })
+}
+
+fn expand_deserialize_shape(input: &DeriveInput) -> syn::Result<TokenStream2> {
+    let container = parse_container(input, Derive::Deserialize)?;
+    let ident = &input.ident;
+    let mut generics = input.generics.clone();
+    add_deserialize_shape_bounds(&mut generics, &container);
+    let (impl_generics, ty_generics, where_clause) = generics.split_for_impl();
+    let body = deserialize_shape_body(&container);
+
+    Ok(quote! {
+        impl #impl_generics ::serde_shape::DeserializeShape for #ident #ty_generics #where_clause {
+            fn deserialize_shape_in(
+                context: &mut ::serde_shape::DeserializeShapeContext,
+            ) -> ::serde_shape::ShapeRef {
+                #body
+            }
+        }
+    })
+}
+
+fn parse_container<'a>(input: &'a DeriveInput, derive: Derive) -> syn::Result<ast::Container<'a>> {
     let cx = Ctxt::new();
-    let Some(container) = ast::Container::from_ast(&cx, input, Derive::Deserialize) else {
+    let Some(container) = ast::Container::from_ast(&cx, input, derive) else {
         cx.check()?;
         return Err(syn::Error::new_spanned(
             input,
@@ -56,23 +105,47 @@ fn expand_serde_shape(input: &DeriveInput) -> syn::Result<TokenStream2> {
         ));
     };
     cx.check()?;
-
-    let ident = &input.ident;
-    let mut generics = input.generics.clone();
-    add_shape_bounds(&mut generics, &container);
-    let (impl_generics, ty_generics, where_clause) = generics.split_for_impl();
-    let body = shape_body(&container);
-
-    Ok(quote! {
-        impl #impl_generics ::serde_shape::SerdeShape for #ident #ty_generics #where_clause {
-            fn shape_in(context: &mut ::serde_shape::ShapeContext) -> ::serde_shape::ShapeRef {
-                #body
-            }
-        }
-    })
+    Ok(container)
 }
 
-fn add_shape_bounds(generics: &mut syn::Generics, container: &ast::Container<'_>) {
+fn add_serialize_shape_bounds(generics: &mut syn::Generics, container: &ast::Container<'_>) {
+    if container.attrs.type_into().is_some() || container.attrs.remote().is_some() {
+        return;
+    }
+
+    let type_params: BTreeSet<_> = generics
+        .type_params()
+        .map(|param| param.ident.to_string())
+        .collect();
+    let mut field_bound_types = Vec::new();
+
+    match &container.data {
+        ast::Data::Struct(_, fields) => {
+            collect_serialize_field_bound_types(fields, &type_params, &mut field_bound_types);
+        }
+        ast::Data::Enum(variants) => {
+            for variant in variants {
+                if variant.attrs.skip_serializing() || variant.attrs.serialize_with().is_some() {
+                    continue;
+                }
+                collect_serialize_field_bound_types(
+                    &variant.fields,
+                    &type_params,
+                    &mut field_bound_types,
+                );
+            }
+        }
+    }
+
+    for ty in field_bound_types {
+        generics
+            .make_where_clause()
+            .predicates
+            .push(parse_quote!(#ty: ::serde_shape::SerializeShape));
+    }
+}
+
+fn add_deserialize_shape_bounds(generics: &mut syn::Generics, container: &ast::Container<'_>) {
     if container.attrs.type_from().is_some()
         || container.attrs.type_try_from().is_some()
         || container.attrs.remote().is_some()
@@ -88,7 +161,7 @@ fn add_shape_bounds(generics: &mut syn::Generics, container: &ast::Container<'_>
 
     match &container.data {
         ast::Data::Struct(_, fields) => {
-            collect_field_bound_types(fields, &type_params, &mut field_bound_types);
+            collect_deserialize_field_bound_types(fields, &type_params, &mut field_bound_types);
         }
         ast::Data::Enum(variants) => {
             for variant in variants {
@@ -96,7 +169,11 @@ fn add_shape_bounds(generics: &mut syn::Generics, container: &ast::Container<'_>
                 {
                     continue;
                 }
-                collect_field_bound_types(&variant.fields, &type_params, &mut field_bound_types);
+                collect_deserialize_field_bound_types(
+                    &variant.fields,
+                    &type_params,
+                    &mut field_bound_types,
+                );
             }
         }
     }
@@ -105,11 +182,24 @@ fn add_shape_bounds(generics: &mut syn::Generics, container: &ast::Container<'_>
         generics
             .make_where_clause()
             .predicates
-            .push(parse_quote!(#ty: ::serde_shape::SerdeShape));
+            .push(parse_quote!(#ty: ::serde_shape::DeserializeShape));
     }
 }
 
-fn collect_field_bound_types(
+fn collect_serialize_field_bound_types(
+    fields: &[ast::Field<'_>],
+    type_params: &BTreeSet<String>,
+    field_bound_types: &mut Vec<Type>,
+) {
+    for field in fields {
+        if field.attrs.skip_serializing() || field.attrs.serialize_with().is_some() {
+            continue;
+        }
+        collect_field_bound_type(field, type_params, field_bound_types);
+    }
+}
+
+fn collect_deserialize_field_bound_types(
     fields: &[ast::Field<'_>],
     type_params: &BTreeSet<String>,
     field_bound_types: &mut Vec<Type>,
@@ -118,12 +208,19 @@ fn collect_field_bound_types(
         if field.attrs.skip_deserializing() || field.attrs.deserialize_with().is_some() {
             continue;
         }
+        collect_field_bound_type(field, type_params, field_bound_types);
+    }
+}
 
-        let mut used_type_params = BTreeSet::new();
-        collect_type_params(field.ty, type_params, &mut used_type_params);
-        if !used_type_params.is_empty() {
-            field_bound_types.push((*field.ty).clone());
-        }
+fn collect_field_bound_type(
+    field: &ast::Field<'_>,
+    type_params: &BTreeSet<String>,
+    field_bound_types: &mut Vec<Type>,
+) {
+    let mut used_type_params = BTreeSet::new();
+    collect_type_params(field.ty, type_params, &mut used_type_params);
+    if !used_type_params.is_empty() {
+        field_bound_types.push((*field.ty).clone());
     }
 }
 
@@ -234,17 +331,15 @@ fn collect_return_type_params(
     }
 }
 
-fn shape_body(container: &ast::Container<'_>) -> TokenStream2 {
-    let serde_name = lit(container.attrs.name().deserialize_name());
-    let serialize_name = lit(container.attrs.name().serialize_name());
-    let kind = definition_kind(container);
+fn serialize_shape_body(container: &ast::Container<'_>) -> TokenStream2 {
+    let name = lit(container.attrs.name().serialize_name());
+    let kind = serialize_definition_kind(container);
 
     quote! {
         context.define_named_type(
-            ::serde_shape::TypeName {
+            ::serde_shape::SerializeTypeName {
                 rust_name: ::std::any::type_name::<Self>(),
-                serde_name: #serde_name,
-                serialize_name: #serialize_name,
+                name: #name,
             },
             |context| {
                 #kind
@@ -253,24 +348,38 @@ fn shape_body(container: &ast::Container<'_>) -> TokenStream2 {
     }
 }
 
-fn definition_kind(container: &ast::Container<'_>) -> TokenStream2 {
-    if let Some(ty) = container.attrs.type_from() {
-        return opaque_definition("FromType", ty);
+fn deserialize_shape_body(container: &ast::Container<'_>) -> TokenStream2 {
+    let name = lit(container.attrs.name().deserialize_name());
+    let kind = deserialize_definition_kind(container);
+
+    quote! {
+        context.define_named_type(
+            ::serde_shape::DeserializeTypeName {
+                rust_name: ::std::any::type_name::<Self>(),
+                name: #name,
+            },
+            |context| {
+                #kind
+            },
+        )
     }
-    if let Some(ty) = container.attrs.type_try_from() {
-        return opaque_definition("TryFromType", ty);
+}
+
+fn serialize_definition_kind(container: &ast::Container<'_>) -> TokenStream2 {
+    if let Some(ty) = container.attrs.type_into() {
+        return serialize_opaque_definition("IntoType", ty);
     }
     if let Some(path) = container.attrs.remote() {
-        return opaque_definition("Remote", path);
+        return serialize_opaque_definition("Remote", path);
     }
 
-    let attributes = container_attributes(&container.attrs);
+    let attributes = serialize_container_attributes(&container.attrs);
     match &container.data {
         ast::Data::Struct(style, fields) => {
             let style = fields_style(*style);
-            let fields = fields.iter().map(field_shape);
+            let fields = fields.iter().map(serialize_field_shape);
             quote! {
-                ::serde_shape::DefinitionKind::Struct(::serde_shape::StructShape {
+                ::serde_shape::SerializeDefinitionKind::Struct(::serde_shape::SerializeStructShape {
                     style: #style,
                     fields: ::std::vec![#(#fields),*],
                     attributes: #attributes,
@@ -279,9 +388,9 @@ fn definition_kind(container: &ast::Container<'_>) -> TokenStream2 {
         }
         ast::Data::Enum(variants) => {
             let repr = tagging(container.attrs.tag());
-            let variants = variants.iter().map(variant_shape);
+            let variants = variants.iter().map(serialize_variant_shape);
             quote! {
-                ::serde_shape::DefinitionKind::Enum(::serde_shape::EnumShape {
+                ::serde_shape::SerializeDefinitionKind::Enum(::serde_shape::SerializeEnumShape {
                     repr: #repr,
                     variants: ::std::vec![#(#variants),*],
                     attributes: #attributes,
@@ -291,7 +400,45 @@ fn definition_kind(container: &ast::Container<'_>) -> TokenStream2 {
     }
 }
 
-fn opaque_definition<T>(reason: &str, detail: T) -> TokenStream2
+fn deserialize_definition_kind(container: &ast::Container<'_>) -> TokenStream2 {
+    if let Some(ty) = container.attrs.type_from() {
+        return deserialize_opaque_definition("FromType", ty);
+    }
+    if let Some(ty) = container.attrs.type_try_from() {
+        return deserialize_opaque_definition("TryFromType", ty);
+    }
+    if let Some(path) = container.attrs.remote() {
+        return deserialize_opaque_definition("Remote", path);
+    }
+
+    let attributes = deserialize_container_attributes(&container.attrs);
+    match &container.data {
+        ast::Data::Struct(style, fields) => {
+            let style = fields_style(*style);
+            let fields = fields.iter().map(deserialize_field_shape);
+            quote! {
+                ::serde_shape::DeserializeDefinitionKind::Struct(::serde_shape::DeserializeStructShape {
+                    style: #style,
+                    fields: ::std::vec![#(#fields),*],
+                    attributes: #attributes,
+                })
+            }
+        }
+        ast::Data::Enum(variants) => {
+            let repr = tagging(container.attrs.tag());
+            let variants = variants.iter().map(deserialize_variant_shape);
+            quote! {
+                ::serde_shape::DeserializeDefinitionKind::Enum(::serde_shape::DeserializeEnumShape {
+                    repr: #repr,
+                    variants: ::std::vec![#(#variants),*],
+                    attributes: #attributes,
+                })
+            }
+        }
+    }
+}
+
+fn serialize_opaque_definition<T>(reason: &str, detail: T) -> TokenStream2
 where
     T: ToTokens,
 {
@@ -299,7 +446,7 @@ where
     let detail = lit(detail.to_token_stream().to_string());
 
     quote! {
-        ::serde_shape::DefinitionKind::Opaque(::serde_shape::OpaqueShape {
+        ::serde_shape::SerializeDefinitionKind::Opaque(::serde_shape::OpaqueShape {
             type_name: ::std::any::type_name::<Self>(),
             reason: #reason,
             detail: ::std::option::Option::Some(#detail),
@@ -307,7 +454,39 @@ where
     }
 }
 
-fn container_attributes(attrs: &attr::Container) -> TokenStream2 {
+fn deserialize_opaque_definition<T>(reason: &str, detail: T) -> TokenStream2
+where
+    T: ToTokens,
+{
+    let reason = opaque_reason(reason);
+    let detail = lit(detail.to_token_stream().to_string());
+
+    quote! {
+        ::serde_shape::DeserializeDefinitionKind::Opaque(::serde_shape::OpaqueShape {
+            type_name: ::std::any::type_name::<Self>(),
+            reason: #reason,
+            detail: ::std::option::Option::Some(#detail),
+        })
+    }
+}
+
+fn serialize_container_attributes(attrs: &attr::Container) -> TokenStream2 {
+    let tagging = tagging(attrs.tag());
+    let has_flatten = attrs.has_flatten();
+    let transparent = attrs.transparent();
+    let non_exhaustive = attrs.non_exhaustive();
+
+    quote! {
+        ::serde_shape::SerializeContainerAttributes {
+            tagging: #tagging,
+            has_flatten: #has_flatten,
+            transparent: #transparent,
+            non_exhaustive: #non_exhaustive,
+        }
+    }
+}
+
+fn deserialize_container_attributes(attrs: &attr::Container) -> TokenStream2 {
     let tagging = tagging(attrs.tag());
     let deny_unknown_fields = attrs.deny_unknown_fields();
     let default = default_shape(attrs.default());
@@ -317,7 +496,7 @@ fn container_attributes(attrs: &attr::Container) -> TokenStream2 {
     let non_exhaustive = attrs.non_exhaustive();
 
     quote! {
-        ::serde_shape::ContainerAttributes {
+        ::serde_shape::DeserializeContainerAttributes {
             tagging: #tagging,
             deny_unknown_fields: #deny_unknown_fields,
             default: #default,
@@ -329,35 +508,55 @@ fn container_attributes(attrs: &attr::Container) -> TokenStream2 {
     }
 }
 
-fn variant_shape(variant: &ast::Variant<'_>) -> TokenStream2 {
+fn serialize_variant_shape(variant: &ast::Variant<'_>) -> TokenStream2 {
     let rust_name = lit(variant.ident.to_string());
-    let serialize_name = lit(variant.attrs.name().serialize_name());
-    let deserialize_name = lit(variant.attrs.name().deserialize_name());
-    let deserialize_aliases = aliases(variant.attrs.aliases());
+    let name = lit(variant.attrs.name().serialize_name());
     let style = fields_style(variant.style);
-    let skip_serializing = variant.attrs.skip_serializing();
-    let skip_deserializing = variant.attrs.skip_deserializing();
+    let skip = variant.attrs.skip_serializing();
     let custom_serializer = variant.attrs.serialize_with().is_some();
-    let custom_deserializer = variant.attrs.deserialize_with().is_some();
-    let other = variant.attrs.other();
     let untagged = variant.attrs.untagged();
-    let fields: Vec<_> = if skip_deserializing || custom_deserializer {
+    let fields: Vec<_> = if skip || custom_serializer {
         Vec::new()
     } else {
-        variant.fields.iter().map(field_shape).collect()
+        variant.fields.iter().map(serialize_field_shape).collect()
     };
 
     quote! {
-        ::serde_shape::VariantShape {
+        ::serde_shape::SerializeVariantShape {
             rust_name: #rust_name,
-            serialize_name: #serialize_name,
-            deserialize_name: #deserialize_name,
-            deserialize_aliases: #deserialize_aliases,
+            name: #name,
             style: #style,
             fields: ::std::vec![#(#fields),*],
-            skip_serializing: #skip_serializing,
-            skip_deserializing: #skip_deserializing,
+            skip: #skip,
             custom_serializer: #custom_serializer,
+            untagged: #untagged,
+        }
+    }
+}
+
+fn deserialize_variant_shape(variant: &ast::Variant<'_>) -> TokenStream2 {
+    let rust_name = lit(variant.ident.to_string());
+    let name = lit(variant.attrs.name().deserialize_name());
+    let aliases = aliases(variant.attrs.aliases());
+    let style = fields_style(variant.style);
+    let skip = variant.attrs.skip_deserializing();
+    let custom_deserializer = variant.attrs.deserialize_with().is_some();
+    let other = variant.attrs.other();
+    let untagged = variant.attrs.untagged();
+    let fields: Vec<_> = if skip || custom_deserializer {
+        Vec::new()
+    } else {
+        variant.fields.iter().map(deserialize_field_shape).collect()
+    };
+
+    quote! {
+        ::serde_shape::DeserializeVariantShape {
+            rust_name: #rust_name,
+            name: #name,
+            aliases: #aliases,
+            style: #style,
+            fields: ::std::vec![#(#fields),*],
+            skip: #skip,
             custom_deserializer: #custom_deserializer,
             other: #other,
             untagged: #untagged,
@@ -365,39 +564,60 @@ fn variant_shape(variant: &ast::Variant<'_>) -> TokenStream2 {
     }
 }
 
-fn field_shape(field: &ast::Field<'_>) -> TokenStream2 {
+fn serialize_field_shape(field: &ast::Field<'_>) -> TokenStream2 {
     let member = field_member(&field.member);
-    let serialize_name = lit(field.attrs.name().serialize_name());
-    let deserialize_name = lit(field.attrs.name().deserialize_name());
-    let deserialize_aliases = aliases(field.attrs.aliases());
-    let skip_serializing = field.attrs.skip_serializing();
-    let skip_serializing_if = option_path(field.attrs.skip_serializing_if());
-    let skip_deserializing = field.attrs.skip_deserializing();
+    let name = lit(field.attrs.name().serialize_name());
+    let skip = field.attrs.skip_serializing();
+    let skip_if = option_path(field.attrs.skip_serializing_if());
     let custom_serializer = field.attrs.serialize_with().is_some();
+    let flatten = field.attrs.flatten();
+    let transparent = field.attrs.transparent();
+    let ty = field.ty;
+    let value_shape = if skip || custom_serializer {
+        quote!(::std::option::Option::None)
+    } else {
+        quote!(::std::option::Option::Some(<#ty as ::serde_shape::SerializeShape>::serialize_shape_in(context)))
+    };
+
+    quote! {
+        ::serde_shape::SerializeFieldShape {
+            member: #member,
+            name: #name,
+            value_shape: #value_shape,
+            flatten: #flatten,
+            skip: #skip,
+            skip_if: #skip_if,
+            custom_serializer: #custom_serializer,
+            transparent: #transparent,
+        }
+    }
+}
+
+fn deserialize_field_shape(field: &ast::Field<'_>) -> TokenStream2 {
+    let member = field_member(&field.member);
+    let name = lit(field.attrs.name().deserialize_name());
+    let aliases = aliases(field.attrs.aliases());
+    let skip = field.attrs.skip_deserializing();
     let custom_deserializer = field.attrs.deserialize_with().is_some();
     let default = default_shape(field.attrs.default());
     let flatten = field.attrs.flatten();
     let transparent = field.attrs.transparent();
     let ty = field.ty;
-    let shape = if skip_deserializing || custom_deserializer {
+    let value_shape = if skip || custom_deserializer {
         quote!(::std::option::Option::None)
     } else {
-        quote!(::std::option::Option::Some(<#ty as ::serde_shape::SerdeShape>::shape_in(context)))
+        quote!(::std::option::Option::Some(<#ty as ::serde_shape::DeserializeShape>::deserialize_shape_in(context)))
     };
 
     quote! {
-        ::serde_shape::FieldShape {
+        ::serde_shape::DeserializeFieldShape {
             member: #member,
-            serialize_name: #serialize_name,
-            deserialize_name: #deserialize_name,
-            deserialize_aliases: #deserialize_aliases,
-            shape: #shape,
+            name: #name,
+            aliases: #aliases,
+            value_shape: #value_shape,
             default: #default,
             flatten: #flatten,
-            skip_serializing: #skip_serializing,
-            skip_serializing_if: #skip_serializing_if,
-            skip_deserializing: #skip_deserializing,
-            custom_serializer: #custom_serializer,
+            skip: #skip,
             custom_deserializer: #custom_deserializer,
             transparent: #transparent,
         }
@@ -460,6 +680,7 @@ fn opaque_reason(reason: &str) -> TokenStream2 {
     match reason {
         "FromType" => quote!(::serde_shape::OpaqueReason::FromType),
         "TryFromType" => quote!(::serde_shape::OpaqueReason::TryFromType),
+        "IntoType" => quote!(::serde_shape::OpaqueReason::IntoType),
         "Remote" => quote!(::serde_shape::OpaqueReason::Remote),
         _ => quote!(::serde_shape::OpaqueReason::Unsupported),
     }
