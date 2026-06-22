@@ -24,6 +24,20 @@ readme = "README.md"
 repository = "https://github.com/fast/serde-shape"
 rust-version = "1.85.0"
 
+[workspace.dependencies]
+# workspace dependencies
+serde-shape = { version = "0.0.1", path = "serde-shape" }
+serde-shape-derive = { version = "=0.0.1", path = "serde-shape-derive" }
+
+# crates.io dependencies
+clap = { version = "4.6.1" }
+insta = { version = "1.48.0" }
+proc-macro2 = { version = "1.0.95" }
+quote = { version = "1.0.40" }
+serde_derive_internals = { version = "0.29.1" }
+syn = { version = "2.0.104" }
+which = { version = "8.0.4" }
+
 [workspace.lints.rust]
 unknown_lints = "deny"
 unsafe_code = "deny"

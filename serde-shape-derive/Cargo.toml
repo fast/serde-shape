@@ -16,6 +16,11 @@
 name = "serde-shape-derive"
 version = "0.0.1"
 
+categories = ["development-tools", "encoding"]
+description = "Procedural macro implementation for the serde-shape crate."
+documentation = "https://docs.rs/serde-shape-derive"
+keywords = ["serde", "derive", "reflection", "schema", "shape"]
+
 edition.workspace = true
 homepage.workspace = true
 license.workspace = true
@@ -27,10 +32,10 @@ rust-version.workspace = true
 proc-macro = true
 
 [dependencies]
-proc-macro2 = "1.0.95"
-quote = "1.0.40"
-serde_derive_internals = "0.29.1"
-syn = "2.0.104"
+proc-macro2 = { workspace = true }
+quote = { workspace = true }
+serde_derive_internals = { workspace = true }
+syn = { workspace = true }
 
 [lints]
 workspace = true

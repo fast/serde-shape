@@ -16,6 +16,11 @@
 name = "serde-shape"
 version = "0.0.1"
 
+categories = ["development-tools", "encoding"]
+description = "Reflect Serde deserialization shapes at compile time."
+documentation = "https://docs.rs/serde-shape"
+keywords = ["serde", "derive", "reflection", "schema", "shape"]
+
 edition.workspace = true
 homepage.workspace = true
 license.workspace = true
@@ -28,14 +33,14 @@ all-features = true
 rustdoc-args = ["--cfg", "docsrs"]
 
 [features]
-default = ["derive"]
+default = []
 derive = ["dep:serde-shape-derive"]
 
 [dependencies]
-serde-shape-derive = { version = "0.0.1", path = "../serde-shape-derive", optional = true }
+serde-shape-derive = { workspace = true, optional = true }
 
 [dev-dependencies]
-insta = "1.48.0"
+insta = { workspace = true }
 
 [lints]
 workspace = true
