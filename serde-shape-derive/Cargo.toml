@@ -32,8 +32,5 @@ quote = "1.0.40"
 serde_derive_internals = "0.29.1"
 syn = "2.0.104"
 
-[dev-dependencies]
-serde-shape = { path = "../serde-shape", default-features = false }
-
 [lints]
 workspace = true

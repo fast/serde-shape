@@ -14,6 +14,8 @@
 
 //! Derive macro for `serde-shape`.
 
+use std::collections::BTreeSet;
+
 use proc_macro::TokenStream;
 use proc_macro2::TokenStream as TokenStream2;
 use quote::ToTokens;
@@ -23,8 +25,13 @@ use serde_derive_internals::Derive;
 use serde_derive_internals::ast;
 use serde_derive_internals::attr;
 use syn::DeriveInput;
+use syn::GenericArgument;
 use syn::LitStr;
 use syn::Member;
+use syn::PathArguments;
+use syn::ReturnType;
+use syn::Type;
+use syn::TypeParamBound;
 use syn::parse_macro_input;
 use syn::parse_quote;
 
@@ -73,31 +80,157 @@ fn add_shape_bounds(generics: &mut syn::Generics, container: &ast::Container<'_>
         return;
     }
 
+    let type_params: BTreeSet<_> = generics
+        .type_params()
+        .map(|param| param.ident.to_string())
+        .collect();
+    let mut field_bound_types = Vec::new();
+
     match &container.data {
-        ast::Data::Struct(_, fields) => add_field_bounds(generics, fields),
+        ast::Data::Struct(_, fields) => {
+            collect_field_bound_types(fields, &type_params, &mut field_bound_types);
+        }
         ast::Data::Enum(variants) => {
             for variant in variants {
                 if variant.attrs.skip_deserializing() || variant.attrs.deserialize_with().is_some()
                 {
                     continue;
                 }
-                add_field_bounds(generics, &variant.fields);
+                collect_field_bound_types(&variant.fields, &type_params, &mut field_bound_types);
             }
         }
     }
+
+    for ty in field_bound_types {
+        generics
+            .make_where_clause()
+            .predicates
+            .push(parse_quote!(#ty: ::serde_shape::SerdeShape));
+    }
 }
 
-fn add_field_bounds(generics: &mut syn::Generics, fields: &[ast::Field<'_>]) {
+fn collect_field_bound_types(
+    fields: &[ast::Field<'_>],
+    type_params: &BTreeSet<String>,
+    field_bound_types: &mut Vec<Type>,
+) {
     for field in fields {
         if field.attrs.skip_deserializing() || field.attrs.deserialize_with().is_some() {
             continue;
         }
 
-        let ty = field.ty;
-        generics
-            .make_where_clause()
-            .predicates
-            .push(parse_quote!(#ty: ::serde_shape::SerdeShape));
+        let mut used_type_params = BTreeSet::new();
+        collect_type_params(field.ty, type_params, &mut used_type_params);
+        if !used_type_params.is_empty() {
+            field_bound_types.push((*field.ty).clone());
+        }
+    }
+}
+
+fn collect_type_params(
+    ty: &Type,
+    type_params: &BTreeSet<String>,
+    used_type_params: &mut BTreeSet<String>,
+) {
+    match ty {
+        Type::Array(ty) => collect_type_params(&ty.elem, type_params, used_type_params),
+        Type::BareFn(ty) => {
+            for input in &ty.inputs {
+                collect_type_params(&input.ty, type_params, used_type_params);
+            }
+            collect_return_type_params(&ty.output, type_params, used_type_params);
+        }
+        Type::Group(ty) => collect_type_params(&ty.elem, type_params, used_type_params),
+        Type::ImplTrait(ty) => collect_type_param_bounds(&ty.bounds, type_params, used_type_params),
+        Type::Paren(ty) => collect_type_params(&ty.elem, type_params, used_type_params),
+        Type::Path(ty) => {
+            if let Some(qself) = &ty.qself {
+                collect_type_params(&qself.ty, type_params, used_type_params);
+            }
+            for segment in &ty.path.segments {
+                let ident = segment.ident.to_string();
+                if type_params.contains(&ident) {
+                    used_type_params.insert(ident);
+                }
+                collect_path_arguments(&segment.arguments, type_params, used_type_params);
+            }
+        }
+        Type::Ptr(ty) => collect_type_params(&ty.elem, type_params, used_type_params),
+        Type::Reference(ty) => collect_type_params(&ty.elem, type_params, used_type_params),
+        Type::Slice(ty) => collect_type_params(&ty.elem, type_params, used_type_params),
+        Type::TraitObject(ty) => {
+            collect_type_param_bounds(&ty.bounds, type_params, used_type_params);
+        }
+        Type::Tuple(ty) => {
+            for elem in &ty.elems {
+                collect_type_params(elem, type_params, used_type_params);
+            }
+        }
+        Type::Infer(_) | Type::Macro(_) | Type::Never(_) | Type::Verbatim(_) => {}
+        _ => {}
+    }
+}
+
+fn collect_path_arguments(
+    arguments: &PathArguments,
+    type_params: &BTreeSet<String>,
+    used_type_params: &mut BTreeSet<String>,
+) {
+    match arguments {
+        PathArguments::None => {}
+        PathArguments::AngleBracketed(arguments) => {
+            for argument in &arguments.args {
+                match argument {
+                    GenericArgument::Type(ty) => {
+                        collect_type_params(ty, type_params, used_type_params);
+                    }
+                    GenericArgument::AssocType(assoc) => {
+                        collect_type_params(&assoc.ty, type_params, used_type_params);
+                    }
+                    GenericArgument::Constraint(constraint) => {
+                        collect_type_param_bounds(
+                            &constraint.bounds,
+                            type_params,
+                            used_type_params,
+                        );
+                    }
+                    GenericArgument::Lifetime(_)
+                    | GenericArgument::Const(_)
+                    | GenericArgument::AssocConst(_) => {}
+                    _ => {}
+                }
+            }
+        }
+        PathArguments::Parenthesized(arguments) => {
+            for input in &arguments.inputs {
+                collect_type_params(input, type_params, used_type_params);
+            }
+            collect_return_type_params(&arguments.output, type_params, used_type_params);
+        }
+    }
+}
+
+fn collect_type_param_bounds(
+    bounds: &syn::punctuated::Punctuated<TypeParamBound, syn::Token![+]>,
+    type_params: &BTreeSet<String>,
+    used_type_params: &mut BTreeSet<String>,
+) {
+    for bound in bounds {
+        if let TypeParamBound::Trait(bound) = bound {
+            for segment in &bound.path.segments {
+                collect_path_arguments(&segment.arguments, type_params, used_type_params);
+            }
+        }
+    }
+}
+
+fn collect_return_type_params(
+    return_type: &ReturnType,
+    type_params: &BTreeSet<String>,
+    used_type_params: &mut BTreeSet<String>,
+) {
+    if let ReturnType::Type(_, ty) = return_type {
+        collect_type_params(ty, type_params, used_type_params);
     }
 }
 
