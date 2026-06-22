@@ -1,0 +1,61 @@
+---
+source: serde-shape/tests/derive.rs
+expression: "Recursive::shape()"
+---
+Shape {
+    root: Definition(
+        ShapeId(
+            0,
+        ),
+    ),
+    definitions: [
+        DefinitionShape {
+            id: ShapeId(
+                0,
+            ),
+            type_name: TypeName {
+                rust_name: "derive::Recursive",
+                serde_name: "Recursive",
+            },
+            kind: Struct(
+                StructShape {
+                    style: Struct,
+                    fields: [
+                        FieldShape {
+                            member: Named(
+                                "child",
+                            ),
+                            deserialize_name: "child",
+                            deserialize_aliases: [
+                                "child",
+                            ],
+                            shape: Some(
+                                Option(
+                                    Definition(
+                                        ShapeId(
+                                            0,
+                                        ),
+                                    ),
+                                ),
+                            ),
+                            default: None,
+                            flatten: false,
+                            skip_deserializing: false,
+                            custom_deserializer: false,
+                            transparent: false,
+                        },
+                    ],
+                    attributes: ContainerAttributes {
+                        tagging: External,
+                        deny_unknown_fields: false,
+                        default: None,
+                        has_flatten: false,
+                        transparent: false,
+                        expecting: None,
+                        non_exhaustive: false,
+                    },
+                },
+            ),
+        },
+    ],
+}

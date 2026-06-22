@@ -34,5 +34,8 @@ derive = ["dep:serde-shape-derive"]
 [dependencies]
 serde-shape-derive = { version = "0.0.1", path = "../serde-shape-derive", optional = true }
 
+[dev-dependencies]
+insta = "1.48.0"
+
 [lints]
 workspace = true

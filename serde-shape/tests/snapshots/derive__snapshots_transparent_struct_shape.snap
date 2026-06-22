@@ -1,0 +1,57 @@
+---
+source: serde-shape/tests/derive.rs
+expression: "UserId::shape()"
+---
+Shape {
+    root: Definition(
+        ShapeId(
+            0,
+        ),
+    ),
+    definitions: [
+        DefinitionShape {
+            id: ShapeId(
+                0,
+            ),
+            type_name: TypeName {
+                rust_name: "derive::UserId",
+                serde_name: "UserId",
+            },
+            kind: Struct(
+                StructShape {
+                    style: Newtype,
+                    fields: [
+                        FieldShape {
+                            member: Unnamed(
+                                0,
+                            ),
+                            deserialize_name: "0",
+                            deserialize_aliases: [
+                                "0",
+                            ],
+                            shape: Some(
+                                Unsigned(
+                                    W64,
+                                ),
+                            ),
+                            default: None,
+                            flatten: false,
+                            skip_deserializing: false,
+                            custom_deserializer: false,
+                            transparent: true,
+                        },
+                    ],
+                    attributes: ContainerAttributes {
+                        tagging: External,
+                        deny_unknown_fields: false,
+                        default: None,
+                        has_flatten: false,
+                        transparent: true,
+                        expecting: None,
+                        non_exhaustive: false,
+                    },
+                },
+            ),
+        },
+    ],
+}

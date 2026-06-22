@@ -15,15 +15,7 @@
 #![cfg(feature = "derive")]
 #![allow(dead_code)]
 
-use serde_shape::DefaultShape;
-use serde_shape::DefinitionKind;
-use serde_shape::FieldsStyle;
-use serde_shape::IntegerWidth;
-use serde_shape::OpaqueReason;
 use serde_shape::SerdeShape;
-use serde_shape::Shape;
-use serde_shape::ShapeRef;
-use serde_shape::Tagging;
 
 #[derive(SerdeShape)]
 #[serde(
@@ -95,156 +87,37 @@ fn default_retries() -> u8 {
     3
 }
 
-fn root_definition(shape: &Shape) -> &serde_shape::DefinitionShape {
-    let ShapeRef::Definition(id) = shape.root else {
-        panic!("unexpected root shape: {:?}", shape.root);
-    };
-    shape.definition(id).unwrap()
+#[test]
+fn snapshots_struct_shape_from_container_and_field_attrs() {
+    insta::assert_debug_snapshot!(Config::shape());
 }
 
 #[test]
-fn derives_struct_shape_from_container_and_field_attrs() {
-    let shape = Config::shape();
-    let config = root_definition(&shape);
-    assert_eq!(config.type_name.serde_name, "Config");
-
-    let DefinitionKind::Struct(config) = &config.kind else {
-        panic!("expected struct shape");
-    };
-    assert_eq!(config.style, FieldsStyle::Struct);
-    assert!(config.attributes.deny_unknown_fields);
-    assert!(config.attributes.has_flatten);
-    assert_eq!(config.attributes.default, DefaultShape::Default);
-    assert_eq!(config.attributes.expecting, Some("config object"));
-    assert_eq!(config.fields.len(), 6);
-
-    let port = &config.fields[0];
-    assert_eq!(port.member, serde_shape::FieldMember::Named("http_port"));
-    assert_eq!(port.deserialize_name, "http-port");
-    assert_eq!(port.shape, Some(ShapeRef::Unsigned(IntegerWidth::W16)));
-
-    let api_url = &config.fields[1];
-    assert_eq!(api_url.deserialize_name, "api-url");
-    assert!(api_url.deserialize_aliases.contains(&"endpoint"));
-    assert!(matches!(api_url.shape, Some(ShapeRef::Option(_))));
-
-    let retries = &config.fields[2];
-    assert_eq!(retries.deserialize_name, "retries");
-    assert_eq!(retries.default, DefaultShape::Path("default_retries"));
-
-    let storage = &config.fields[3];
-    assert_eq!(storage.deserialize_name, "storage");
-    assert!(storage.flatten);
-    assert!(matches!(storage.shape, Some(ShapeRef::Definition(_))));
-
-    let skipped = &config.fields[4];
-    assert!(skipped.skip_deserializing);
-    assert_eq!(skipped.shape, None);
-
-    let secret = &config.fields[5];
-    assert!(secret.custom_deserializer);
-    assert_eq!(secret.shape, None);
+fn snapshots_internally_tagged_enum_shape_from_variant_attrs() {
+    insta::assert_debug_snapshot!(Storage::shape());
 }
 
 #[test]
-fn derives_internally_tagged_enum_shape_from_variant_attrs() {
-    let shape = Storage::shape();
-    let storage = root_definition(&shape);
-    let DefinitionKind::Enum(storage) = &storage.kind else {
-        panic!("expected enum shape");
-    };
-
-    assert_eq!(storage.repr, Tagging::Internal { tag: "type" });
-    assert_eq!(
-        storage.attributes.tagging,
-        Tagging::Internal { tag: "type" }
-    );
-    assert!(storage.attributes.non_exhaustive);
-    assert_eq!(storage.variants.len(), 3);
-    assert_eq!(storage.variants[0].rust_name, "S3");
-    assert_eq!(storage.variants[0].deserialize_name, "s3");
-    assert!(
-        storage.variants[0]
-            .deserialize_aliases
-            .contains(&"s3-compatible")
-    );
-    assert_eq!(storage.variants[1].deserialize_name, "az-blob");
-    assert_eq!(
-        storage.variants[0].fields[0].deserialize_name,
-        "bucket-name"
-    );
-    assert!(storage.variants[2].other);
+fn snapshots_transparent_struct_shape() {
+    insta::assert_debug_snapshot!(UserId::shape());
 }
 
 #[test]
-fn derives_transparent_struct_shape() {
-    let shape = UserId::shape();
-    let user_id = root_definition(&shape);
-    let DefinitionKind::Struct(user_id) = &user_id.kind else {
-        panic!("expected struct shape");
-    };
-
-    assert_eq!(user_id.style, FieldsStyle::Newtype);
-    assert!(user_id.attributes.transparent);
-    assert!(user_id.fields[0].transparent);
-    assert_eq!(
-        user_id.fields[0].shape,
-        Some(ShapeRef::Unsigned(IntegerWidth::W64))
-    );
+fn snapshots_conversion_based_opaque_shape() {
+    insta::assert_debug_snapshot!(FromString::shape());
 }
 
 #[test]
-fn marks_conversion_based_shape_as_opaque() {
-    let shape = FromString::shape();
-    let from_string = root_definition(&shape);
-    let DefinitionKind::Opaque(opaque) = &from_string.kind else {
-        panic!("expected opaque shape");
-    };
-
-    assert_eq!(opaque.reason, OpaqueReason::FromType);
-    assert_eq!(opaque.detail, Some("String"));
+fn snapshots_skipped_generic_field_without_shape_bound() {
+    insta::assert_debug_snapshot!(SkipsGeneric::<NotShape>::shape());
 }
 
 #[test]
-fn skipped_generic_field_does_not_require_shape_bound() {
-    let shape = SkipsGeneric::<NotShape>::shape();
-    let definition = root_definition(&shape);
-    let DefinitionKind::Struct(skips) = &definition.kind else {
-        panic!("expected struct shape");
-    };
-
-    assert_eq!(skips.fields.len(), 1);
-    assert!(skips.fields[0].skip_deserializing);
-    assert_eq!(skips.fields[0].shape, None);
+fn snapshots_phantom_data_generic_field_without_shape_bound() {
+    insta::assert_debug_snapshot!(Marker::<NotShape>::shape());
 }
 
 #[test]
-fn phantom_data_generic_field_does_not_require_shape_bound() {
-    let shape = Marker::<NotShape>::shape();
-    let definition = root_definition(&shape);
-    let DefinitionKind::Struct(marker) = &definition.kind else {
-        panic!("expected struct shape");
-    };
-
-    assert_eq!(marker.fields.len(), 1);
-    assert_eq!(marker.fields[0].shape, Some(ShapeRef::Unit));
-}
-
-#[test]
-fn recursive_type_reuses_the_same_definition() {
-    let shape = Recursive::shape();
-    let recursive = root_definition(&shape);
-    let DefinitionKind::Struct(recursive) = &recursive.kind else {
-        panic!("expected struct shape");
-    };
-
-    assert_eq!(shape.definitions.len(), 1);
-    let child = &recursive.fields[0];
-    let Some(ShapeRef::Option(child)) = &child.shape else {
-        panic!("expected optional child shape");
-    };
-    let ShapeRef::Definition(id) = child.as_ref() else {
-        panic!("expected recursive definition reference");
-    };
-    assert_eq!(id.0, 0);
+fn snapshots_recursive_type_reusing_the_same_definition() {
+    insta::assert_debug_snapshot!(Recursive::shape());
 }
