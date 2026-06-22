@@ -30,9 +30,7 @@ Shape {
                                 "http-port",
                             ],
                             shape: Some(
-                                Unsigned(
-                                    W16,
-                                ),
+                                U16,
                             ),
                             default: None,
                             flatten: false,
@@ -69,9 +67,7 @@ Shape {
                                 "retries",
                             ],
                             shape: Some(
-                                Unsigned(
-                                    W8,
-                                ),
+                                U8,
                             ),
                             default: Path(
                                 "default_retries",

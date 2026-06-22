@@ -449,19 +449,26 @@ fn merge_conditions(existing: Option<&str>, new: &str) -> String {
 }
 
 fn primitive_kind(shape_ref: &ShapeRef) -> &'static str {
-    match shape_ref {
-        ShapeRef::Unit => "unit",
-        ShapeRef::Bool => "boolean",
-        ShapeRef::Char | ShapeRef::String | ShapeRef::Bytes => "string",
-        ShapeRef::Signed(_) | ShapeRef::Unsigned(_) => "integer",
-        ShapeRef::Float(_) => "float",
-        ShapeRef::Option(_)
-        | ShapeRef::Seq(_)
-        | ShapeRef::Array { .. }
-        | ShapeRef::Map { .. }
-        | ShapeRef::Tuple(_)
-        | ShapeRef::Definition(_)
-        | ShapeRef::Opaque(_) => unreachable!("compound shapes are handled before leaf mapping"),
+    if shape_ref.is_integer() {
+        "integer"
+    } else if shape_ref.is_float() {
+        "float"
+    } else {
+        match shape_ref {
+            ShapeRef::Unit => "unit",
+            ShapeRef::Bool => "boolean",
+            ShapeRef::Char | ShapeRef::String | ShapeRef::Bytes => "string",
+            ShapeRef::Option(_)
+            | ShapeRef::Seq(_)
+            | ShapeRef::Array { .. }
+            | ShapeRef::Map { .. }
+            | ShapeRef::Tuple(_)
+            | ShapeRef::Definition(_)
+            | ShapeRef::Opaque(_) => {
+                unreachable!("compound shapes are handled before leaf mapping")
+            }
+            _ => unreachable!("numeric shapes are handled before leaf mapping"),
+        }
     }
 }
 

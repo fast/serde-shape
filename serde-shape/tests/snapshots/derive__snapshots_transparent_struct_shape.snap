@@ -30,9 +30,7 @@ Shape {
                                 "0",
                             ],
                             shape: Some(
-                                Unsigned(
-                                    W64,
-                                ),
+                                U64,
                             ),
                             default: None,
                             flatten: false,

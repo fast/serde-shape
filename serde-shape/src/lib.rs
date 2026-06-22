@@ -127,12 +127,34 @@ pub enum ShapeRef {
     Bool,
     /// Character shape.
     Char,
-    /// Signed integer shape.
-    Signed(IntegerWidth),
-    /// Unsigned integer shape.
-    Unsigned(IntegerWidth),
-    /// Floating point shape.
-    Float(FloatWidth),
+    /// `i8` shape.
+    I8,
+    /// `i16` shape.
+    I16,
+    /// `i32` shape.
+    I32,
+    /// `i64` shape.
+    I64,
+    /// `i128` shape.
+    I128,
+    /// `isize` shape.
+    Isize,
+    /// `u8` shape.
+    U8,
+    /// `u16` shape.
+    U16,
+    /// `u32` shape.
+    U32,
+    /// `u64` shape.
+    U64,
+    /// `u128` shape.
+    U128,
+    /// `usize` shape.
+    Usize,
+    /// `f32` shape.
+    F32,
+    /// `f64` shape.
+    F64,
     /// UTF-8 string shape.
     String,
     /// Byte buffer shape.
@@ -163,30 +185,37 @@ pub enum ShapeRef {
     Opaque(OpaqueShape),
 }
 
-/// Integer bit width.
-#[derive(Clone, Copy, Debug, Eq, PartialEq)]
-pub enum IntegerWidth {
-    /// Pointer-sized integer.
-    Size,
-    /// 8-bit integer.
-    W8,
-    /// 16-bit integer.
-    W16,
-    /// 32-bit integer.
-    W32,
-    /// 64-bit integer.
-    W64,
-    /// 128-bit integer.
-    W128,
-}
+impl ShapeRef {
+    /// Return whether this is a signed integer shape.
+    pub fn is_signed_integer(&self) -> bool {
+        matches!(
+            self,
+            Self::I8 | Self::I16 | Self::I32 | Self::I64 | Self::I128 | Self::Isize
+        )
+    }
 
-/// Floating point bit width.
-#[derive(Clone, Copy, Debug, Eq, PartialEq)]
-pub enum FloatWidth {
-    /// 32-bit floating point number.
-    W32,
-    /// 64-bit floating point number.
-    W64,
+    /// Return whether this is an unsigned integer shape.
+    pub fn is_unsigned_integer(&self) -> bool {
+        matches!(
+            self,
+            Self::U8 | Self::U16 | Self::U32 | Self::U64 | Self::U128 | Self::Usize
+        )
+    }
+
+    /// Return whether this is any integer shape.
+    pub fn is_integer(&self) -> bool {
+        self.is_signed_integer() || self.is_unsigned_integer()
+    }
+
+    /// Return whether this is a floating point shape.
+    pub fn is_float(&self) -> bool {
+        matches!(self, Self::F32 | Self::F64)
+    }
+
+    /// Return whether this is any numeric shape.
+    pub fn is_number(&self) -> bool {
+        self.is_integer() || self.is_float()
+    }
 }
 
 /// A named type definition in a shape graph.
@@ -386,69 +415,88 @@ pub enum OpaqueReason {
 }
 
 macro_rules! primitive_shape {
-    ($ty:ty, $shape:expr) => {
-        impl SerdeShape for $ty {
-            fn shape_in(_context: &mut ShapeContext) -> ShapeRef {
-                $shape
+    ($($ty:ty => $shape:expr;)+) => {
+        $(
+            impl SerdeShape for $ty {
+                fn shape_in(_context: &mut ShapeContext) -> ShapeRef {
+                    $shape
+                }
             }
-        }
+        )+
     };
 }
 
-primitive_shape!((), ShapeRef::Unit);
-primitive_shape!(bool, ShapeRef::Bool);
-primitive_shape!(char, ShapeRef::Char);
-primitive_shape!(i8, ShapeRef::Signed(IntegerWidth::W8));
-primitive_shape!(i16, ShapeRef::Signed(IntegerWidth::W16));
-primitive_shape!(i32, ShapeRef::Signed(IntegerWidth::W32));
-primitive_shape!(i64, ShapeRef::Signed(IntegerWidth::W64));
-primitive_shape!(i128, ShapeRef::Signed(IntegerWidth::W128));
-primitive_shape!(isize, ShapeRef::Signed(IntegerWidth::Size));
-primitive_shape!(u8, ShapeRef::Unsigned(IntegerWidth::W8));
-primitive_shape!(u16, ShapeRef::Unsigned(IntegerWidth::W16));
-primitive_shape!(u32, ShapeRef::Unsigned(IntegerWidth::W32));
-primitive_shape!(u64, ShapeRef::Unsigned(IntegerWidth::W64));
-primitive_shape!(u128, ShapeRef::Unsigned(IntegerWidth::W128));
-primitive_shape!(usize, ShapeRef::Unsigned(IntegerWidth::Size));
-primitive_shape!(f32, ShapeRef::Float(FloatWidth::W32));
-primitive_shape!(f64, ShapeRef::Float(FloatWidth::W64));
-primitive_shape!(String, ShapeRef::String);
-primitive_shape!(std::path::PathBuf, ShapeRef::String);
-primitive_shape!(std::net::IpAddr, ShapeRef::String);
-primitive_shape!(std::net::Ipv4Addr, ShapeRef::String);
-primitive_shape!(std::net::Ipv6Addr, ShapeRef::String);
-primitive_shape!(std::net::SocketAddr, ShapeRef::String);
-primitive_shape!(std::net::SocketAddrV4, ShapeRef::String);
-primitive_shape!(std::net::SocketAddrV6, ShapeRef::String);
-primitive_shape!(std::num::NonZeroI8, ShapeRef::Signed(IntegerWidth::W8));
-primitive_shape!(std::num::NonZeroI16, ShapeRef::Signed(IntegerWidth::W16));
-primitive_shape!(std::num::NonZeroI32, ShapeRef::Signed(IntegerWidth::W32));
-primitive_shape!(std::num::NonZeroI64, ShapeRef::Signed(IntegerWidth::W64));
-primitive_shape!(std::num::NonZeroI128, ShapeRef::Signed(IntegerWidth::W128));
-primitive_shape!(std::num::NonZeroIsize, ShapeRef::Signed(IntegerWidth::Size));
-primitive_shape!(std::num::NonZeroU8, ShapeRef::Unsigned(IntegerWidth::W8));
-primitive_shape!(std::num::NonZeroU16, ShapeRef::Unsigned(IntegerWidth::W16));
-primitive_shape!(std::num::NonZeroU32, ShapeRef::Unsigned(IntegerWidth::W32));
-primitive_shape!(std::num::NonZeroU64, ShapeRef::Unsigned(IntegerWidth::W64));
-primitive_shape!(
-    std::num::NonZeroU128,
-    ShapeRef::Unsigned(IntegerWidth::W128)
-);
-primitive_shape!(
-    std::num::NonZeroUsize,
-    ShapeRef::Unsigned(IntegerWidth::Size)
-);
-
-impl SerdeShape for std::path::Path {
-    fn shape_in(_context: &mut ShapeContext) -> ShapeRef {
-        ShapeRef::String
-    }
+primitive_shape! {
+    () => ShapeRef::Unit;
+    bool => ShapeRef::Bool;
+    char => ShapeRef::Char;
+    i8 => ShapeRef::I8;
+    i16 => ShapeRef::I16;
+    i32 => ShapeRef::I32;
+    i64 => ShapeRef::I64;
+    i128 => ShapeRef::I128;
+    isize => ShapeRef::Isize;
+    u8 => ShapeRef::U8;
+    u16 => ShapeRef::U16;
+    u32 => ShapeRef::U32;
+    u64 => ShapeRef::U64;
+    u128 => ShapeRef::U128;
+    usize => ShapeRef::Usize;
+    f32 => ShapeRef::F32;
+    f64 => ShapeRef::F64;
+    str => ShapeRef::String;
+    String => ShapeRef::String;
+    std::path::Path => ShapeRef::String;
+    std::path::PathBuf => ShapeRef::String;
+    std::net::IpAddr => ShapeRef::String;
+    std::net::Ipv4Addr => ShapeRef::String;
+    std::net::Ipv6Addr => ShapeRef::String;
+    std::net::SocketAddr => ShapeRef::String;
+    std::net::SocketAddrV4 => ShapeRef::String;
+    std::net::SocketAddrV6 => ShapeRef::String;
+    std::num::NonZeroI8 => ShapeRef::I8;
+    std::num::NonZeroI16 => ShapeRef::I16;
+    std::num::NonZeroI32 => ShapeRef::I32;
+    std::num::NonZeroI64 => ShapeRef::I64;
+    std::num::NonZeroI128 => ShapeRef::I128;
+    std::num::NonZeroIsize => ShapeRef::Isize;
+    std::num::NonZeroU8 => ShapeRef::U8;
+    std::num::NonZeroU16 => ShapeRef::U16;
+    std::num::NonZeroU32 => ShapeRef::U32;
+    std::num::NonZeroU64 => ShapeRef::U64;
+    std::num::NonZeroU128 => ShapeRef::U128;
+    std::num::NonZeroUsize => ShapeRef::Usize;
 }
 
-impl SerdeShape for str {
-    fn shape_in(_context: &mut ShapeContext) -> ShapeRef {
-        ShapeRef::String
-    }
+#[cfg(target_has_atomic = "8")]
+primitive_shape! {
+    std::sync::atomic::AtomicBool => ShapeRef::Bool;
+    std::sync::atomic::AtomicI8 => ShapeRef::I8;
+    std::sync::atomic::AtomicU8 => ShapeRef::U8;
+}
+
+#[cfg(target_has_atomic = "16")]
+primitive_shape! {
+    std::sync::atomic::AtomicI16 => ShapeRef::I16;
+    std::sync::atomic::AtomicU16 => ShapeRef::U16;
+}
+
+#[cfg(target_has_atomic = "32")]
+primitive_shape! {
+    std::sync::atomic::AtomicI32 => ShapeRef::I32;
+    std::sync::atomic::AtomicU32 => ShapeRef::U32;
+}
+
+#[cfg(target_has_atomic = "64")]
+primitive_shape! {
+    std::sync::atomic::AtomicI64 => ShapeRef::I64;
+    std::sync::atomic::AtomicU64 => ShapeRef::U64;
+}
+
+#[cfg(target_has_atomic = "ptr")]
+primitive_shape! {
+    std::sync::atomic::AtomicIsize => ShapeRef::Isize;
+    std::sync::atomic::AtomicUsize => ShapeRef::Usize;
 }
 
 impl SerdeShape for [u8] {
@@ -484,6 +532,70 @@ where
     }
 }
 
+impl<'a, T> SerdeShape for std::borrow::Cow<'a, T>
+where
+    T: ToOwned + ?Sized,
+    T::Owned: SerdeShape,
+{
+    fn shape_in(context: &mut ShapeContext) -> ShapeRef {
+        T::Owned::shape_in(context)
+    }
+}
+
+impl<T> SerdeShape for std::cell::Cell<T>
+where
+    T: Copy + SerdeShape,
+{
+    fn shape_in(context: &mut ShapeContext) -> ShapeRef {
+        T::shape_in(context)
+    }
+}
+
+impl<T> SerdeShape for std::cell::RefCell<T>
+where
+    T: SerdeShape,
+{
+    fn shape_in(context: &mut ShapeContext) -> ShapeRef {
+        T::shape_in(context)
+    }
+}
+
+impl<T> SerdeShape for std::sync::Mutex<T>
+where
+    T: SerdeShape,
+{
+    fn shape_in(context: &mut ShapeContext) -> ShapeRef {
+        T::shape_in(context)
+    }
+}
+
+impl<T> SerdeShape for std::sync::RwLock<T>
+where
+    T: SerdeShape,
+{
+    fn shape_in(context: &mut ShapeContext) -> ShapeRef {
+        T::shape_in(context)
+    }
+}
+
+impl<T> SerdeShape for std::num::Wrapping<T>
+where
+    T: SerdeShape,
+{
+    fn shape_in(context: &mut ShapeContext) -> ShapeRef {
+        T::shape_in(context)
+    }
+}
+
+impl<T> SerdeShape for std::cmp::Reverse<T>
+where
+    T: SerdeShape,
+{
+    fn shape_in(context: &mut ShapeContext) -> ShapeRef {
+        T::shape_in(context)
+    }
+}
+
 impl<T> SerdeShape for Option<T>
 where
     T: SerdeShape,
@@ -496,6 +608,33 @@ where
 impl<T> SerdeShape for Vec<T>
 where
     T: SerdeShape,
+{
+    fn shape_in(context: &mut ShapeContext) -> ShapeRef {
+        ShapeRef::Seq(Box::new(T::shape_in(context)))
+    }
+}
+
+impl<T> SerdeShape for std::collections::VecDeque<T>
+where
+    T: SerdeShape,
+{
+    fn shape_in(context: &mut ShapeContext) -> ShapeRef {
+        ShapeRef::Seq(Box::new(T::shape_in(context)))
+    }
+}
+
+impl<T> SerdeShape for std::collections::LinkedList<T>
+where
+    T: SerdeShape,
+{
+    fn shape_in(context: &mut ShapeContext) -> ShapeRef {
+        ShapeRef::Seq(Box::new(T::shape_in(context)))
+    }
+}
+
+impl<T> SerdeShape for std::collections::BinaryHeap<T>
+where
+    T: Ord + SerdeShape,
 {
     fn shape_in(context: &mut ShapeContext) -> ShapeRef {
         ShapeRef::Seq(Box::new(T::shape_in(context)))
@@ -602,11 +741,63 @@ mod tests {
             shape.root,
             ShapeRef::Map {
                 key: Box::new(ShapeRef::String),
-                value: Box::new(ShapeRef::Option(Box::new(ShapeRef::Unsigned(
-                    IntegerWidth::W16
-                )))),
+                value: Box::new(ShapeRef::Option(Box::new(ShapeRef::U16))),
             }
         );
         assert!(shape.definitions.is_empty());
+    }
+
+    #[test]
+    fn maps_common_std_shapes() {
+        assert_eq!(Shape::for_type::<std::path::Path>().root, ShapeRef::String);
+        assert_eq!(
+            Shape::for_type::<std::path::PathBuf>().root,
+            ShapeRef::String
+        );
+        assert_eq!(
+            Shape::for_type::<std::borrow::Cow<'static, str>>().root,
+            ShapeRef::String
+        );
+        assert_eq!(Shape::for_type::<std::cell::Cell<u8>>().root, ShapeRef::U8);
+        assert_eq!(
+            Shape::for_type::<std::num::Wrapping<i16>>().root,
+            ShapeRef::I16
+        );
+        assert_eq!(
+            Shape::for_type::<std::cmp::Reverse<u32>>().root,
+            ShapeRef::U32
+        );
+        assert_eq!(
+            Shape::for_type::<std::collections::VecDeque<u8>>().root,
+            ShapeRef::Seq(Box::new(ShapeRef::U8))
+        );
+        assert_eq!(
+            Shape::for_type::<std::collections::LinkedList<i32>>().root,
+            ShapeRef::Seq(Box::new(ShapeRef::I32))
+        );
+        assert_eq!(
+            Shape::for_type::<std::collections::BinaryHeap<u16>>().root,
+            ShapeRef::Seq(Box::new(ShapeRef::U16))
+        );
+    }
+
+    #[test]
+    fn classifies_flat_numeric_shapes() {
+        assert!(ShapeRef::I8.is_signed_integer());
+        assert!(ShapeRef::Usize.is_unsigned_integer());
+        assert!(ShapeRef::I128.is_integer());
+        assert!(ShapeRef::U64.is_integer());
+        assert!(ShapeRef::F32.is_float());
+        assert!(ShapeRef::F64.is_number());
+        assert!(!ShapeRef::String.is_number());
+    }
+
+    #[cfg(target_has_atomic = "ptr")]
+    #[test]
+    fn maps_atomic_shapes() {
+        assert_eq!(
+            Shape::for_type::<std::sync::atomic::AtomicUsize>().root,
+            ShapeRef::Usize
+        );
     }
 }
