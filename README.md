@@ -16,22 +16,20 @@
 [actions-badge]: https://github.com/fast/serde-shape/workflows/CI/badge.svg
 [actions-url]: https://github.com/fast/serde-shape/actions?query=workflow%3ACI
 
-`serde-shape` reflects the shape of Serde serialization and deserialization
-at compile time.
+`serde-shape` reflects the shape of Serde serialization and deserialization at compile time.
 
-It gives libraries and tools a lightweight graph of the Rust types, Serde
-names, field metadata, enum tagging, defaults, aliases, skips, and custom
-serializer/deserializer boundaries that make up a type's wire shape.
+It gives libraries and tools a lightweight graph of the Rust types, Serde names, field metadata, enum tagging, defaults, aliases, skips, and custom serializer/deserializer boundaries that make up a type's wire shape.
 
 ## Install
+
+Enable the `derive` feature when you want `#[derive(SerializeShape)]` and `#[derive(DeserializeShape)]`:
 
 ```toml
 [dependencies]
 serde-shape = { version = "0.0.1", features = ["derive"] }
 ```
 
-Enable `std` when your reflected types use shapes provided only by the Rust
-standard library:
+Enable `std` when your reflected types use shapes provided only by the Rust standard library:
 
 ```toml
 [dependencies]
@@ -40,25 +38,23 @@ serde-shape = { version = "0.0.1", features = ["derive", "std"] }
 
 ## Motivation
 
-Use `serde-shape` when Serde already defines the contract you care about, but
-you also need to inspect that contract as data.
+Use `serde-shape` when Serde already defines the contract you care about, but you also need to inspect that contract as data.
 
 Typical use cases:
 
 - generating configuration reference docs from config structs;
 - deriving environment variable names and value kinds from nested config;
-- documenting API or file-format shapes without hand-written schemas;
+- documenting API or file-format shapes without handwritten schemas;
 - checking how a serialized or deserialized shape changes across releases;
 - building schema exporters that start from Serde metadata.
 
-`serde-shape` is intentionally not a full validation schema. It reflects the
-Serde data model shape and relevant Serde attributes; it does not infer value
-ranges, regexes, business rules, or runtime behavior hidden inside custom
-serializer/deserializer functions.
+`serde-shape` is intentionally not a full validation schema. It reflects the Serde data model shape and relevant Serde attributes; it does not infer value ranges, regexes, business rules, or runtime behavior hidden inside custom serializer/deserializer functions.
 
-## Examples
+You may use [`schemars`](https://docs.rs/schemars) for JSON Schema generation and validation. But `schemars` is not a general-purpose Serde shape reflection library, and it does not support all Serde attributes. `serde-shape` is designed to be a more complete and general-purpose reflection of Serde shapes.
 
-### Inspect a config type
+## Example
+
+The following example shows how to inspect a nested config type.
 
 ```rust
 use serde_shape::{
@@ -98,69 +94,7 @@ assert_eq!(shape.fields[1].name, "peers");
 assert_eq!(shape.fields[2].name, "tls");
 ```
 
-### Reflect different input and output names
-
-Serde can use different names for serialization and deserialization.
-`serde-shape` keeps the two directions separate:
-
-```rust
-use serde_shape::{
-    DeserializeDefinitionKind, DeserializeShape, SerializeDefinitionKind,
-    SerializeShape, ShapeRef,
-};
-
-#[derive(SerializeShape, DeserializeShape)]
-#[serde(rename(serialize = "wire-output", deserialize = "wire-input"))]
-struct Message {
-    #[serde(rename(serialize = "out-id", deserialize = "in-id"))]
-    id: u64,
-}
-
-let serialize_graph = Message::serialize_shape();
-let deserialize_graph = Message::deserialize_shape();
-
-let ShapeRef::Definition(serialize_id) = serialize_graph.root else {
-    panic!("Message should produce a named serialization definition");
-};
-let ShapeRef::Definition(deserialize_id) = deserialize_graph.root else {
-    panic!("Message should produce a named deserialization definition");
-};
-
-let serialize_definition = serialize_graph.definition(serialize_id).unwrap();
-let deserialize_definition = deserialize_graph.definition(deserialize_id).unwrap();
-
-assert_eq!(serialize_definition.type_name.name, "wire-output");
-assert_eq!(deserialize_definition.type_name.name, "wire-input");
-
-let SerializeDefinitionKind::Struct(serialize_shape) = &serialize_definition.kind else {
-    panic!("Message should produce a struct serialization shape");
-};
-let DeserializeDefinitionKind::Struct(deserialize_shape) = &deserialize_definition.kind else {
-    panic!("Message should produce a struct deserialization shape");
-};
-
-assert_eq!(serialize_shape.fields[0].name, "out-id");
-assert_eq!(deserialize_shape.fields[0].name, "in-id");
-```
-
-### Provide a manual shape for custom parsing
-
-When a type has custom Serde logic but its external representation is known,
-implement the shape trait directly:
-
-```rust
-use serde_shape::{DeserializeShape, DeserializeShapeContext, ShapeRef};
-
-struct ByteSize(u64);
-
-impl DeserializeShape for ByteSize {
-    fn deserialize_shape_in(_context: &mut DeserializeShapeContext) -> ShapeRef {
-        ShapeRef::String
-    }
-}
-
-assert_eq!(ByteSize::deserialize_shape().root, ShapeRef::String);
-```
+See the [crate documentation][docs-url] for the full shape graph model, derive behavior, and manual implementation examples.
 
 ## Feature flags
 
@@ -173,12 +107,7 @@ assert_eq!(ByteSize::deserialize_shape().root, ShapeRef::String);
 
 `serde-shape` is `no_std` by default and requires `alloc`.
 
-Enable `std` explicitly when your shapes use standard-library-only types:
-
-```toml
-[dependencies]
-serde-shape = { version = "0.0.1", features = ["derive", "std"] }
-```
+Enable the `std` feature explicitly when your shapes use standard-library-only types.
 
 ## Minimum Rust version policy
 

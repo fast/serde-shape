@@ -71,6 +71,12 @@ impl CommandTest {
     fn run(self) {
         run_command(make_test_cmd(self.no_capture, "serde-shape", &[]));
         run_command(make_test_cmd(self.no_capture, "serde-shape", &["std"]));
+        run_command(make_test_cmd(self.no_capture, "serde-shape", &["derive"]));
+        run_command(make_test_cmd(
+            self.no_capture,
+            "serde-shape",
+            &["std", "derive"],
+        ));
         run_command(make_test_cmd(
             self.no_capture,
             "serde-shape-test-no-std",

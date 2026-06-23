@@ -14,15 +14,14 @@
 
 //! Reflect the shapes used by Serde serialization and deserialization.
 //!
-//! `serde-shape` builds a lightweight graph that describes what a Rust type
-//! emits through Serde serialization and accepts through Serde deserialization.
-//! It does not run Serde and it is not a full validation schema. Instead, it
-//! gives tools access to the same structural information that Serde derives
-//! from Rust types and `#[serde(...)]` attributes.
+//! `serde-shape` builds a lightweight graph that describes what a Rust type emits through Serde
+//! serialization and accepts through Serde deserialization. It does not run Serde, and it is not a
+//! full validation schema. Instead, it gives tools access to the same structural information that
+//! Serde derives from Rust types and `#[serde(...)]` attributes.
 //!
-//! Common uses are generating configuration reference docs, deriving
-//! environment-variable maps from config structs, documenting wire formats,
-//! and checking whether two versions of a type expose compatible Serde shapes.
+//! Common uses are generating configuration reference docs, deriving environment-variable maps
+//! from config structs, documenting wire formats, and checking whether two versions of a type
+//! expose compatible Serde shapes.
 //!
 //! # Install
 //!
@@ -34,8 +33,7 @@
 //! serde-shape = { version = "0.0.1", features = ["derive"] }
 //! ```
 //!
-//! Enable `std` when the reflected types use shapes provided only by the Rust
-//! standard library:
+//! Enable `std` when the reflected types use shapes provided only by the Rust standard library:
 //!
 //! ```toml
 //! [dependencies]
@@ -46,8 +44,8 @@
 //!
 //! # Quick start
 //!
-//! Derive [`trait@DeserializeShape`] for the type you want to inspect, then
-//! build a [`DeserializeShapeGraph`]:
+//! Derive [`trait@DeserializeShape`] for the type you want to inspect, then build a
+//! [`DeserializeShapeGraph`]:
 //!
 //! ```rust
 //! # #[cfg(feature = "derive")]
@@ -91,8 +89,8 @@
 //! # }
 //! ```
 //!
-//! Serialization and deserialization are reflected separately because Serde
-//! lets the two directions differ:
+//! Serialization and deserialization are reflected separately because Serde lets the two
+//! directions differ:
 //!
 //! ```rust
 //! # #[cfg(feature = "derive")]
@@ -140,30 +138,27 @@
 //!
 //! # Shape graphs
 //!
-//! A shape graph has a [`ShapeRef`] root and a list of named definitions. Flat
-//! primitive and compound values are represented directly as [`ShapeRef`]
-//! values. Structs and enums are stored as named definitions and referenced by
-//! [`ShapeId`].
+//! A shape graph has a [`ShapeRef`] root and a list of named definitions. Flat primitive and
+//! compound values are represented directly as [`ShapeRef`] values. Structs and enums are
+//! stored as named definitions and referenced by [`ShapeId`].
 //!
-//! Definition IDs are local to one graph. Use [`SerializeShapeGraph::definition`]
-//! or [`DeserializeShapeGraph::definition`] to resolve them.
+//! Definition IDs are local to one graph. Use [`SerializeShapeGraph::definition`] or
+//! [`DeserializeShapeGraph::definition`] to resolve them.
 //!
 //! # Derive behavior
 //!
 //! The derive macros read Serde container, variant, and field attributes, so the resulting shape
 //! follows the metadata Serde derives for each direction.
 //!
-//! A custom serializer or deserializer has no inferable inner shape, so the
-//! affected field or variant is marked as custom and its nested shape is omitted.
-//! Whole-container conversion and remote-derive attributes are represented as
-//! opaque definitions.
+//! A custom serializer or deserializer has no inferable inner shape, so the affected field or
+//! variant is marked as custom and its nested shape is omitted. Whole-container conversion and
+//! remote-derive attributes are represented as opaque definitions.
 //!
 //! # Manual implementations
 //!
-//! Implement [`trait@SerializeShape`] or [`trait@DeserializeShape`] manually
-//! when a type's Serde representation is known but cannot be derived. This is
-//! common for wrappers that deserialize from a string or another primitive
-//! representation:
+//! Implement [`trait@SerializeShape`] or [`trait@DeserializeShape`] manually when a type's Serde
+//! representation is known but cannot be derived. This is common for wrappers that deserialize
+//! from a string or another primitive representation:
 //!
 //! ```rust
 //! use serde_shape::DeserializeShape;
@@ -181,10 +176,9 @@
 //! assert_eq!(ByteSize::deserialize_shape().root, ShapeRef::String);
 //! ```
 //!
-//! For recursive or shared named types, use
-//! [`SerializeShapeContext::define_named_type`] or
-//! [`DeserializeShapeContext::define_named_type`] so the graph contains one
-//! definition and all recursive edges point back to it.
+//! For recursive or shared named types, use [`SerializeShapeContext::define_named_type`] or
+//! [`DeserializeShapeContext::define_named_type`] so the graph contains one definition and
+//! all recursive edges point back to it.
 
 #![no_std]
 #![cfg_attr(docsrs, feature(doc_cfg))]
@@ -209,68 +203,52 @@ pub mod __private {
 #[cfg_attr(docsrs, doc(cfg(feature = "derive")))]
 /// Derive [`trait@DeserializeShape`] from Serde deserialization metadata.
 ///
-/// The macro understands the `#[serde(...)]` metadata that Serde's deserialize
-/// derive exposes.
+/// Use this macro when a type's accepted input shape should be reflected from the same
+/// metadata that Serde uses for deserialization. The generated implementation records the
+/// deserialization-side names, shape graph, and Serde field/container metadata.
 ///
 /// # Example
 ///
 /// ```rust
-/// # #[cfg(feature = "derive")]
-/// # {
 /// use serde_shape::DefaultShape;
 /// use serde_shape::DeserializeDefinitionKind;
 /// use serde_shape::DeserializeShape;
 /// use serde_shape::ShapeRef;
-/// use serde_shape::Tagging;
 ///
 /// #[derive(DeserializeShape)]
-/// #[serde(
-///     tag = "kind",
-///     rename_all = "snake_case",
-///     rename_all_fields = "snake_case"
-/// )]
-/// enum Storage {
-///     Local {
-///         #[serde(default)]
-///         data_dir: String,
-///     },
-///     S3 {
-///         bucket_name: String,
-///     },
+/// #[serde(rename_all = "kebab-case")]
+/// struct Config {
+///     listen_addr: String,
+///     #[serde(default)]
+///     worker_count: u16,
 /// }
 ///
-/// let graph = Storage::deserialize_shape();
+/// let graph = Config::deserialize_shape();
 /// let ShapeRef::Definition(id) = graph.root else {
-///     panic!("Storage should produce a named definition");
+///     panic!("Config should produce a named definition");
 /// };
 /// let definition = graph.definition(id).unwrap();
 ///
-/// let DeserializeDefinitionKind::Enum(shape) = &definition.kind else {
-///     panic!("Storage should produce an enum shape");
+/// let DeserializeDefinitionKind::Struct(shape) = &definition.kind else {
+///     panic!("Config should produce a struct shape");
 /// };
 ///
-/// assert_eq!(shape.repr, Tagging::Internal { tag: "kind" });
-/// assert_eq!(shape.variants[0].name, "local");
-/// assert_eq!(shape.variants[0].fields[0].name, "data_dir");
-/// assert_eq!(shape.variants[0].fields[0].default, DefaultShape::Default);
-/// assert_eq!(shape.variants[1].fields[0].name, "bucket_name");
-/// # }
+/// assert_eq!(shape.fields[0].name, "listen-addr");
+/// assert_eq!(shape.fields[1].name, "worker-count");
+/// assert_eq!(shape.fields[1].default, DefaultShape::Default);
 /// ```
 pub use serde_shape_derive::DeserializeShape;
-
 #[cfg(feature = "derive")]
 #[cfg_attr(docsrs, doc(cfg(feature = "derive")))]
 /// Derive [`trait@SerializeShape`] from Serde serialization metadata.
 ///
-/// The macro reflects the serialized field and variant names, container tagging
-/// mode, skipped output, skip predicates, flattening, transparent containers,
-/// and custom serializers that determine a type's Serde output shape.
+/// Use this macro when a type's emitted output shape should be reflected from the same
+/// metadata that Serde uses for serialization. The generated implementation records the
+/// serialization-side names, shape graph, and Serde field/container metadata.
 ///
 /// # Example
 ///
 /// ```rust
-/// # #[cfg(feature = "derive")]
-/// # {
 /// use serde_shape::SerializeDefinitionKind;
 /// use serde_shape::SerializeShape;
 /// use serde_shape::ShapeRef;
@@ -297,7 +275,6 @@ pub use serde_shape_derive::DeserializeShape;
 /// assert_eq!(shape.fields[0].name, "requestId");
 /// assert_eq!(shape.fields[1].name, "nextPage");
 /// assert_eq!(shape.fields[1].skip_if, Some("Option::is_none"));
-/// # }
 /// ```
 pub use serde_shape_derive::SerializeShape;
 
