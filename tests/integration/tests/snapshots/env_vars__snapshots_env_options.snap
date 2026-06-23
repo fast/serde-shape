@@ -75,7 +75,7 @@ expression: "env_options::<Config>(\"PERCAS_CONFIG\")"
     EnvOption {
         env_name: "PERCAS_CONFIG_STORAGE_DISK_CAPACITY",
         config_path: "storage.disk_capacity",
-        value_kind: "string",
+        value_kind: "string|integer",
         optional: true,
         condition: None,
     },
@@ -110,7 +110,7 @@ expression: "env_options::<Config>(\"PERCAS_CONFIG\")"
     EnvOption {
         env_name: "PERCAS_CONFIG_STORAGE_MEMORY_CAPACITY",
         config_path: "storage.memory_capacity",
-        value_kind: "string",
+        value_kind: "string|integer",
         optional: true,
         condition: None,
     },
@@ -165,7 +165,7 @@ expression: "env_options::<Config>(\"PERCAS_CONFIG\")"
     EnvOption {
         env_name: "PERCAS_CONFIG_TELEMETRY_METRICS_OPENTELEMETRY_PUSH_INTERVAL",
         config_path: "telemetry.metrics.opentelemetry.push_interval",
-        value_kind: "string",
+        value_kind: "string|integer",
         optional: true,
         condition: None,
     },

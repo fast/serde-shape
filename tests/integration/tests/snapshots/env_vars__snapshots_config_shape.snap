@@ -259,7 +259,23 @@ DeserializeShapeGraph {
                                 "disk_capacity",
                             ],
                             value_shape: Some(
-                                String,
+                                OneOf(
+                                    [
+                                        String,
+                                        I8,
+                                        I16,
+                                        I32,
+                                        I64,
+                                        I128,
+                                        Isize,
+                                        U8,
+                                        U16,
+                                        U32,
+                                        U64,
+                                        U128,
+                                        Usize,
+                                    ],
+                                ),
                             ),
                             default: Path(
                                 "default_disk_capacity",
@@ -278,7 +294,23 @@ DeserializeShapeGraph {
                                 "memory_capacity",
                             ],
                             value_shape: Some(
-                                String,
+                                OneOf(
+                                    [
+                                        String,
+                                        I8,
+                                        I16,
+                                        I32,
+                                        I64,
+                                        I128,
+                                        Isize,
+                                        U8,
+                                        U16,
+                                        U32,
+                                        U64,
+                                        U128,
+                                        Usize,
+                                    ],
+                                ),
                             ),
                             default: Path(
                                 "default_memory_capacity",
@@ -1097,7 +1129,23 @@ DeserializeShapeGraph {
                                 "push_interval",
                             ],
                             value_shape: Some(
-                                String,
+                                OneOf(
+                                    [
+                                        String,
+                                        I8,
+                                        I16,
+                                        I32,
+                                        I64,
+                                        I128,
+                                        Isize,
+                                        U8,
+                                        U16,
+                                        U32,
+                                        U64,
+                                        U128,
+                                        Usize,
+                                    ],
+                                ),
                             ),
                             default: Path(
                                 "default_metrics_push_interval",

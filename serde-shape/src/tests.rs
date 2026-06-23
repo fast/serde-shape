@@ -19,6 +19,7 @@ use alloc::collections::BinaryHeap;
 use alloc::collections::LinkedList;
 use alloc::collections::VecDeque;
 use alloc::string::String;
+use alloc::vec;
 use core::cell::Cell;
 use core::cmp::Reverse;
 use core::num::Wrapping;
@@ -36,6 +37,15 @@ fn classifies_flat_numeric_shapes() {
     assert!(ShapeRef::F32.is_float());
     assert!(ShapeRef::F64.is_number());
     assert!(!ShapeRef::String.is_number());
+}
+
+#[test]
+fn classifies_one_of_numeric_shapes() {
+    assert!(ShapeRef::OneOf(vec![ShapeRef::I8, ShapeRef::U64]).is_integer());
+    assert!(ShapeRef::OneOf(vec![ShapeRef::F32, ShapeRef::F64]).is_float());
+    assert!(ShapeRef::OneOf(vec![ShapeRef::I16, ShapeRef::F64]).is_number());
+    assert!(!ShapeRef::OneOf(vec![ShapeRef::String, ShapeRef::U64]).is_integer());
+    assert!(!ShapeRef::OneOf(vec![]).is_number());
 }
 
 #[cfg(target_has_atomic = "ptr")]

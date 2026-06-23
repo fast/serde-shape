@@ -179,7 +179,7 @@ struct ByteSize(u64);
 
 impl DeserializeShape for ByteSize {
     fn deserialize_shape_in(_context: &mut DeserializeShapeContext) -> ShapeRef {
-        ShapeRef::String
+        string_or_integer_shape()
     }
 }
 
@@ -188,8 +188,26 @@ struct HumanDuration(u64);
 
 impl DeserializeShape for HumanDuration {
     fn deserialize_shape_in(_context: &mut DeserializeShapeContext) -> ShapeRef {
-        ShapeRef::String
+        string_or_integer_shape()
     }
+}
+
+fn string_or_integer_shape() -> ShapeRef {
+    ShapeRef::OneOf(vec![
+        ShapeRef::String,
+        ShapeRef::I8,
+        ShapeRef::I16,
+        ShapeRef::I32,
+        ShapeRef::I64,
+        ShapeRef::I128,
+        ShapeRef::Isize,
+        ShapeRef::U8,
+        ShapeRef::U16,
+        ShapeRef::U32,
+        ShapeRef::U64,
+        ShapeRef::U128,
+        ShapeRef::Usize,
+    ])
 }
 
 fn default_dir() -> PathBuf {
@@ -254,6 +272,10 @@ impl EnvCollector<'_> {
         match shape_ref {
             ShapeRef::Option(inner) => {
                 self.visit_shape_ref(inner, path, true, condition);
+            }
+            ShapeRef::OneOf(alternatives) => {
+                let value_kind = one_of_kind(alternatives);
+                self.push_leaf(path, &value_kind, optional, condition);
             }
             ShapeRef::Definition(id) => {
                 self.visit_definition(*id, path, optional, condition);
@@ -448,6 +470,8 @@ fn primitive_kind(shape_ref: &ShapeRef) -> &'static str {
         "integer"
     } else if shape_ref.is_float() {
         "float"
+    } else if shape_ref.is_number() {
+        "number"
     } else {
         match shape_ref {
             ShapeRef::Unit => "unit",
@@ -458,6 +482,7 @@ fn primitive_kind(shape_ref: &ShapeRef) -> &'static str {
             | ShapeRef::Array { .. }
             | ShapeRef::Map { .. }
             | ShapeRef::Tuple(_)
+            | ShapeRef::OneOf(_)
             | ShapeRef::Definition(_)
             | ShapeRef::Opaque(_) => {
                 unreachable!("compound shapes are handled before leaf mapping")
@@ -465,6 +490,40 @@ fn primitive_kind(shape_ref: &ShapeRef) -> &'static str {
             _ => unreachable!("numeric shapes are handled before leaf mapping"),
         }
     }
+}
+
+fn one_of_alternative_kind(shape_ref: &ShapeRef) -> String {
+    match shape_ref {
+        ShapeRef::Option(inner) => one_of_alternative_kind(inner),
+        ShapeRef::Seq(_) | ShapeRef::Array { .. } | ShapeRef::Tuple(_) => "array".to_owned(),
+        ShapeRef::Map { .. } | ShapeRef::Definition(_) => "object".to_owned(),
+        ShapeRef::OneOf(alternatives) => one_of_kind(alternatives),
+        ShapeRef::Opaque(opaque) => format!("opaque({:?})", opaque.reason),
+        shape_ref => primitive_kind(shape_ref).to_owned(),
+    }
+}
+
+fn one_of_kind(alternatives: &[ShapeRef]) -> String {
+    if !alternatives.is_empty() && alternatives.iter().all(ShapeRef::is_integer) {
+        return "integer".to_owned();
+    }
+    if !alternatives.is_empty() && alternatives.iter().all(ShapeRef::is_float) {
+        return "float".to_owned();
+    }
+    if !alternatives.is_empty() && alternatives.iter().all(ShapeRef::is_number) {
+        return "number".to_owned();
+    }
+
+    alternatives
+        .iter()
+        .fold(Vec::<String>::new(), |mut kinds, alternative| {
+            let kind = one_of_alternative_kind(alternative);
+            if !kinds.contains(&kind) {
+                kinds.push(kind);
+            }
+            kinds
+        })
+        .join("|")
 }
 
 fn env_name(prefix: &str, path: &[String]) -> String {

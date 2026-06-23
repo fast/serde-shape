@@ -17,7 +17,7 @@
 //! `serde-shape` builds a lightweight graph that describes what a Rust type emits through Serde
 //! serialization and accepts through Serde deserialization. It does not run Serde, and it is not a
 //! full validation schema. Instead, it gives tools access to the same structural information that
-//! Serde derives from Rust types and `#[serde(...)]` attributes.
+//! Serde derives from Rust types and `#[serde(...)]` attributes, including union-like value shapes.
 //!
 //! Common uses are generating configuration reference docs, deriving environment-variable maps
 //! from config structs, documenting wire formats, and checking whether two versions of a type
@@ -169,11 +169,14 @@
 //!
 //! impl DeserializeShape for ByteSize {
 //!     fn deserialize_shape_in(_context: &mut DeserializeShapeContext) -> ShapeRef {
-//!         ShapeRef::String
+//!         ShapeRef::OneOf(vec![ShapeRef::String, ShapeRef::U64])
 //!     }
 //! }
 //!
-//! assert_eq!(ByteSize::deserialize_shape().root, ShapeRef::String);
+//! assert_eq!(
+//!     ByteSize::deserialize_shape().root,
+//!     ShapeRef::OneOf(vec![ShapeRef::String, ShapeRef::U64])
+//! );
 //! ```
 //!
 //! For recursive or shared named types, use [`SerializeShapeContext::define_named_type`] or
@@ -529,6 +532,8 @@ pub enum ShapeRef {
     },
     /// Tuple shape.
     Tuple(Vec<ShapeRef>),
+    /// One of multiple possible value shapes.
+    OneOf(Vec<ShapeRef>),
     /// Named type definition reference.
     Definition(ShapeId),
     /// Shape intentionally left opaque.
@@ -538,33 +543,55 @@ pub enum ShapeRef {
 impl ShapeRef {
     /// Return whether this is a signed integer shape.
     pub fn is_signed_integer(&self) -> bool {
-        matches!(
-            self,
-            Self::I8 | Self::I16 | Self::I32 | Self::I64 | Self::I128 | Self::Isize
-        )
+        match self {
+            Self::I8 | Self::I16 | Self::I32 | Self::I64 | Self::I128 | Self::Isize => true,
+            Self::OneOf(alternatives) => {
+                !alternatives.is_empty() && alternatives.iter().all(Self::is_signed_integer)
+            }
+            _ => false,
+        }
     }
 
     /// Return whether this is an unsigned integer shape.
     pub fn is_unsigned_integer(&self) -> bool {
-        matches!(
-            self,
-            Self::U8 | Self::U16 | Self::U32 | Self::U64 | Self::U128 | Self::Usize
-        )
+        match self {
+            Self::U8 | Self::U16 | Self::U32 | Self::U64 | Self::U128 | Self::Usize => true,
+            Self::OneOf(alternatives) => {
+                !alternatives.is_empty() && alternatives.iter().all(Self::is_unsigned_integer)
+            }
+            _ => false,
+        }
     }
 
     /// Return whether this is any integer shape.
     pub fn is_integer(&self) -> bool {
-        self.is_signed_integer() || self.is_unsigned_integer()
+        match self {
+            Self::OneOf(alternatives) => {
+                !alternatives.is_empty() && alternatives.iter().all(Self::is_integer)
+            }
+            _ => self.is_signed_integer() || self.is_unsigned_integer(),
+        }
     }
 
     /// Return whether this is a floating point shape.
     pub fn is_float(&self) -> bool {
-        matches!(self, Self::F32 | Self::F64)
+        match self {
+            Self::F32 | Self::F64 => true,
+            Self::OneOf(alternatives) => {
+                !alternatives.is_empty() && alternatives.iter().all(Self::is_float)
+            }
+            _ => false,
+        }
     }
 
     /// Return whether this is any numeric shape.
     pub fn is_number(&self) -> bool {
-        self.is_integer() || self.is_float()
+        match self {
+            Self::OneOf(alternatives) => {
+                !alternatives.is_empty() && alternatives.iter().all(Self::is_number)
+            }
+            _ => self.is_integer() || self.is_float(),
+        }
     }
 }
 
