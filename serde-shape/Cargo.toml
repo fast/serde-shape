@@ -17,7 +17,7 @@ name = "serde-shape"
 version = "0.0.1"
 
 categories = ["development-tools", "encoding"]
-description = "Reflect Serde deserialization shapes at compile time."
+description = "Reflect Serde serialization and deserialization shapes at compile time."
 documentation = "https://docs.rs/serde-shape"
 keywords = ["serde", "derive", "reflection", "schema", "shape"]
 
