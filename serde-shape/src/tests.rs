@@ -28,6 +28,30 @@ use crate::SerializeShapeGraph;
 use crate::ShapeRef;
 
 #[test]
+fn classifies_flat_numeric_shapes() {
+    assert!(ShapeRef::I8.is_signed_integer());
+    assert!(ShapeRef::Usize.is_unsigned_integer());
+    assert!(ShapeRef::I128.is_integer());
+    assert!(ShapeRef::U64.is_integer());
+    assert!(ShapeRef::F32.is_float());
+    assert!(ShapeRef::F64.is_number());
+    assert!(!ShapeRef::String.is_number());
+}
+
+#[cfg(target_has_atomic = "ptr")]
+#[test]
+fn maps_atomic_shapes() {
+    assert_eq!(
+        SerializeShapeGraph::for_type::<core::sync::atomic::AtomicUsize>().root,
+        ShapeRef::Usize
+    );
+    assert_eq!(
+        DeserializeShapeGraph::for_type::<core::sync::atomic::AtomicUsize>().root,
+        ShapeRef::Usize
+    );
+}
+
+#[test]
 fn builds_map_shape() {
     let serialize_shape = SerializeShapeGraph::for_type::<BTreeMap<String, Option<u16>>>();
     let deserialize_shape = DeserializeShapeGraph::for_type::<BTreeMap<String, Option<u16>>>();
@@ -74,26 +98,23 @@ fn maps_common_core_and_alloc_shapes() {
     );
 }
 
+#[cfg(feature = "std")]
 #[test]
-fn classifies_flat_numeric_shapes() {
-    assert!(ShapeRef::I8.is_signed_integer());
-    assert!(ShapeRef::Usize.is_unsigned_integer());
-    assert!(ShapeRef::I128.is_integer());
-    assert!(ShapeRef::U64.is_integer());
-    assert!(ShapeRef::F32.is_float());
-    assert!(ShapeRef::F64.is_number());
-    assert!(!ShapeRef::String.is_number());
-}
-
-#[cfg(target_has_atomic = "ptr")]
-#[test]
-fn maps_atomic_shapes() {
+fn maps_common_std_shapes() {
     assert_eq!(
-        SerializeShapeGraph::for_type::<core::sync::atomic::AtomicUsize>().root,
-        ShapeRef::Usize
+        SerializeShapeGraph::for_type::<std::path::Path>().root,
+        ShapeRef::String
     );
     assert_eq!(
-        DeserializeShapeGraph::for_type::<core::sync::atomic::AtomicUsize>().root,
-        ShapeRef::Usize
+        DeserializeShapeGraph::for_type::<std::path::Path>().root,
+        ShapeRef::String
+    );
+    assert_eq!(
+        SerializeShapeGraph::for_type::<std::path::PathBuf>().root,
+        ShapeRef::String
+    );
+    assert_eq!(
+        DeserializeShapeGraph::for_type::<std::net::SocketAddr>().root,
+        ShapeRef::String
     );
 }

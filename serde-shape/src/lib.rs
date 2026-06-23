@@ -20,9 +20,9 @@
 //! gives tools access to the same structural information that Serde derives
 //! from Rust types and `#[serde(...)]` attributes.
 //!
-//! Common uses include generating configuration reference docs, deriving
+//! Common uses are generating configuration reference docs, deriving
 //! environment-variable maps from config structs, documenting wire formats,
-//! or checking whether two versions of a type expose compatible Serde shapes.
+//! and checking whether two versions of a type expose compatible Serde shapes.
 //!
 //! # Install
 //!
@@ -34,9 +34,8 @@
 //! serde-shape = { version = "0.0.1", features = ["derive"] }
 //! ```
 //!
-//! Enable `std` when the reflected types contain standard-library-only types
-//! such as `std::path::PathBuf`, `std::net::SocketAddr`, `HashMap`, `HashSet`,
-//! `Mutex`, or `RwLock`:
+//! Enable `std` when the reflected types use shapes provided only by the Rust
+//! standard library:
 //!
 //! ```toml
 //! [dependencies]
@@ -142,25 +141,22 @@
 //! # Shape graphs
 //!
 //! A shape graph has a [`ShapeRef`] root and a list of named definitions. Flat
-//! values such as integers, strings, arrays, maps, tuples, and options are
-//! represented directly as [`ShapeRef`] values. Structs and enums are stored as
-//! named definitions and referenced by [`ShapeId`].
+//! primitive and compound values are represented directly as [`ShapeRef`]
+//! values. Structs and enums are stored as named definitions and referenced by
+//! [`ShapeId`].
 //!
 //! Definition IDs are local to one graph. Use [`SerializeShapeGraph::definition`]
 //! or [`DeserializeShapeGraph::definition`] to resolve them.
 //!
 //! # Derive behavior
 //!
-//! The derive macros read Serde container, variant, and field attributes through
-//! `serde_derive_internals`, so the resulting shape follows Serde's rename,
-//! alias, default, flatten, transparent, tagging, skip, and custom serializer or
-//! deserializer metadata.
+//! The derive macros read Serde container, variant, and field attributes, so the resulting shape
+//! follows the metadata Serde derives for each direction.
 //!
 //! A custom serializer or deserializer has no inferable inner shape, so the
 //! affected field or variant is marked as custom and its nested shape is omitted.
-//! Whole-container conversions such as `#[serde(from = "...")]`,
-//! `#[serde(try_from = "...")]`, `#[serde(into = "...")]`, and
-//! `#[serde(remote = "...")]` are represented as opaque definitions.
+//! Whole-container conversion and remote-derive attributes are represented as
+//! opaque definitions.
 //!
 //! # Manual implementations
 //!
@@ -195,7 +191,7 @@
 #![deny(missing_docs)]
 
 extern crate alloc;
-#[cfg(any(feature = "std", test))]
+#[cfg(feature = "std")]
 extern crate std;
 
 use alloc::boxed::Box;
@@ -213,10 +209,8 @@ pub mod __private {
 #[cfg_attr(docsrs, doc(cfg(feature = "derive")))]
 /// Derive [`trait@DeserializeShape`] from Serde deserialization metadata.
 ///
-/// The macro understands the same `#[serde(...)]` attributes that Serde's
-/// deserialize derive exposes through `serde_derive_internals`, including
-/// renames, aliases, defaults, flattening, tagging, skipped fields, transparent
-/// containers, and custom deserializers.
+/// The macro understands the `#[serde(...)]` metadata that Serde's deserialize
+/// derive exposes.
 ///
 /// # Example
 ///
@@ -263,6 +257,7 @@ pub mod __private {
 /// # }
 /// ```
 pub use serde_shape_derive::DeserializeShape;
+
 #[cfg(feature = "derive")]
 #[cfg_attr(docsrs, doc(cfg(feature = "derive")))]
 /// Derive [`trait@SerializeShape`] from Serde serialization metadata.

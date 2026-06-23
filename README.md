@@ -30,8 +30,8 @@ serializer/deserializer boundaries that make up a type's wire shape.
 serde-shape = { version = "0.0.1", features = ["derive"] }
 ```
 
-Enable `std` when your reflected types include standard-library-only shapes
-such as `PathBuf`, `SocketAddr`, `HashMap`, `HashSet`, `Mutex`, or `RwLock`:
+Enable `std` when your reflected types use shapes provided only by the Rust
+standard library:
 
 ```toml
 [dependencies]
@@ -43,7 +43,7 @@ serde-shape = { version = "0.0.1", features = ["derive", "std"] }
 Use `serde-shape` when Serde already defines the contract you care about, but
 you also need to inspect that contract as data.
 
-Typical use cases include:
+Typical use cases:
 
 - generating configuration reference docs from config structs;
 - deriving environment variable names and value kinds from nested config;
@@ -173,7 +173,7 @@ assert_eq!(ByteSize::deserialize_shape().root, ShapeRef::String);
 
 `serde-shape` is `no_std` by default and requires `alloc`.
 
-Enable `std` explicitly when your shapes include standard-library-only types:
+Enable `std` explicitly when your shapes use standard-library-only types:
 
 ```toml
 [dependencies]
