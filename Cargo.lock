@@ -243,7 +243,6 @@ dependencies = [
 name = "serde-shape"
 version = "0.0.1"
 dependencies = [
- "insta",
  "serde-shape-derive",
 ]
 
@@ -255,6 +254,30 @@ dependencies = [
  "quote",
  "serde_derive_internals",
  "syn",
+]
+
+[[package]]
+name = "serde-shape-test-derive"
+version = "0.0.0"
+dependencies = [
+ "insta",
+ "serde-shape",
+]
+
+[[package]]
+name = "serde-shape-test-integration"
+version = "0.0.0"
+dependencies = [
+ "insta",
+ "serde-shape",
+]
+
+[[package]]
+name = "serde-shape-test-no-std"
+version = "0.0.0"
+dependencies = [
+ "insta",
+ "serde-shape",
 ]
 
 [[package]]

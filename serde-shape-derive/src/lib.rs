@@ -338,7 +338,7 @@ fn serialize_shape_body(container: &ast::Container<'_>) -> TokenStream2 {
     quote! {
         context.define_named_type(
             ::serde_shape::SerializeTypeName {
-                rust_name: ::std::any::type_name::<Self>(),
+                rust_name: ::core::any::type_name::<Self>(),
                 name: #name,
             },
             |context| {
@@ -355,7 +355,7 @@ fn deserialize_shape_body(container: &ast::Container<'_>) -> TokenStream2 {
     quote! {
         context.define_named_type(
             ::serde_shape::DeserializeTypeName {
-                rust_name: ::std::any::type_name::<Self>(),
+                rust_name: ::core::any::type_name::<Self>(),
                 name: #name,
             },
             |context| {
@@ -381,7 +381,7 @@ fn serialize_definition_kind(container: &ast::Container<'_>) -> TokenStream2 {
             quote! {
                 ::serde_shape::SerializeDefinitionKind::Struct(::serde_shape::SerializeStructShape {
                     style: #style,
-                    fields: ::std::vec![#(#fields),*],
+                    fields: ::serde_shape::__private::vec![#(#fields),*],
                     attributes: #attributes,
                 })
             }
@@ -392,7 +392,7 @@ fn serialize_definition_kind(container: &ast::Container<'_>) -> TokenStream2 {
             quote! {
                 ::serde_shape::SerializeDefinitionKind::Enum(::serde_shape::SerializeEnumShape {
                     repr: #repr,
-                    variants: ::std::vec![#(#variants),*],
+                    variants: ::serde_shape::__private::vec![#(#variants),*],
                     attributes: #attributes,
                 })
             }
@@ -419,7 +419,7 @@ fn deserialize_definition_kind(container: &ast::Container<'_>) -> TokenStream2 {
             quote! {
                 ::serde_shape::DeserializeDefinitionKind::Struct(::serde_shape::DeserializeStructShape {
                     style: #style,
-                    fields: ::std::vec![#(#fields),*],
+                    fields: ::serde_shape::__private::vec![#(#fields),*],
                     attributes: #attributes,
                 })
             }
@@ -430,7 +430,7 @@ fn deserialize_definition_kind(container: &ast::Container<'_>) -> TokenStream2 {
             quote! {
                 ::serde_shape::DeserializeDefinitionKind::Enum(::serde_shape::DeserializeEnumShape {
                     repr: #repr,
-                    variants: ::std::vec![#(#variants),*],
+                    variants: ::serde_shape::__private::vec![#(#variants),*],
                     attributes: #attributes,
                 })
             }
@@ -447,9 +447,9 @@ where
 
     quote! {
         ::serde_shape::SerializeDefinitionKind::Opaque(::serde_shape::OpaqueShape {
-            type_name: ::std::any::type_name::<Self>(),
+            type_name: ::core::any::type_name::<Self>(),
             reason: #reason,
-            detail: ::std::option::Option::Some(#detail),
+            detail: ::core::option::Option::Some(#detail),
         })
     }
 }
@@ -463,9 +463,9 @@ where
 
     quote! {
         ::serde_shape::DeserializeDefinitionKind::Opaque(::serde_shape::OpaqueShape {
-            type_name: ::std::any::type_name::<Self>(),
+            type_name: ::core::any::type_name::<Self>(),
             reason: #reason,
-            detail: ::std::option::Option::Some(#detail),
+            detail: ::core::option::Option::Some(#detail),
         })
     }
 }
@@ -526,7 +526,7 @@ fn serialize_variant_shape(variant: &ast::Variant<'_>) -> TokenStream2 {
             rust_name: #rust_name,
             name: #name,
             style: #style,
-            fields: ::std::vec![#(#fields),*],
+            fields: ::serde_shape::__private::vec![#(#fields),*],
             skip: #skip,
             custom_serializer: #custom_serializer,
             untagged: #untagged,
@@ -555,7 +555,7 @@ fn deserialize_variant_shape(variant: &ast::Variant<'_>) -> TokenStream2 {
             name: #name,
             aliases: #aliases,
             style: #style,
-            fields: ::std::vec![#(#fields),*],
+            fields: ::serde_shape::__private::vec![#(#fields),*],
             skip: #skip,
             custom_deserializer: #custom_deserializer,
             other: #other,
@@ -574,9 +574,9 @@ fn serialize_field_shape(field: &ast::Field<'_>) -> TokenStream2 {
     let transparent = field.attrs.transparent();
     let ty = field.ty;
     let value_shape = if skip || custom_serializer {
-        quote!(::std::option::Option::None)
+        quote!(::core::option::Option::None)
     } else {
-        quote!(::std::option::Option::Some(<#ty as ::serde_shape::SerializeShape>::serialize_shape_in(context)))
+        quote!(::core::option::Option::Some(<#ty as ::serde_shape::SerializeShape>::serialize_shape_in(context)))
     };
 
     quote! {
@@ -604,9 +604,9 @@ fn deserialize_field_shape(field: &ast::Field<'_>) -> TokenStream2 {
     let transparent = field.attrs.transparent();
     let ty = field.ty;
     let value_shape = if skip || custom_deserializer {
-        quote!(::std::option::Option::None)
+        quote!(::core::option::Option::None)
     } else {
-        quote!(::std::option::Option::Some(<#ty as ::serde_shape::DeserializeShape>::deserialize_shape_in(context)))
+        quote!(::core::option::Option::Some(<#ty as ::serde_shape::DeserializeShape>::deserialize_shape_in(context)))
     };
 
     quote! {
@@ -686,18 +686,18 @@ fn opaque_reason(reason: &str) -> TokenStream2 {
     }
 }
 
-fn aliases(aliases: &std::collections::BTreeSet<String>) -> TokenStream2 {
+fn aliases(aliases: &BTreeSet<String>) -> TokenStream2 {
     let aliases = aliases.iter().map(lit);
-    quote!(::std::vec![#(#aliases),*])
+    quote!(::serde_shape::__private::vec![#(#aliases),*])
 }
 
 fn option_lit(value: Option<&str>) -> TokenStream2 {
     match value {
         Some(value) => {
             let value = lit(value);
-            quote!(::std::option::Option::Some(#value))
+            quote!(::core::option::Option::Some(#value))
         }
-        None => quote!(::std::option::Option::None),
+        None => quote!(::core::option::Option::None),
     }
 }
 
@@ -705,9 +705,9 @@ fn option_path(value: Option<&syn::ExprPath>) -> TokenStream2 {
     match value {
         Some(value) => {
             let value = lit(value.to_token_stream().to_string().replace(' ', ""));
-            quote!(::std::option::Option::Some(#value))
+            quote!(::core::option::Option::Some(#value))
         }
-        None => quote!(::std::option::Option::None),
+        None => quote!(::core::option::Option::None),
     }
 }
 

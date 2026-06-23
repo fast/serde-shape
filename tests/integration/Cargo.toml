@@ -13,32 +13,20 @@
 # limitations under the License.
 
 [package]
-name = "serde-shape"
-version = "0.0.1"
-
-categories = ["development-tools", "encoding"]
-description = "Reflect Serde deserialization shapes at compile time."
-documentation = "https://docs.rs/serde-shape"
-keywords = ["serde", "derive", "reflection", "schema", "shape"]
+name = "serde-shape-test-integration"
+publish = false
 
 edition.workspace = true
-homepage.workspace = true
-license.workspace = true
-readme.workspace = true
-repository.workspace = true
 rust-version.workspace = true
 
-[package.metadata.docs.rs]
-all-features = true
-rustdoc-args = ["--cfg", "docsrs"]
-
-[features]
-default = []
-derive = ["dep:serde-shape-derive"]
-std = []
+[package.metadata.release]
+release = false
 
 [dependencies]
-serde-shape-derive = { workspace = true, optional = true }
+serde-shape = { workspace = true, features = ["derive", "std"] }
+
+[dev-dependencies]
+insta = { workspace = true }
 
 [lints]
 workspace = true

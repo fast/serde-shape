@@ -12,6 +12,14 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+use alloc::boxed::Box;
+use alloc::collections::BTreeMap;
+use alloc::collections::BTreeSet;
+use alloc::collections::BinaryHeap;
+use alloc::collections::LinkedList;
+use alloc::collections::VecDeque;
+use alloc::vec::Vec;
+
 use crate::DeserializeShape;
 use crate::DeserializeShapeContext;
 use crate::SerializeShape;
@@ -75,30 +83,34 @@ seq_shape! {
         deserialize { T: DeserializeShape }
     => T;
 
-    (T) std::collections::VecDeque<T>
+    (T) VecDeque<T>
     where
         serialize { T: SerializeShape }
         deserialize { T: DeserializeShape }
     => T;
 
-    (T) std::collections::LinkedList<T>
+    (T) LinkedList<T>
     where
         serialize { T: SerializeShape }
         deserialize { T: DeserializeShape }
     => T;
 
-    (T) std::collections::BinaryHeap<T>
+    (T) BinaryHeap<T>
     where
         serialize { T: Ord + SerializeShape }
         deserialize { T: Ord + DeserializeShape }
     => T;
 
-    (T) std::collections::BTreeSet<T>
+    (T) BTreeSet<T>
     where
         serialize { T: SerializeShape }
         deserialize { T: DeserializeShape }
     => T;
 
+}
+
+#[cfg(feature = "std")]
+seq_shape! {
     (T, S) std::collections::HashSet<T, S>
     where
         serialize { T: SerializeShape }
@@ -169,7 +181,7 @@ macro_rules! map_shape {
 }
 
 map_shape! {
-    (K, V) std::collections::BTreeMap<K, V>
+    (K, V) BTreeMap<K, V>
     where
         serialize {
             K: SerializeShape,
@@ -181,6 +193,10 @@ map_shape! {
         }
     => (K, V);
 
+}
+
+#[cfg(feature = "std")]
+map_shape! {
     (K, V, S) std::collections::HashMap<K, V, S>
     where
         serialize {

@@ -1,5 +1,5 @@
 ---
-source: serde-shape/tests/derive.rs
+source: tests/derive/tests/derive.rs
 expression: "FromString::deserialize_shape()"
 ---
 DeserializeShapeGraph {

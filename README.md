@@ -18,6 +18,24 @@
 
 `serde-shape` is a crate to reflect the shape of a Serde-derived type.
 
+## Feature flags
+
+`serde-shape` enables no features by default.
+
+- `derive`: enables `#[derive(SerializeShape)]` and `#[derive(DeserializeShape)]`.
+- `std`: enables shape implementations for standard-library-only types.
+
+## `no_std` support
+
+`serde-shape` is `no_std` by default and requires `alloc`.
+
+Enable `std` explicitly when your shapes include standard-library-only types:
+
+```toml
+[dependencies]
+serde-shape = { version = "0.0.1", features = ["derive", "std"] }
+```
+
 ## Minimum Rust version policy
 
 This crate's minimum supported `rustc` version is `1.85.0`.
