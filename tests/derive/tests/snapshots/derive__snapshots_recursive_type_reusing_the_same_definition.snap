@@ -1,6 +1,6 @@
 ---
-source: serde-shape/tests/derive.rs
-expression: "UserId::deserialize_shape()"
+source: tests/derive/tests/derive.rs
+expression: "Recursive::deserialize_shape()"
 ---
 DeserializeShapeGraph {
     root: Definition(
@@ -14,29 +14,35 @@ DeserializeShapeGraph {
                 0,
             ),
             type_name: DeserializeTypeName {
-                rust_name: "derive::UserId",
-                name: "UserId",
+                rust_name: "derive::Recursive",
+                name: "Recursive",
             },
             kind: Struct(
                 DeserializeStructShape {
-                    style: Newtype,
+                    style: Struct,
                     fields: [
                         DeserializeFieldShape {
-                            member: Unnamed(
-                                0,
+                            member: Named(
+                                "child",
                             ),
-                            name: "0",
+                            name: "child",
                             aliases: [
-                                "0",
+                                "child",
                             ],
                             value_shape: Some(
-                                U64,
+                                Option(
+                                    Definition(
+                                        ShapeId(
+                                            0,
+                                        ),
+                                    ),
+                                ),
                             ),
                             default: None,
                             flatten: false,
                             skip: false,
                             custom_deserializer: false,
-                            transparent: true,
+                            transparent: false,
                         },
                     ],
                     attributes: DeserializeContainerAttributes {
@@ -44,7 +50,7 @@ DeserializeShapeGraph {
                         deny_unknown_fields: false,
                         default: None,
                         has_flatten: false,
-                        transparent: true,
+                        transparent: false,
                         expecting: None,
                         non_exhaustive: false,
                     },

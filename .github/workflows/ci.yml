@@ -82,18 +82,43 @@ jobs:
         run: cargo x test --no-capture
         shell: bash
 
+  no_std:
+    name: Check no_std
+    needs: msrv
+    strategy:
+      matrix:
+        rust-version: ${{ fromJson(needs.msrv.outputs.rust-versions) }}
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v7
+      - uses: Swatinem/rust-cache@v2
+      - name: Delete rust-toolchain.toml
+        run: rm rust-toolchain.toml
+      - name: Install toolchain
+        uses: dtolnay/rust-toolchain@master
+        with:
+          toolchain: ${{ matrix.rust-version }}
+          targets: thumbv7em-none-eabihf
+      - name: Check no_std
+        run: |
+          cargo check -p serde-shape --lib --no-default-features --target thumbv7em-none-eabihf
+          cargo check -p serde-shape-test-no-std --lib --target thumbv7em-none-eabihf
+        shell: bash
+
   required:
     name: Required
     runs-on: ubuntu-24.04
     if: ${{ always() }}
     needs:
       - check
+      - no_std
       - test
     steps:
       - name: Guardian
         run: |
           if [[ ! ( \
                  "${{ needs.check.result }}" == "success" \
+              && "${{ needs.no_std.result }}" == "success" \
               && "${{ needs.test.result }}" == "success" \
               ) ]]; then
             echo "Required jobs haven't been completed successfully."

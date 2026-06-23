@@ -13,7 +13,14 @@
 # limitations under the License.
 
 [workspace]
-members = ["serde-shape", "serde-shape-derive", "xtask"]
+members = [
+  "serde-shape",
+  "serde-shape-derive",
+  "tests/derive",
+  "tests/integration",
+  "tests/no_std",
+  "xtask",
+]
 resolver = "3"
 
 [workspace.package]

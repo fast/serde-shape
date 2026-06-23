@@ -12,7 +12,6 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#![cfg(feature = "derive")]
 #![allow(dead_code)]
 
 use serde_shape::DeserializeDefinitionKind;
@@ -77,7 +76,7 @@ struct SkipsGeneric<T> {
 
 #[derive(DeserializeShape)]
 struct Marker<T> {
-    marker: std::marker::PhantomData<T>,
+    marker: core::marker::PhantomData<T>,
 }
 
 #[derive(DeserializeShape)]

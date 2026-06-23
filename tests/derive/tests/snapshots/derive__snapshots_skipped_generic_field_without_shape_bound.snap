@@ -1,6 +1,6 @@
 ---
-source: serde-shape/tests/derive.rs
-expression: "Marker::<NotShape>::deserialize_shape()"
+source: tests/derive/tests/derive.rs
+expression: "SkipsGeneric::<NotShape>::deserialize_shape()"
 ---
 DeserializeShapeGraph {
     root: Definition(
@@ -14,8 +14,8 @@ DeserializeShapeGraph {
                 0,
             ),
             type_name: DeserializeTypeName {
-                rust_name: "derive::Marker<derive::NotShape>",
-                name: "Marker",
+                rust_name: "derive::SkipsGeneric<derive::NotShape>",
+                name: "SkipsGeneric",
             },
             kind: Struct(
                 DeserializeStructShape {
@@ -23,18 +23,16 @@ DeserializeShapeGraph {
                     fields: [
                         DeserializeFieldShape {
                             member: Named(
-                                "marker",
+                                "value",
                             ),
-                            name: "marker",
+                            name: "value",
                             aliases: [
-                                "marker",
+                                "value",
                             ],
-                            value_shape: Some(
-                                Unit,
-                            ),
-                            default: None,
+                            value_shape: None,
+                            default: Default,
                             flatten: false,
-                            skip: false,
+                            skip: true,
                             custom_deserializer: false,
                             transparent: false,
                         },

@@ -14,10 +14,24 @@
 
 //! Reflect the shapes used by Serde serialization and deserialization.
 
+#![no_std]
 #![cfg_attr(docsrs, feature(doc_cfg))]
 #![deny(missing_docs)]
 
-use std::collections::BTreeMap;
+extern crate alloc;
+#[cfg(any(feature = "std", test))]
+extern crate std;
+
+use alloc::boxed::Box;
+use alloc::collections::BTreeMap;
+use alloc::vec::Vec;
+
+/// Private exports used by generated derive code.
+#[doc(hidden)]
+#[allow(missing_docs)]
+pub mod __private {
+    pub use alloc::vec;
+}
 
 #[cfg(feature = "derive")]
 #[cfg_attr(docsrs, doc(cfg(feature = "derive")))]

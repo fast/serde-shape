@@ -69,8 +69,23 @@ struct CommandTest {
 
 impl CommandTest {
     fn run(self) {
-        run_command(make_test_cmd(self.no_capture, &[]));
-        run_command(make_test_cmd(self.no_capture, &["derive"]));
+        run_command(make_test_cmd(self.no_capture, "serde-shape", &[]));
+        run_command(make_test_cmd(self.no_capture, "serde-shape", &["std"]));
+        run_command(make_test_cmd(
+            self.no_capture,
+            "serde-shape-test-no-std",
+            &[],
+        ));
+        run_command(make_test_cmd(
+            self.no_capture,
+            "serde-shape-test-derive",
+            &[],
+        ));
+        run_command(make_test_cmd(
+            self.no_capture,
+            "serde-shape-test-integration",
+            &[],
+        ));
     }
 }
 
@@ -135,9 +150,9 @@ fn make_build_cmd(locked: bool) -> StdCommand {
     cmd
 }
 
-fn make_test_cmd(no_capture: bool, features: &[&str]) -> StdCommand {
+fn make_test_cmd(no_capture: bool, package: &str, features: &[&str]) -> StdCommand {
     let mut cmd = find_command("cargo");
-    cmd.args(["test", "--workspace", "--no-default-features"]);
+    cmd.args(["test", "-p", package, "--no-default-features"]);
     if !features.is_empty() {
         cmd.args(["--features", features.join(",").as_str()]);
     }

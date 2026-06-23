@@ -12,6 +12,15 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+use alloc::borrow::Cow;
+use alloc::borrow::ToOwned;
+use alloc::boxed::Box;
+use core::cell::Cell;
+use core::cell::RefCell;
+use core::cmp::Reverse;
+use core::marker::PhantomData;
+use core::num::Wrapping;
+
 use crate::DeserializeShape;
 use crate::DeserializeShapeContext;
 use crate::SerializeShape;
@@ -69,30 +78,45 @@ transparent_shape! {
         deserialize { T: DeserializeShape + ?Sized }
     => T;
 
-    ('a, T) std::borrow::Cow<'a, T>
+    ('a, T) Cow<'a, T>
     where
         serialize {
-            T: std::borrow::ToOwned + ?Sized,
-            <T as std::borrow::ToOwned>::Owned: SerializeShape
+            T: ToOwned + ?Sized,
+            <T as ToOwned>::Owned: SerializeShape
         }
         deserialize {
-            T: std::borrow::ToOwned + ?Sized,
-            <T as std::borrow::ToOwned>::Owned: DeserializeShape
+            T: ToOwned + ?Sized,
+            <T as ToOwned>::Owned: DeserializeShape
         }
-    => <T as std::borrow::ToOwned>::Owned;
+    => <T as ToOwned>::Owned;
 
-    (T) std::cell::Cell<T>
+    (T) Cell<T>
     where
         serialize { T: Copy + SerializeShape }
         deserialize { T: Copy + DeserializeShape }
     => T;
 
-    (T) std::cell::RefCell<T>
+    (T) RefCell<T>
     where
         serialize { T: SerializeShape }
         deserialize { T: DeserializeShape }
     => T;
 
+    (T) Wrapping<T>
+    where
+        serialize { T: SerializeShape }
+        deserialize { T: DeserializeShape }
+    => T;
+
+    (T) Reverse<T>
+    where
+        serialize { T: SerializeShape }
+        deserialize { T: DeserializeShape }
+    => T;
+}
+
+#[cfg(feature = "std")]
+transparent_shape! {
     (T) std::sync::Mutex<T>
     where
         serialize { T: SerializeShape }
@@ -104,27 +128,15 @@ transparent_shape! {
         serialize { T: SerializeShape }
         deserialize { T: DeserializeShape }
     => T;
-
-    (T) std::num::Wrapping<T>
-    where
-        serialize { T: SerializeShape }
-        deserialize { T: DeserializeShape }
-    => T;
-
-    (T) std::cmp::Reverse<T>
-    where
-        serialize { T: SerializeShape }
-        deserialize { T: DeserializeShape }
-    => T;
 }
 
-impl<T> SerializeShape for std::marker::PhantomData<T> {
+impl<T> SerializeShape for PhantomData<T> {
     fn serialize_shape_in(_context: &mut SerializeShapeContext) -> ShapeRef {
         ShapeRef::Unit
     }
 }
 
-impl<T> DeserializeShape for std::marker::PhantomData<T> {
+impl<T> DeserializeShape for PhantomData<T> {
     fn deserialize_shape_in(_context: &mut DeserializeShapeContext) -> ShapeRef {
         ShapeRef::Unit
     }

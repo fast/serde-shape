@@ -1,5 +1,5 @@
 ---
-source: serde-shape/tests/env_vars.rs
+source: tests/integration/tests/env_vars.rs
 expression: "Config::deserialize_shape()"
 ---
 DeserializeShapeGraph {

@@ -12,7 +12,16 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-use std::collections::BTreeMap;
+use alloc::borrow::Cow;
+use alloc::boxed::Box;
+use alloc::collections::BTreeMap;
+use alloc::collections::BinaryHeap;
+use alloc::collections::LinkedList;
+use alloc::collections::VecDeque;
+use alloc::string::String;
+use core::cell::Cell;
+use core::cmp::Reverse;
+use core::num::Wrapping;
 
 use crate::DeserializeShapeGraph;
 use crate::SerializeShapeGraph;
@@ -34,45 +43,33 @@ fn builds_map_shape() {
 }
 
 #[test]
-fn maps_common_std_shapes() {
+fn maps_common_core_and_alloc_shapes() {
     assert_eq!(
-        SerializeShapeGraph::for_type::<std::path::Path>().root,
+        DeserializeShapeGraph::for_type::<Cow<'static, str>>().root,
         ShapeRef::String
     );
     assert_eq!(
-        DeserializeShapeGraph::for_type::<std::path::Path>().root,
-        ShapeRef::String
-    );
-    assert_eq!(
-        SerializeShapeGraph::for_type::<std::path::PathBuf>().root,
-        ShapeRef::String
-    );
-    assert_eq!(
-        DeserializeShapeGraph::for_type::<std::borrow::Cow<'static, str>>().root,
-        ShapeRef::String
-    );
-    assert_eq!(
-        SerializeShapeGraph::for_type::<std::cell::Cell<u8>>().root,
+        SerializeShapeGraph::for_type::<Cell<u8>>().root,
         ShapeRef::U8
     );
     assert_eq!(
-        DeserializeShapeGraph::for_type::<std::num::Wrapping<i16>>().root,
+        DeserializeShapeGraph::for_type::<Wrapping<i16>>().root,
         ShapeRef::I16
     );
     assert_eq!(
-        SerializeShapeGraph::for_type::<std::cmp::Reverse<u32>>().root,
+        SerializeShapeGraph::for_type::<Reverse<u32>>().root,
         ShapeRef::U32
     );
     assert_eq!(
-        DeserializeShapeGraph::for_type::<std::collections::VecDeque<u8>>().root,
+        DeserializeShapeGraph::for_type::<VecDeque<u8>>().root,
         ShapeRef::Seq(Box::new(ShapeRef::U8))
     );
     assert_eq!(
-        SerializeShapeGraph::for_type::<std::collections::LinkedList<i32>>().root,
+        SerializeShapeGraph::for_type::<LinkedList<i32>>().root,
         ShapeRef::Seq(Box::new(ShapeRef::I32))
     );
     assert_eq!(
-        DeserializeShapeGraph::for_type::<std::collections::BinaryHeap<u16>>().root,
+        DeserializeShapeGraph::for_type::<BinaryHeap<u16>>().root,
         ShapeRef::Seq(Box::new(ShapeRef::U16))
     );
 }
@@ -92,11 +89,11 @@ fn classifies_flat_numeric_shapes() {
 #[test]
 fn maps_atomic_shapes() {
     assert_eq!(
-        SerializeShapeGraph::for_type::<std::sync::atomic::AtomicUsize>().root,
+        SerializeShapeGraph::for_type::<core::sync::atomic::AtomicUsize>().root,
         ShapeRef::Usize
     );
     assert_eq!(
-        DeserializeShapeGraph::for_type::<std::sync::atomic::AtomicUsize>().root,
+        DeserializeShapeGraph::for_type::<core::sync::atomic::AtomicUsize>().root,
         ShapeRef::Usize
     );
 }
