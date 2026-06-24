@@ -26,7 +26,7 @@ SerializeShapeGraph {
                                 "name",
                             ),
                             name: "name",
-                            value_shape: Some(
+                            wire_shape: Value(
                                 String,
                             ),
                             flatten: false,
@@ -40,7 +40,7 @@ SerializeShapeGraph {
                                 "values",
                             ),
                             name: "values",
-                            value_shape: Some(
+                            wire_shape: Value(
                                 Seq(
                                     Option(
                                         U16,
@@ -58,7 +58,7 @@ SerializeShapeGraph {
                                 "child",
                             ),
                             name: "child",
-                            value_shape: Some(
+                            wire_shape: Value(
                                 Option(
                                     Definition(
                                         ShapeId(

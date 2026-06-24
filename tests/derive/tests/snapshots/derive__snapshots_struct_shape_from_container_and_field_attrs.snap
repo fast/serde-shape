@@ -29,7 +29,7 @@ DeserializeShapeGraph {
                             aliases: [
                                 "http-port",
                             ],
-                            value_shape: Some(
+                            wire_shape: Value(
                                 U16,
                             ),
                             default: None,
@@ -47,7 +47,7 @@ DeserializeShapeGraph {
                                 "api-url",
                                 "endpoint",
                             ],
-                            value_shape: Some(
+                            wire_shape: Value(
                                 Option(
                                     String,
                                 ),
@@ -66,7 +66,7 @@ DeserializeShapeGraph {
                             aliases: [
                                 "retries",
                             ],
-                            value_shape: Some(
+                            wire_shape: Value(
                                 U8,
                             ),
                             default: Path(
@@ -85,7 +85,7 @@ DeserializeShapeGraph {
                             aliases: [
                                 "storage",
                             ],
-                            value_shape: Some(
+                            wire_shape: Flatten(
                                 Definition(
                                     ShapeId(
                                         1,
@@ -106,7 +106,7 @@ DeserializeShapeGraph {
                             aliases: [
                                 "skipped",
                             ],
-                            value_shape: None,
+                            wire_shape: Omitted,
                             default: None,
                             flatten: false,
                             skip: true,
@@ -121,7 +121,15 @@ DeserializeShapeGraph {
                             aliases: [
                                 "secret",
                             ],
-                            value_shape: None,
+                            wire_shape: Custom(
+                                OpaqueShape {
+                                    type_name: "derive::NotShape",
+                                    reason: CustomDeserializer,
+                                    detail: Some(
+                                        "custom_secret",
+                                    ),
+                                },
+                            ),
                             default: None,
                             flatten: false,
                             skip: false,
@@ -174,7 +182,7 @@ DeserializeShapeGraph {
                                     aliases: [
                                         "bucket-name",
                                     ],
-                                    value_shape: Some(
+                                    wire_shape: Value(
                                         String,
                                     ),
                                     default: None,
@@ -205,7 +213,7 @@ DeserializeShapeGraph {
                                     aliases: [
                                         "container-name",
                                     ],
-                                    value_shape: Some(
+                                    wire_shape: Value(
                                         String,
                                     ),
                                     default: None,

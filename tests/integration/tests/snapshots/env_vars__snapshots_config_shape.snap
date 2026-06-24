@@ -29,7 +29,7 @@ DeserializeShapeGraph {
                             aliases: [
                                 "server",
                             ],
-                            value_shape: Some(
+                            wire_shape: Value(
                                 Definition(
                                     ShapeId(
                                         1,
@@ -50,7 +50,7 @@ DeserializeShapeGraph {
                             aliases: [
                                 "storage",
                             ],
-                            value_shape: Some(
+                            wire_shape: Value(
                                 Definition(
                                     ShapeId(
                                         2,
@@ -71,7 +71,7 @@ DeserializeShapeGraph {
                             aliases: [
                                 "telemetry",
                             ],
-                            value_shape: Some(
+                            wire_shape: Value(
                                 Definition(
                                     ShapeId(
                                         7,
@@ -117,7 +117,7 @@ DeserializeShapeGraph {
                             aliases: [
                                 "dir",
                             ],
-                            value_shape: Some(
+                            wire_shape: Value(
                                 String,
                             ),
                             default: Path(
@@ -136,7 +136,7 @@ DeserializeShapeGraph {
                             aliases: [
                                 "listen_data_addr",
                             ],
-                            value_shape: Some(
+                            wire_shape: Value(
                                 String,
                             ),
                             default: Path(
@@ -155,7 +155,7 @@ DeserializeShapeGraph {
                             aliases: [
                                 "advertise_data_addr",
                             ],
-                            value_shape: Some(
+                            wire_shape: Value(
                                 Option(
                                     String,
                                 ),
@@ -174,7 +174,7 @@ DeserializeShapeGraph {
                             aliases: [
                                 "initial_peers",
                             ],
-                            value_shape: Some(
+                            wire_shape: Value(
                                 Seq(
                                     String,
                                 ),
@@ -193,7 +193,7 @@ DeserializeShapeGraph {
                             aliases: [
                                 "cluster_id",
                             ],
-                            value_shape: Some(
+                            wire_shape: Value(
                                 String,
                             ),
                             default: Path(
@@ -237,7 +237,7 @@ DeserializeShapeGraph {
                             aliases: [
                                 "backend",
                             ],
-                            value_shape: Some(
+                            wire_shape: Value(
                                 Definition(
                                     ShapeId(
                                         3,
@@ -258,8 +258,24 @@ DeserializeShapeGraph {
                             aliases: [
                                 "disk_capacity",
                             ],
-                            value_shape: Some(
-                                String,
+                            wire_shape: Value(
+                                OneOf(
+                                    [
+                                        String,
+                                        I8,
+                                        I16,
+                                        I32,
+                                        I64,
+                                        I128,
+                                        Isize,
+                                        U8,
+                                        U16,
+                                        U32,
+                                        U64,
+                                        U128,
+                                        Usize,
+                                    ],
+                                ),
                             ),
                             default: Path(
                                 "default_disk_capacity",
@@ -277,8 +293,24 @@ DeserializeShapeGraph {
                             aliases: [
                                 "memory_capacity",
                             ],
-                            value_shape: Some(
-                                String,
+                            wire_shape: Value(
+                                OneOf(
+                                    [
+                                        String,
+                                        I8,
+                                        I16,
+                                        I32,
+                                        I64,
+                                        I128,
+                                        Isize,
+                                        U8,
+                                        U16,
+                                        U32,
+                                        U64,
+                                        U128,
+                                        Usize,
+                                    ],
+                                ),
                             ),
                             default: Path(
                                 "default_memory_capacity",
@@ -296,7 +328,7 @@ DeserializeShapeGraph {
                             aliases: [
                                 "disk_throttle",
                             ],
-                            value_shape: Some(
+                            wire_shape: Value(
                                 Option(
                                     Definition(
                                         ShapeId(
@@ -354,7 +386,7 @@ DeserializeShapeGraph {
                                     aliases: [
                                         "data_dir",
                                     ],
-                                    value_shape: Some(
+                                    wire_shape: Value(
                                         String,
                                     ),
                                     default: None,
@@ -385,7 +417,7 @@ DeserializeShapeGraph {
                                     aliases: [
                                         "bucket",
                                     ],
-                                    value_shape: Some(
+                                    wire_shape: Value(
                                         String,
                                     ),
                                     default: None,
@@ -402,7 +434,7 @@ DeserializeShapeGraph {
                                     aliases: [
                                         "region",
                                     ],
-                                    value_shape: Some(
+                                    wire_shape: Value(
                                         String,
                                     ),
                                     default: None,
@@ -452,7 +484,7 @@ DeserializeShapeGraph {
                             aliases: [
                                 "read_iops",
                             ],
-                            value_shape: Some(
+                            wire_shape: Value(
                                 U64,
                             ),
                             default: None,
@@ -469,7 +501,7 @@ DeserializeShapeGraph {
                             aliases: [
                                 "write_iops",
                             ],
-                            value_shape: Some(
+                            wire_shape: Value(
                                 U64,
                             ),
                             default: None,
@@ -486,7 +518,7 @@ DeserializeShapeGraph {
                             aliases: [
                                 "iops_counter",
                             ],
-                            value_shape: Some(
+                            wire_shape: Value(
                                 Definition(
                                     ShapeId(
                                         5,
@@ -532,7 +564,7 @@ DeserializeShapeGraph {
                             aliases: [
                                 "mode",
                             ],
-                            value_shape: Some(
+                            wire_shape: Value(
                                 Definition(
                                     ShapeId(
                                         6,
@@ -553,7 +585,7 @@ DeserializeShapeGraph {
                             aliases: [
                                 "size",
                             ],
-                            value_shape: Some(
+                            wire_shape: Value(
                                 Usize,
                             ),
                             default: None,
@@ -646,7 +678,7 @@ DeserializeShapeGraph {
                             aliases: [
                                 "logs",
                             ],
-                            value_shape: Some(
+                            wire_shape: Value(
                                 Definition(
                                     ShapeId(
                                         8,
@@ -667,7 +699,7 @@ DeserializeShapeGraph {
                             aliases: [
                                 "traces",
                             ],
-                            value_shape: Some(
+                            wire_shape: Value(
                                 Option(
                                     Definition(
                                         ShapeId(
@@ -690,7 +722,7 @@ DeserializeShapeGraph {
                             aliases: [
                                 "metrics",
                             ],
-                            value_shape: Some(
+                            wire_shape: Value(
                                 Option(
                                     Definition(
                                         ShapeId(
@@ -738,7 +770,7 @@ DeserializeShapeGraph {
                             aliases: [
                                 "sink",
                             ],
-                            value_shape: Some(
+                            wire_shape: Flatten(
                                 Definition(
                                     ShapeId(
                                         9,
@@ -759,7 +791,7 @@ DeserializeShapeGraph {
                             aliases: [
                                 "filter",
                             ],
-                            value_shape: Some(
+                            wire_shape: Value(
                                 String,
                             ),
                             default: None,
@@ -811,7 +843,7 @@ DeserializeShapeGraph {
                                     aliases: [
                                         "dir",
                                     ],
-                                    value_shape: Some(
+                                    wire_shape: Value(
                                         String,
                                     ),
                                     default: None,
@@ -828,7 +860,7 @@ DeserializeShapeGraph {
                                     aliases: [
                                         "max_files",
                                     ],
-                                    value_shape: Some(
+                                    wire_shape: Value(
                                         Option(
                                             Usize,
                                         ),
@@ -874,7 +906,7 @@ DeserializeShapeGraph {
                                     aliases: [
                                         "otlp_endpoint",
                                     ],
-                                    value_shape: Some(
+                                    wire_shape: Value(
                                         String,
                                     ),
                                     default: None,
@@ -924,7 +956,7 @@ DeserializeShapeGraph {
                             aliases: [
                                 "capture_log_filter",
                             ],
-                            value_shape: Some(
+                            wire_shape: Value(
                                 String,
                             ),
                             default: None,
@@ -941,7 +973,7 @@ DeserializeShapeGraph {
                             aliases: [
                                 "opentelemetry",
                             ],
-                            value_shape: Some(
+                            wire_shape: Value(
                                 Option(
                                     Definition(
                                         ShapeId(
@@ -989,7 +1021,7 @@ DeserializeShapeGraph {
                             aliases: [
                                 "otlp_endpoint",
                             ],
-                            value_shape: Some(
+                            wire_shape: Value(
                                 String,
                             ),
                             default: None,
@@ -1031,7 +1063,7 @@ DeserializeShapeGraph {
                             aliases: [
                                 "opentelemetry",
                             ],
-                            value_shape: Some(
+                            wire_shape: Value(
                                 Option(
                                     Definition(
                                         ShapeId(
@@ -1079,7 +1111,7 @@ DeserializeShapeGraph {
                             aliases: [
                                 "otlp_endpoint",
                             ],
-                            value_shape: Some(
+                            wire_shape: Value(
                                 String,
                             ),
                             default: None,
@@ -1096,8 +1128,24 @@ DeserializeShapeGraph {
                             aliases: [
                                 "push_interval",
                             ],
-                            value_shape: Some(
-                                String,
+                            wire_shape: Value(
+                                OneOf(
+                                    [
+                                        String,
+                                        I8,
+                                        I16,
+                                        I32,
+                                        I64,
+                                        I128,
+                                        Isize,
+                                        U8,
+                                        U16,
+                                        U32,
+                                        U64,
+                                        U128,
+                                        Usize,
+                                    ],
+                                ),
                             ),
                             default: Path(
                                 "default_metrics_push_interval",
