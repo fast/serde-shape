@@ -29,7 +29,7 @@ DeserializeShapeGraph {
                             aliases: [
                                 "marker",
                             ],
-                            value_shape: Some(
+                            wire_shape: Value(
                                 Unit,
                             ),
                             default: None,

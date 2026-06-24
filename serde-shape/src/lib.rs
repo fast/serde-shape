@@ -153,6 +153,8 @@
 //! A custom serializer or deserializer has no inferable inner shape, so the affected field or
 //! variant is marked as custom and its nested shape is omitted. Whole-container conversion and
 //! remote-derive attributes are represented as opaque definitions.
+//! Field-level [`FieldWireShape`] distinguishes ordinary values from flattened fields, omitted
+//! fields, and opaque custom serializer/deserializer boundaries.
 //!
 //! # Manual implementations
 //!
@@ -756,8 +758,8 @@ pub struct SerializeFieldShape {
     pub member: FieldMember,
     /// The primary Serde serialize name.
     pub name: &'static str,
-    /// The field output shape, or `None` when the field has no inferred output.
-    pub value_shape: Option<ShapeRef>,
+    /// How this field contributes to the serialized wire shape.
+    pub wire_shape: FieldWireShape,
     /// Whether the field is flattened into the containing map.
     pub flatten: bool,
     /// Whether Serde skips this field during serialization.
@@ -779,8 +781,8 @@ pub struct DeserializeFieldShape {
     pub name: &'static str,
     /// All accepted Serde deserialize names, including the primary name.
     pub aliases: Vec<&'static str>,
-    /// The field input shape, or `None` when the field has no inferred input.
-    pub value_shape: Option<ShapeRef>,
+    /// How this field contributes to the deserialized wire shape.
+    pub wire_shape: FieldWireShape,
     /// The default used if this field is missing.
     pub default: DefaultShape,
     /// Whether the field is flattened into the containing map.
@@ -800,6 +802,19 @@ pub enum FieldMember {
     Named(&'static str),
     /// An unnamed tuple field index.
     Unnamed(usize),
+}
+
+/// How a field contributes to the wire representation in one Serde direction.
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub enum FieldWireShape {
+    /// The field emits or accepts no value in this direction.
+    Omitted,
+    /// The field appears as a regular value at its Serde position.
+    Value(ShapeRef),
+    /// The field is flattened into the containing map.
+    Flatten(ShapeRef),
+    /// A custom serializer or deserializer controls the field representation.
+    Custom(OpaqueShape),
 }
 
 /// Variant-level serialization metadata.

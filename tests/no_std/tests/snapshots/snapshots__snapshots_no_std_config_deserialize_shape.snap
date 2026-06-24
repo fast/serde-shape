@@ -29,7 +29,7 @@ DeserializeShapeGraph {
                             aliases: [
                                 "name",
                             ],
-                            value_shape: Some(
+                            wire_shape: Value(
                                 String,
                             ),
                             default: None,
@@ -46,7 +46,7 @@ DeserializeShapeGraph {
                             aliases: [
                                 "values",
                             ],
-                            value_shape: Some(
+                            wire_shape: Value(
                                 Seq(
                                     Option(
                                         U16,
@@ -67,7 +67,7 @@ DeserializeShapeGraph {
                             aliases: [
                                 "child",
                             ],
-                            value_shape: Some(
+                            wire_shape: Value(
                                 Option(
                                     Definition(
                                         ShapeId(

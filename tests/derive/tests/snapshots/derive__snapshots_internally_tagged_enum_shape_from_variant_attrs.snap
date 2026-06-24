@@ -40,7 +40,7 @@ DeserializeShapeGraph {
                                     aliases: [
                                         "bucket-name",
                                     ],
-                                    value_shape: Some(
+                                    wire_shape: Value(
                                         String,
                                     ),
                                     default: None,
@@ -71,7 +71,7 @@ DeserializeShapeGraph {
                                     aliases: [
                                         "container-name",
                                     ],
-                                    value_shape: Some(
+                                    wire_shape: Value(
                                         String,
                                     ),
                                     default: None,

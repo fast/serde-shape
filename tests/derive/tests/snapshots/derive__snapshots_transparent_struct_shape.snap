@@ -29,7 +29,7 @@ DeserializeShapeGraph {
                             aliases: [
                                 "0",
                             ],
-                            value_shape: Some(
+                            wire_shape: Value(
                                 U64,
                             ),
                             default: None,

@@ -17,6 +17,8 @@
 use serde_shape::DeserializeDefinitionKind;
 use serde_shape::DeserializeShape;
 use serde_shape::FieldMember;
+use serde_shape::FieldWireShape;
+use serde_shape::OpaqueReason;
 use serde_shape::SerializeDefinitionKind;
 use serde_shape::SerializeShape;
 
@@ -201,6 +203,7 @@ fn exposes_deserialize_field_metadata() {
     assert_eq!(id.aliases, vec!["in-id", "legacy-id"]);
     assert!(!id.skip);
     assert!(!id.custom_deserializer);
+    assert!(matches!(&id.wire_shape, FieldWireShape::Value(_)));
 
     assert_eq!(maybe.name, "maybe");
     assert!(!maybe.skip);
@@ -211,7 +214,7 @@ fn exposes_deserialize_field_metadata() {
     assert_eq!(output_only.name, "only-in");
     assert!(output_only.skip);
     assert!(!output_only.custom_deserializer);
-    assert_eq!(output_only.value_shape, None);
+    assert_eq!(output_only.wire_shape, FieldWireShape::Omitted);
 }
 
 #[test]
@@ -242,12 +245,16 @@ fn exposes_serialize_field_metadata() {
 
     assert_eq!(secret.name, "secret");
     assert!(secret.skip);
-    assert_eq!(secret.value_shape, None);
+    assert_eq!(secret.wire_shape, FieldWireShape::Omitted);
 
     assert_eq!(output_only.name, "only-out");
     assert!(!output_only.skip);
     assert!(output_only.custom_serializer);
-    assert_eq!(output_only.value_shape, None);
+    let FieldWireShape::Custom(opaque) = &output_only.wire_shape else {
+        panic!("custom serialized field should expose an opaque wire shape");
+    };
+    assert_eq!(opaque.reason, OpaqueReason::CustomSerializer);
+    assert_eq!(opaque.detail, Some("serialize_not_shape"));
 }
 
 #[test]

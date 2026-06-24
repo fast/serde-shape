@@ -573,17 +573,28 @@ fn serialize_field_shape(field: &ast::Field<'_>) -> TokenStream2 {
     let flatten = field.attrs.flatten();
     let transparent = field.attrs.transparent();
     let ty = field.ty;
-    let value_shape = if skip || custom_serializer {
-        quote!(::core::option::Option::None)
+    let wire_shape = if skip {
+        quote!(::serde_shape::FieldWireShape::Omitted)
+    } else if custom_serializer {
+        let detail = option_path(field.attrs.serialize_with());
+        quote! {
+            ::serde_shape::FieldWireShape::Custom(::serde_shape::OpaqueShape {
+                type_name: ::core::any::type_name::<#ty>(),
+                reason: ::serde_shape::OpaqueReason::CustomSerializer,
+                detail: #detail,
+            })
+        }
+    } else if flatten {
+        quote!(::serde_shape::FieldWireShape::Flatten(<#ty as ::serde_shape::SerializeShape>::serialize_shape_in(context)))
     } else {
-        quote!(::core::option::Option::Some(<#ty as ::serde_shape::SerializeShape>::serialize_shape_in(context)))
+        quote!(::serde_shape::FieldWireShape::Value(<#ty as ::serde_shape::SerializeShape>::serialize_shape_in(context)))
     };
 
     quote! {
         ::serde_shape::SerializeFieldShape {
             member: #member,
             name: #name,
-            value_shape: #value_shape,
+            wire_shape: #wire_shape,
             flatten: #flatten,
             skip: #skip,
             skip_if: #skip_if,
@@ -603,10 +614,21 @@ fn deserialize_field_shape(field: &ast::Field<'_>) -> TokenStream2 {
     let flatten = field.attrs.flatten();
     let transparent = field.attrs.transparent();
     let ty = field.ty;
-    let value_shape = if skip || custom_deserializer {
-        quote!(::core::option::Option::None)
+    let wire_shape = if skip {
+        quote!(::serde_shape::FieldWireShape::Omitted)
+    } else if custom_deserializer {
+        let detail = option_path(field.attrs.deserialize_with());
+        quote! {
+            ::serde_shape::FieldWireShape::Custom(::serde_shape::OpaqueShape {
+                type_name: ::core::any::type_name::<#ty>(),
+                reason: ::serde_shape::OpaqueReason::CustomDeserializer,
+                detail: #detail,
+            })
+        }
+    } else if flatten {
+        quote!(::serde_shape::FieldWireShape::Flatten(<#ty as ::serde_shape::DeserializeShape>::deserialize_shape_in(context)))
     } else {
-        quote!(::core::option::Option::Some(<#ty as ::serde_shape::DeserializeShape>::deserialize_shape_in(context)))
+        quote!(::serde_shape::FieldWireShape::Value(<#ty as ::serde_shape::DeserializeShape>::deserialize_shape_in(context)))
     };
 
     quote! {
@@ -614,7 +636,7 @@ fn deserialize_field_shape(field: &ast::Field<'_>) -> TokenStream2 {
             member: #member,
             name: #name,
             aliases: #aliases,
-            value_shape: #value_shape,
+            wire_shape: #wire_shape,
             default: #default,
             flatten: #flatten,
             skip: #skip,

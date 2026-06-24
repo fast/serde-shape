@@ -50,6 +50,8 @@ Typical use cases:
 
 `serde-shape` is intentionally not a full validation schema. It reflects the Serde data model shape and relevant Serde attributes; it does not infer value ranges, regexes, business rules, or runtime behavior hidden inside custom serializer/deserializer functions. Use `ShapeRef::OneOf` for format-native alternatives that do not fit one Rust shape.
 
+Field shapes expose `wire_shape` as the source of truth for regular values, flattened fields, omitted fields, and custom serializer/deserializer boundaries.
+
 You may use [`schemars`](https://docs.rs/schemars) for JSON Schema generation and validation. But `schemars` is not a general-purpose Serde shape reflection library, and it does not support all Serde attributes. `serde-shape` is designed to be a more complete and general-purpose reflection of Serde shapes.
 
 ## Example

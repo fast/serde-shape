@@ -25,6 +25,7 @@ use serde_shape::DeserializeShape;
 use serde_shape::DeserializeShapeContext;
 use serde_shape::DeserializeShapeGraph;
 use serde_shape::DeserializeStructShape;
+use serde_shape::FieldWireShape;
 use serde_shape::FieldsStyle;
 use serde_shape::ShapeId;
 use serde_shape::ShapeRef;
@@ -339,23 +340,23 @@ impl EnvCollector<'_> {
         match shape.style {
             FieldsStyle::Struct => {
                 for field in &shape.fields {
-                    let Some(field_shape) = &field.value_shape else {
-                        continue;
-                    };
                     let field_optional = optional || !field.default.is_none();
-                    if field.flatten {
-                        self.visit_shape_ref(field_shape, path, field_optional, condition.clone());
-                    } else {
-                        path.push(field.name.to_owned());
-                        self.visit_shape_ref(field_shape, path, field_optional, condition.clone());
-                        path.pop();
-                    }
+                    self.visit_field_wire_shape(
+                        field.name,
+                        &field.wire_shape,
+                        path,
+                        field_optional,
+                        condition.clone(),
+                    );
                 }
             }
             FieldsStyle::Newtype if shape.fields.len() == 1 => {
-                if let Some(field_shape) = &shape.fields[0].value_shape {
-                    self.visit_shape_ref(field_shape, path, optional, condition);
-                }
+                self.visit_newtype_wire_shape(
+                    &shape.fields[0].wire_shape,
+                    path,
+                    optional,
+                    condition,
+                );
             }
             FieldsStyle::Tuple | FieldsStyle::Newtype | FieldsStyle::Unit => {
                 self.push_leaf(path, "object", optional, condition);
@@ -412,12 +413,13 @@ impl EnvCollector<'_> {
                 ));
 
                 for field in &variant.fields {
-                    let Some(field_shape) = &field.value_shape else {
-                        continue;
-                    };
-                    path.push(field.name.to_owned());
-                    self.visit_shape_ref(field_shape, path, optional, variant_condition.clone());
-                    path.pop();
+                    self.visit_field_wire_shape(
+                        field.name,
+                        &field.wire_shape,
+                        path,
+                        optional,
+                        variant_condition.clone(),
+                    );
                 }
             }
             return;
@@ -429,6 +431,60 @@ impl EnvCollector<'_> {
             optional,
             condition,
         );
+    }
+
+    fn visit_field_wire_shape(
+        &mut self,
+        field_name: &str,
+        wire_shape: &FieldWireShape,
+        path: &mut Vec<String>,
+        optional: bool,
+        condition: Option<String>,
+    ) {
+        match wire_shape {
+            FieldWireShape::Omitted => {}
+            FieldWireShape::Value(shape_ref) => {
+                path.push(field_name.to_owned());
+                self.visit_shape_ref(shape_ref, path, optional, condition);
+                path.pop();
+            }
+            FieldWireShape::Flatten(shape_ref) => {
+                self.visit_shape_ref(shape_ref, path, optional, condition);
+            }
+            FieldWireShape::Custom(opaque) => {
+                path.push(field_name.to_owned());
+                self.push_leaf(
+                    path,
+                    &format!("opaque({:?})", opaque.reason),
+                    optional,
+                    condition,
+                );
+                path.pop();
+            }
+        }
+    }
+
+    fn visit_newtype_wire_shape(
+        &mut self,
+        wire_shape: &FieldWireShape,
+        path: &mut Vec<String>,
+        optional: bool,
+        condition: Option<String>,
+    ) {
+        match wire_shape {
+            FieldWireShape::Omitted => {}
+            FieldWireShape::Value(shape_ref) | FieldWireShape::Flatten(shape_ref) => {
+                self.visit_shape_ref(shape_ref, path, optional, condition);
+            }
+            FieldWireShape::Custom(opaque) => {
+                self.push_leaf(
+                    path,
+                    &format!("opaque({:?})", opaque.reason),
+                    optional,
+                    condition,
+                );
+            }
+        }
     }
 
     fn push_leaf(
