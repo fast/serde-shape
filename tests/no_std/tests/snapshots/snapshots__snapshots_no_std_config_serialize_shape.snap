@@ -29,11 +29,7 @@ SerializeShapeGraph {
                             wire_shape: Value(
                                 String,
                             ),
-                            flatten: false,
-                            skip: false,
                             skip_if: None,
-                            custom_serializer: false,
-                            transparent: false,
                         },
                         SerializeFieldShape {
                             member: Named(
@@ -47,11 +43,7 @@ SerializeShapeGraph {
                                     ),
                                 ),
                             ),
-                            flatten: false,
-                            skip: false,
                             skip_if: None,
-                            custom_serializer: false,
-                            transparent: false,
                         },
                         SerializeFieldShape {
                             member: Named(
@@ -67,11 +59,7 @@ SerializeShapeGraph {
                                     ),
                                 ),
                             ),
-                            flatten: false,
-                            skip: false,
                             skip_if: None,
-                            custom_serializer: false,
-                            transparent: false,
                         },
                     ],
                     attributes: SerializeContainerAttributes {

@@ -25,11 +25,13 @@ use serde_shape::DeserializeShape;
 use serde_shape::DeserializeShapeContext;
 use serde_shape::DeserializeShapeGraph;
 use serde_shape::DeserializeStructShape;
+use serde_shape::DeserializeVariantContent;
 use serde_shape::FieldWireShape;
 use serde_shape::FieldsStyle;
 use serde_shape::ShapeId;
 use serde_shape::ShapeRef;
 use serde_shape::Tagging;
+use serde_shape::UnionShape;
 
 #[derive(Clone, Debug, Eq, PartialEq)]
 struct EnvOption {
@@ -194,7 +196,7 @@ impl DeserializeShape for HumanDuration {
 }
 
 fn string_or_integer_shape() -> ShapeRef {
-    ShapeRef::OneOf(vec![
+    ShapeRef::union([
         ShapeRef::String,
         ShapeRef::I8,
         ShapeRef::I16,
@@ -274,8 +276,8 @@ impl EnvCollector<'_> {
             ShapeRef::Option(inner) => {
                 self.visit_shape_ref(inner, path, true, condition);
             }
-            ShapeRef::OneOf(alternatives) => {
-                let value_kind = one_of_kind(alternatives);
+            ShapeRef::Union(union) => {
+                let value_kind = self.union_kind(union);
                 self.push_leaf(path, &value_kind, optional, condition);
             }
             ShapeRef::Definition(id) => {
@@ -374,7 +376,7 @@ impl EnvCollector<'_> {
         let variants = shape
             .variants
             .iter()
-            .filter(|variant| !variant.skip)
+            .filter(|variant| !matches!(&variant.content, DeserializeVariantContent::Omitted))
             .map(|variant| variant.name)
             .collect::<Vec<_>>();
 
@@ -402,24 +404,36 @@ impl EnvCollector<'_> {
             );
 
             for variant in &shape.variants {
-                if variant.skip {
-                    continue;
-                }
-
                 let variant_condition = format!("{}={}", tag_path.join("."), variant.name);
                 let variant_condition = Some(merge_conditions(
                     condition.as_deref(),
                     variant_condition.as_str(),
                 ));
 
-                for field in &variant.fields {
-                    self.visit_field_wire_shape(
-                        field.name,
-                        &field.wire_shape,
-                        path,
-                        optional,
-                        variant_condition.clone(),
-                    );
+                match &variant.content {
+                    DeserializeVariantContent::Omitted => {}
+                    DeserializeVariantContent::Fields(fields) => {
+                        for field in fields {
+                            self.visit_field_wire_shape(
+                                field.name,
+                                &field.wire_shape,
+                                path,
+                                optional,
+                                variant_condition.clone(),
+                            );
+                        }
+                    }
+                    DeserializeVariantContent::Custom(opaque) => {
+                        self.push_leaf(
+                            path,
+                            &format!("opaque({:?})", opaque.reason),
+                            optional,
+                            variant_condition,
+                        );
+                    }
+                    _ => {
+                        self.push_leaf(path, "unsupported", optional, variant_condition);
+                    }
                 }
             }
             return;
@@ -451,14 +465,12 @@ impl EnvCollector<'_> {
             FieldWireShape::Flatten(shape_ref) => {
                 self.visit_shape_ref(shape_ref, path, optional, condition);
             }
-            FieldWireShape::Custom(opaque) => {
+            FieldWireShape::Inline(shape_ref) => {
+                self.visit_shape_ref(shape_ref, path, optional, condition);
+            }
+            _ => {
                 path.push(field_name.to_owned());
-                self.push_leaf(
-                    path,
-                    &format!("opaque({:?})", opaque.reason),
-                    optional,
-                    condition,
-                );
+                self.push_leaf(path, "unsupported", optional, condition);
                 path.pop();
             }
         }
@@ -473,17 +485,85 @@ impl EnvCollector<'_> {
     ) {
         match wire_shape {
             FieldWireShape::Omitted => {}
-            FieldWireShape::Value(shape_ref) | FieldWireShape::Flatten(shape_ref) => {
+            FieldWireShape::Value(shape_ref)
+            | FieldWireShape::Flatten(shape_ref)
+            | FieldWireShape::Inline(shape_ref) => {
                 self.visit_shape_ref(shape_ref, path, optional, condition);
             }
-            FieldWireShape::Custom(opaque) => {
-                self.push_leaf(
-                    path,
-                    &format!("opaque({:?})", opaque.reason),
-                    optional,
-                    condition,
-                );
+            _ => {
+                self.push_leaf(path, "unsupported", optional, condition);
             }
+        }
+    }
+
+    fn union_kind(&self, union: &UnionShape) -> String {
+        let alternatives = union.alternatives();
+        if alternatives.iter().all(ShapeRef::is_integer) {
+            return "integer".to_owned();
+        }
+        if alternatives.iter().all(ShapeRef::is_float) {
+            return "float".to_owned();
+        }
+        if alternatives.iter().all(ShapeRef::is_number) {
+            return "number".to_owned();
+        }
+
+        alternatives
+            .iter()
+            .fold(Vec::<String>::new(), |mut kinds, alternative| {
+                let kind = self.union_alternative_kind(alternative);
+                if !kinds.contains(&kind) {
+                    kinds.push(kind);
+                }
+                kinds
+            })
+            .join("|")
+    }
+
+    fn union_alternative_kind(&self, shape_ref: &ShapeRef) -> String {
+        match shape_ref {
+            ShapeRef::Option(inner) => self.union_alternative_kind(inner),
+            ShapeRef::Seq(_) | ShapeRef::Array { .. } | ShapeRef::Tuple(_) => "array".to_owned(),
+            ShapeRef::Map { .. } => "object".to_owned(),
+            ShapeRef::Union(union) => self.union_kind(union),
+            ShapeRef::Definition(id) => {
+                let definition = self.shape.definition(*id).expect("shape definition exists");
+                match &definition.kind {
+                    DeserializeDefinitionKind::Struct(shape) if shape.attributes.transparent => {
+                        shape
+                            .fields
+                            .iter()
+                            .find_map(|field| match &field.wire_shape {
+                                FieldWireShape::Inline(inner) => {
+                                    Some(self.union_alternative_kind(inner))
+                                }
+                                FieldWireShape::Omitted
+                                | FieldWireShape::Value(_)
+                                | FieldWireShape::Flatten(_) => None,
+                                _ => None,
+                            })
+                            .unwrap_or_else(|| "unit".to_owned())
+                    }
+                    DeserializeDefinitionKind::Struct(shape)
+                        if shape.style == FieldsStyle::Newtype && shape.fields.len() == 1 =>
+                    {
+                        match &shape.fields[0].wire_shape {
+                            FieldWireShape::Omitted => "unit".to_owned(),
+                            FieldWireShape::Value(inner)
+                            | FieldWireShape::Flatten(inner)
+                            | FieldWireShape::Inline(inner) => self.union_alternative_kind(inner),
+                            _ => "unknown".to_owned(),
+                        }
+                    }
+                    DeserializeDefinitionKind::Struct(_) => "object".to_owned(),
+                    DeserializeDefinitionKind::Enum(_) => "enum".to_owned(),
+                    DeserializeDefinitionKind::Opaque(opaque) => {
+                        format!("opaque({:?})", opaque.reason)
+                    }
+                }
+            }
+            ShapeRef::Opaque(opaque) => format!("opaque({:?})", opaque.reason),
+            shape_ref => primitive_kind(shape_ref).to_owned(),
         }
     }
 
@@ -538,7 +618,7 @@ fn primitive_kind(shape_ref: &ShapeRef) -> &'static str {
             | ShapeRef::Array { .. }
             | ShapeRef::Map { .. }
             | ShapeRef::Tuple(_)
-            | ShapeRef::OneOf(_)
+            | ShapeRef::Union(_)
             | ShapeRef::Definition(_)
             | ShapeRef::Opaque(_) => {
                 unreachable!("compound shapes are handled before leaf mapping")
@@ -546,40 +626,6 @@ fn primitive_kind(shape_ref: &ShapeRef) -> &'static str {
             _ => unreachable!("numeric shapes are handled before leaf mapping"),
         }
     }
-}
-
-fn one_of_alternative_kind(shape_ref: &ShapeRef) -> String {
-    match shape_ref {
-        ShapeRef::Option(inner) => one_of_alternative_kind(inner),
-        ShapeRef::Seq(_) | ShapeRef::Array { .. } | ShapeRef::Tuple(_) => "array".to_owned(),
-        ShapeRef::Map { .. } | ShapeRef::Definition(_) => "object".to_owned(),
-        ShapeRef::OneOf(alternatives) => one_of_kind(alternatives),
-        ShapeRef::Opaque(opaque) => format!("opaque({:?})", opaque.reason),
-        shape_ref => primitive_kind(shape_ref).to_owned(),
-    }
-}
-
-fn one_of_kind(alternatives: &[ShapeRef]) -> String {
-    if !alternatives.is_empty() && alternatives.iter().all(ShapeRef::is_integer) {
-        return "integer".to_owned();
-    }
-    if !alternatives.is_empty() && alternatives.iter().all(ShapeRef::is_float) {
-        return "float".to_owned();
-    }
-    if !alternatives.is_empty() && alternatives.iter().all(ShapeRef::is_number) {
-        return "number".to_owned();
-    }
-
-    alternatives
-        .iter()
-        .fold(Vec::<String>::new(), |mut kinds, alternative| {
-            let kind = one_of_alternative_kind(alternative);
-            if !kinds.contains(&kind) {
-                kinds.push(kind);
-            }
-            kinds
-        })
-        .join("|")
 }
 
 fn env_name(prefix: &str, path: &[String]) -> String {

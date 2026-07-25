@@ -18,7 +18,7 @@
 
 `serde-shape` reflects the shape of Serde serialization and deserialization at compile time.
 
-It gives libraries and tools a lightweight graph of the Rust types, Serde names, field metadata, enum tagging, defaults, aliases, union-like value alternatives, skips, and custom serializer/deserializer boundaries that make up a type's wire shape.
+It gives libraries and tools a lightweight graph of the Rust types, Serde names, field metadata, enum tagging, defaults, aliases, union value alternatives, skips, and custom serializer/deserializer boundaries that make up a type's wire shape.
 
 ## Install
 
@@ -48,9 +48,9 @@ Typical use cases:
 - checking how a serialized or deserialized shape changes across releases;
 - building schema exporters that start from Serde metadata.
 
-`serde-shape` is intentionally not a full validation schema. It reflects the Serde data model shape and relevant Serde attributes; it does not infer value ranges, regexes, business rules, or runtime behavior hidden inside custom serializer/deserializer functions. Use `ShapeRef::OneOf` for format-native alternatives that do not fit one Rust shape.
+`serde-shape` is intentionally not a full validation schema. It reflects the Serde data model shape and relevant Serde attributes; it does not infer value ranges, regexes, business rules, or runtime behavior hidden inside custom serializer/deserializer functions. Use `ShapeRef::union` for format-native alternatives that do not fit one Rust shape. Union alternatives may overlap; they are flattened, deduplicated, and stored in canonical order.
 
-Field shapes expose `wire_shape` as the source of truth for regular values, flattened fields, omitted fields, and custom serializer/deserializer boundaries.
+Field shapes expose `wire_shape` as the source of truth for regular values, flattened fields, inline transparent fields, and omitted fields. Custom serializer/deserializer boundaries are represented by `ShapeRef::Opaque`, including when they are flattened or inline.
 
 You may use [`schemars`](https://docs.rs/schemars) for JSON Schema generation and validation. But `schemars` is not a general-purpose Serde shape reflection library, and it does not support all Serde attributes. `serde-shape` is designed to be a more complete and general-purpose reflection of Serde shapes.
 

@@ -37,10 +37,6 @@ DeserializeShapeGraph {
                                 ),
                             ),
                             default: None,
-                            flatten: false,
-                            skip: false,
-                            custom_deserializer: false,
-                            transparent: false,
                         },
                         DeserializeFieldShape {
                             member: Named(
@@ -58,10 +54,6 @@ DeserializeShapeGraph {
                                 ),
                             ),
                             default: None,
-                            flatten: false,
-                            skip: false,
-                            custom_deserializer: false,
-                            transparent: false,
                         },
                         DeserializeFieldShape {
                             member: Named(
@@ -79,10 +71,6 @@ DeserializeShapeGraph {
                                 ),
                             ),
                             default: None,
-                            flatten: false,
-                            skip: false,
-                            custom_deserializer: false,
-                            transparent: false,
                         },
                     ],
                     attributes: DeserializeContainerAttributes {
@@ -123,10 +111,6 @@ DeserializeShapeGraph {
                             default: Path(
                                 "default_dir",
                             ),
-                            flatten: false,
-                            skip: false,
-                            custom_deserializer: false,
-                            transparent: false,
                         },
                         DeserializeFieldShape {
                             member: Named(
@@ -142,10 +126,6 @@ DeserializeShapeGraph {
                             default: Path(
                                 "default_listen_data_addr",
                             ),
-                            flatten: false,
-                            skip: false,
-                            custom_deserializer: false,
-                            transparent: false,
                         },
                         DeserializeFieldShape {
                             member: Named(
@@ -161,10 +141,6 @@ DeserializeShapeGraph {
                                 ),
                             ),
                             default: None,
-                            flatten: false,
-                            skip: false,
-                            custom_deserializer: false,
-                            transparent: false,
                         },
                         DeserializeFieldShape {
                             member: Named(
@@ -180,10 +156,6 @@ DeserializeShapeGraph {
                                 ),
                             ),
                             default: Default,
-                            flatten: false,
-                            skip: false,
-                            custom_deserializer: false,
-                            transparent: false,
                         },
                         DeserializeFieldShape {
                             member: Named(
@@ -199,10 +171,6 @@ DeserializeShapeGraph {
                             default: Path(
                                 "default_cluster_id",
                             ),
-                            flatten: false,
-                            skip: false,
-                            custom_deserializer: false,
-                            transparent: false,
                         },
                     ],
                     attributes: DeserializeContainerAttributes {
@@ -245,10 +213,6 @@ DeserializeShapeGraph {
                                 ),
                             ),
                             default: Default,
-                            flatten: false,
-                            skip: false,
-                            custom_deserializer: false,
-                            transparent: false,
                         },
                         DeserializeFieldShape {
                             member: Named(
@@ -259,9 +223,8 @@ DeserializeShapeGraph {
                                 "disk_capacity",
                             ],
                             wire_shape: Value(
-                                OneOf(
+                                Union(
                                     [
-                                        String,
                                         I8,
                                         I16,
                                         I32,
@@ -274,16 +237,13 @@ DeserializeShapeGraph {
                                         U64,
                                         U128,
                                         Usize,
+                                        String,
                                     ],
                                 ),
                             ),
                             default: Path(
                                 "default_disk_capacity",
                             ),
-                            flatten: false,
-                            skip: false,
-                            custom_deserializer: false,
-                            transparent: false,
                         },
                         DeserializeFieldShape {
                             member: Named(
@@ -294,9 +254,8 @@ DeserializeShapeGraph {
                                 "memory_capacity",
                             ],
                             wire_shape: Value(
-                                OneOf(
+                                Union(
                                     [
-                                        String,
                                         I8,
                                         I16,
                                         I32,
@@ -309,16 +268,13 @@ DeserializeShapeGraph {
                                         U64,
                                         U128,
                                         Usize,
+                                        String,
                                     ],
                                 ),
                             ),
                             default: Path(
                                 "default_memory_capacity",
                             ),
-                            flatten: false,
-                            skip: false,
-                            custom_deserializer: false,
-                            transparent: false,
                         },
                         DeserializeFieldShape {
                             member: Named(
@@ -338,10 +294,6 @@ DeserializeShapeGraph {
                                 ),
                             ),
                             default: None,
-                            flatten: false,
-                            skip: false,
-                            custom_deserializer: false,
-                            transparent: false,
                         },
                     ],
                     attributes: DeserializeContainerAttributes {
@@ -377,27 +329,23 @@ DeserializeShapeGraph {
                                 "local",
                             ],
                             style: Struct,
-                            fields: [
-                                DeserializeFieldShape {
-                                    member: Named(
-                                        "data_dir",
-                                    ),
-                                    name: "data_dir",
-                                    aliases: [
-                                        "data_dir",
-                                    ],
-                                    wire_shape: Value(
-                                        String,
-                                    ),
-                                    default: None,
-                                    flatten: false,
-                                    skip: false,
-                                    custom_deserializer: false,
-                                    transparent: false,
-                                },
-                            ],
-                            skip: false,
-                            custom_deserializer: false,
+                            content: Fields(
+                                [
+                                    DeserializeFieldShape {
+                                        member: Named(
+                                            "data_dir",
+                                        ),
+                                        name: "data_dir",
+                                        aliases: [
+                                            "data_dir",
+                                        ],
+                                        wire_shape: Value(
+                                            String,
+                                        ),
+                                        default: None,
+                                    },
+                                ],
+                            ),
                             other: false,
                             untagged: false,
                         },
@@ -408,44 +356,36 @@ DeserializeShapeGraph {
                                 "s3",
                             ],
                             style: Struct,
-                            fields: [
-                                DeserializeFieldShape {
-                                    member: Named(
-                                        "bucket",
-                                    ),
-                                    name: "bucket",
-                                    aliases: [
-                                        "bucket",
-                                    ],
-                                    wire_shape: Value(
-                                        String,
-                                    ),
-                                    default: None,
-                                    flatten: false,
-                                    skip: false,
-                                    custom_deserializer: false,
-                                    transparent: false,
-                                },
-                                DeserializeFieldShape {
-                                    member: Named(
-                                        "region",
-                                    ),
-                                    name: "region",
-                                    aliases: [
-                                        "region",
-                                    ],
-                                    wire_shape: Value(
-                                        String,
-                                    ),
-                                    default: None,
-                                    flatten: false,
-                                    skip: false,
-                                    custom_deserializer: false,
-                                    transparent: false,
-                                },
-                            ],
-                            skip: false,
-                            custom_deserializer: false,
+                            content: Fields(
+                                [
+                                    DeserializeFieldShape {
+                                        member: Named(
+                                            "bucket",
+                                        ),
+                                        name: "bucket",
+                                        aliases: [
+                                            "bucket",
+                                        ],
+                                        wire_shape: Value(
+                                            String,
+                                        ),
+                                        default: None,
+                                    },
+                                    DeserializeFieldShape {
+                                        member: Named(
+                                            "region",
+                                        ),
+                                        name: "region",
+                                        aliases: [
+                                            "region",
+                                        ],
+                                        wire_shape: Value(
+                                            String,
+                                        ),
+                                        default: None,
+                                    },
+                                ],
+                            ),
                             other: false,
                             untagged: false,
                         },
@@ -488,10 +428,6 @@ DeserializeShapeGraph {
                                 U64,
                             ),
                             default: None,
-                            flatten: false,
-                            skip: false,
-                            custom_deserializer: false,
-                            transparent: false,
                         },
                         DeserializeFieldShape {
                             member: Named(
@@ -505,10 +441,6 @@ DeserializeShapeGraph {
                                 U64,
                             ),
                             default: None,
-                            flatten: false,
-                            skip: false,
-                            custom_deserializer: false,
-                            transparent: false,
                         },
                         DeserializeFieldShape {
                             member: Named(
@@ -526,10 +458,6 @@ DeserializeShapeGraph {
                                 ),
                             ),
                             default: None,
-                            flatten: false,
-                            skip: false,
-                            custom_deserializer: false,
-                            transparent: false,
                         },
                     ],
                     attributes: DeserializeContainerAttributes {
@@ -572,10 +500,6 @@ DeserializeShapeGraph {
                                 ),
                             ),
                             default: None,
-                            flatten: false,
-                            skip: false,
-                            custom_deserializer: false,
-                            transparent: false,
                         },
                         DeserializeFieldShape {
                             member: Named(
@@ -589,10 +513,6 @@ DeserializeShapeGraph {
                                 Usize,
                             ),
                             default: None,
-                            flatten: false,
-                            skip: false,
-                            custom_deserializer: false,
-                            transparent: false,
                         },
                     ],
                     attributes: DeserializeContainerAttributes {
@@ -626,9 +546,9 @@ DeserializeShapeGraph {
                                 "window",
                             ],
                             style: Unit,
-                            fields: [],
-                            skip: false,
-                            custom_deserializer: false,
+                            content: Fields(
+                                [],
+                            ),
                             other: false,
                             untagged: false,
                         },
@@ -639,9 +559,9 @@ DeserializeShapeGraph {
                                 "leaky_bucket",
                             ],
                             style: Unit,
-                            fields: [],
-                            skip: false,
-                            custom_deserializer: false,
+                            content: Fields(
+                                [],
+                            ),
                             other: false,
                             untagged: false,
                         },
@@ -686,10 +606,6 @@ DeserializeShapeGraph {
                                 ),
                             ),
                             default: Default,
-                            flatten: false,
-                            skip: false,
-                            custom_deserializer: false,
-                            transparent: false,
                         },
                         DeserializeFieldShape {
                             member: Named(
@@ -709,10 +625,6 @@ DeserializeShapeGraph {
                                 ),
                             ),
                             default: None,
-                            flatten: false,
-                            skip: false,
-                            custom_deserializer: false,
-                            transparent: false,
                         },
                         DeserializeFieldShape {
                             member: Named(
@@ -732,10 +644,6 @@ DeserializeShapeGraph {
                                 ),
                             ),
                             default: None,
-                            flatten: false,
-                            skip: false,
-                            custom_deserializer: false,
-                            transparent: false,
                         },
                     ],
                     attributes: DeserializeContainerAttributes {
@@ -778,10 +686,6 @@ DeserializeShapeGraph {
                                 ),
                             ),
                             default: None,
-                            flatten: true,
-                            skip: false,
-                            custom_deserializer: false,
-                            transparent: false,
                         },
                         DeserializeFieldShape {
                             member: Named(
@@ -795,10 +699,6 @@ DeserializeShapeGraph {
                                 String,
                             ),
                             default: None,
-                            flatten: false,
-                            skip: false,
-                            custom_deserializer: false,
-                            transparent: false,
                         },
                     ],
                     attributes: DeserializeContainerAttributes {
@@ -834,46 +734,38 @@ DeserializeShapeGraph {
                                 "file",
                             ],
                             style: Struct,
-                            fields: [
-                                DeserializeFieldShape {
-                                    member: Named(
-                                        "dir",
-                                    ),
-                                    name: "dir",
-                                    aliases: [
-                                        "dir",
-                                    ],
-                                    wire_shape: Value(
-                                        String,
-                                    ),
-                                    default: None,
-                                    flatten: false,
-                                    skip: false,
-                                    custom_deserializer: false,
-                                    transparent: false,
-                                },
-                                DeserializeFieldShape {
-                                    member: Named(
-                                        "max_files",
-                                    ),
-                                    name: "max_files",
-                                    aliases: [
-                                        "max_files",
-                                    ],
-                                    wire_shape: Value(
-                                        Option(
-                                            Usize,
+                            content: Fields(
+                                [
+                                    DeserializeFieldShape {
+                                        member: Named(
+                                            "dir",
                                         ),
-                                    ),
-                                    default: None,
-                                    flatten: false,
-                                    skip: false,
-                                    custom_deserializer: false,
-                                    transparent: false,
-                                },
-                            ],
-                            skip: false,
-                            custom_deserializer: false,
+                                        name: "dir",
+                                        aliases: [
+                                            "dir",
+                                        ],
+                                        wire_shape: Value(
+                                            String,
+                                        ),
+                                        default: None,
+                                    },
+                                    DeserializeFieldShape {
+                                        member: Named(
+                                            "max_files",
+                                        ),
+                                        name: "max_files",
+                                        aliases: [
+                                            "max_files",
+                                        ],
+                                        wire_shape: Value(
+                                            Option(
+                                                Usize,
+                                            ),
+                                        ),
+                                        default: None,
+                                    },
+                                ],
+                            ),
                             other: false,
                             untagged: false,
                         },
@@ -884,9 +776,9 @@ DeserializeShapeGraph {
                                 "stderr",
                             ],
                             style: Unit,
-                            fields: [],
-                            skip: false,
-                            custom_deserializer: false,
+                            content: Fields(
+                                [],
+                            ),
                             other: false,
                             untagged: false,
                         },
@@ -897,27 +789,23 @@ DeserializeShapeGraph {
                                 "opentelemetry",
                             ],
                             style: Struct,
-                            fields: [
-                                DeserializeFieldShape {
-                                    member: Named(
-                                        "otlp_endpoint",
-                                    ),
-                                    name: "otlp_endpoint",
-                                    aliases: [
-                                        "otlp_endpoint",
-                                    ],
-                                    wire_shape: Value(
-                                        String,
-                                    ),
-                                    default: None,
-                                    flatten: false,
-                                    skip: false,
-                                    custom_deserializer: false,
-                                    transparent: false,
-                                },
-                            ],
-                            skip: false,
-                            custom_deserializer: false,
+                            content: Fields(
+                                [
+                                    DeserializeFieldShape {
+                                        member: Named(
+                                            "otlp_endpoint",
+                                        ),
+                                        name: "otlp_endpoint",
+                                        aliases: [
+                                            "otlp_endpoint",
+                                        ],
+                                        wire_shape: Value(
+                                            String,
+                                        ),
+                                        default: None,
+                                    },
+                                ],
+                            ),
                             other: false,
                             untagged: false,
                         },
@@ -960,10 +848,6 @@ DeserializeShapeGraph {
                                 String,
                             ),
                             default: None,
-                            flatten: false,
-                            skip: false,
-                            custom_deserializer: false,
-                            transparent: false,
                         },
                         DeserializeFieldShape {
                             member: Named(
@@ -983,10 +867,6 @@ DeserializeShapeGraph {
                                 ),
                             ),
                             default: None,
-                            flatten: false,
-                            skip: false,
-                            custom_deserializer: false,
-                            transparent: false,
                         },
                     ],
                     attributes: DeserializeContainerAttributes {
@@ -1025,10 +905,6 @@ DeserializeShapeGraph {
                                 String,
                             ),
                             default: None,
-                            flatten: false,
-                            skip: false,
-                            custom_deserializer: false,
-                            transparent: false,
                         },
                     ],
                     attributes: DeserializeContainerAttributes {
@@ -1073,10 +949,6 @@ DeserializeShapeGraph {
                                 ),
                             ),
                             default: None,
-                            flatten: false,
-                            skip: false,
-                            custom_deserializer: false,
-                            transparent: false,
                         },
                     ],
                     attributes: DeserializeContainerAttributes {
@@ -1115,10 +987,6 @@ DeserializeShapeGraph {
                                 String,
                             ),
                             default: None,
-                            flatten: false,
-                            skip: false,
-                            custom_deserializer: false,
-                            transparent: false,
                         },
                         DeserializeFieldShape {
                             member: Named(
@@ -1129,9 +997,8 @@ DeserializeShapeGraph {
                                 "push_interval",
                             ],
                             wire_shape: Value(
-                                OneOf(
+                                Union(
                                     [
-                                        String,
                                         I8,
                                         I16,
                                         I32,
@@ -1144,16 +1011,13 @@ DeserializeShapeGraph {
                                         U64,
                                         U128,
                                         Usize,
+                                        String,
                                     ],
                                 ),
                             ),
                             default: Path(
                                 "default_metrics_push_interval",
                             ),
-                            flatten: false,
-                            skip: false,
-                            custom_deserializer: false,
-                            transparent: false,
                         },
                     ],
                     attributes: DeserializeContainerAttributes {

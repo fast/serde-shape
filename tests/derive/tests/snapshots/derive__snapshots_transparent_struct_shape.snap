@@ -29,14 +29,10 @@ DeserializeShapeGraph {
                             aliases: [
                                 "0",
                             ],
-                            wire_shape: Value(
+                            wire_shape: Inline(
                                 U64,
                             ),
                             default: None,
-                            flatten: false,
-                            skip: false,
-                            custom_deserializer: false,
-                            transparent: true,
                         },
                     ],
                     attributes: DeserializeContainerAttributes {

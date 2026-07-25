@@ -39,10 +39,6 @@ DeserializeShapeGraph {
                                 ),
                             ),
                             default: None,
-                            flatten: false,
-                            skip: false,
-                            custom_deserializer: false,
-                            transparent: false,
                         },
                     ],
                     attributes: DeserializeContainerAttributes {

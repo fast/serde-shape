@@ -19,7 +19,6 @@ use alloc::collections::BinaryHeap;
 use alloc::collections::LinkedList;
 use alloc::collections::VecDeque;
 use alloc::string::String;
-use alloc::vec;
 use core::cell::Cell;
 use core::cmp::Reverse;
 use core::num::Wrapping;
@@ -40,12 +39,35 @@ fn classifies_flat_numeric_shapes() {
 }
 
 #[test]
-fn classifies_one_of_numeric_shapes() {
-    assert!(ShapeRef::OneOf(vec![ShapeRef::I8, ShapeRef::U64]).is_integer());
-    assert!(ShapeRef::OneOf(vec![ShapeRef::F32, ShapeRef::F64]).is_float());
-    assert!(ShapeRef::OneOf(vec![ShapeRef::I16, ShapeRef::F64]).is_number());
-    assert!(!ShapeRef::OneOf(vec![ShapeRef::String, ShapeRef::U64]).is_integer());
-    assert!(!ShapeRef::OneOf(vec![]).is_number());
+fn classifies_union_numeric_shapes() {
+    assert!(ShapeRef::union([ShapeRef::I8, ShapeRef::U64]).is_integer());
+    assert!(ShapeRef::union([ShapeRef::F32, ShapeRef::F64]).is_float());
+    assert!(ShapeRef::union([ShapeRef::I16, ShapeRef::F64]).is_number());
+    assert!(!ShapeRef::union([ShapeRef::String, ShapeRef::U64]).is_integer());
+}
+
+#[test]
+fn normalizes_union_shapes() {
+    assert_eq!(ShapeRef::try_union([]), None);
+    assert_eq!(ShapeRef::union([ShapeRef::String]), ShapeRef::String);
+    assert_eq!(
+        ShapeRef::union([ShapeRef::String, ShapeRef::I8]),
+        ShapeRef::union([ShapeRef::I8, ShapeRef::String])
+    );
+
+    let union = ShapeRef::union([
+        ShapeRef::String,
+        ShapeRef::I8,
+        ShapeRef::union([ShapeRef::U64, ShapeRef::String]),
+        ShapeRef::I8,
+    ]);
+    let ShapeRef::Union(union) = union else {
+        panic!("multiple distinct alternatives should produce a union");
+    };
+    assert_eq!(
+        union.alternatives(),
+        &[ShapeRef::I8, ShapeRef::U64, ShapeRef::String]
+    );
 }
 
 #[cfg(target_has_atomic = "ptr")]

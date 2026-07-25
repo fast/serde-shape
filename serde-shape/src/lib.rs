@@ -17,7 +17,7 @@
 //! `serde-shape` builds a lightweight graph that describes what a Rust type emits through Serde
 //! serialization and accepts through Serde deserialization. It does not run Serde, and it is not a
 //! full validation schema. Instead, it gives tools access to the same structural information that
-//! Serde derives from Rust types and `#[serde(...)]` attributes, including union-like value shapes.
+//! Serde derives from Rust types and `#[serde(...)]` attributes, including union value shapes.
 //!
 //! Common uses are generating configuration reference docs, deriving environment-variable maps
 //! from config structs, documenting wire formats, and checking whether two versions of a type
@@ -151,10 +151,11 @@
 //! follows the metadata Serde derives for each direction.
 //!
 //! A custom serializer or deserializer has no inferable inner shape, so the affected field or
-//! variant is marked as custom and its nested shape is omitted. Whole-container conversion and
+//! variant content is represented by an opaque boundary. Whole-container conversion and
 //! remote-derive attributes are represented as opaque definitions.
-//! Field-level [`FieldWireShape`] distinguishes ordinary values from flattened fields, omitted
-//! fields, and opaque custom serializer/deserializer boundaries.
+//! Field-level [`FieldWireShape`] distinguishes ordinary values from flattened fields, inline
+//! transparent fields, and omitted fields. Custom serializer/deserializer boundaries use
+//! [`ShapeRef::Opaque`] and remain composable with those field positions.
 //!
 //! # Manual implementations
 //!
@@ -171,13 +172,13 @@
 //!
 //! impl DeserializeShape for ByteSize {
 //!     fn deserialize_shape_in(_context: &mut DeserializeShapeContext) -> ShapeRef {
-//!         ShapeRef::OneOf(vec![ShapeRef::String, ShapeRef::U64])
+//!         ShapeRef::union([ShapeRef::String, ShapeRef::U64])
 //!     }
 //! }
 //!
 //! assert_eq!(
 //!     ByteSize::deserialize_shape().root,
-//!     ShapeRef::OneOf(vec![ShapeRef::String, ShapeRef::U64])
+//!     ShapeRef::union([ShapeRef::String, ShapeRef::U64])
 //! );
 //! ```
 //!
@@ -196,6 +197,7 @@ extern crate std;
 use alloc::boxed::Box;
 use alloc::collections::BTreeMap;
 use alloc::vec::Vec;
+use core::fmt;
 
 /// Private exports used by generated derive code.
 #[doc(hidden)]
@@ -474,7 +476,8 @@ pub struct DeserializeTypeName {
 }
 
 /// A reference to a shape node.
-#[derive(Clone, Debug, Eq, PartialEq)]
+#[derive(Clone, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
+#[non_exhaustive]
 pub enum ShapeRef {
     /// Unit shape.
     Unit,
@@ -534,8 +537,10 @@ pub enum ShapeRef {
     },
     /// Tuple shape.
     Tuple(Vec<ShapeRef>),
-    /// One of multiple possible value shapes.
-    OneOf(Vec<ShapeRef>),
+    /// A normalized union of two or more possible value shapes.
+    ///
+    /// Construct unions with [`ShapeRef::union`] or [`ShapeRef::try_union`].
+    Union(UnionShape),
     /// Named type definition reference.
     Definition(ShapeId),
     /// Shape intentionally left opaque.
@@ -543,13 +548,54 @@ pub enum ShapeRef {
 }
 
 impl ShapeRef {
+    /// Build a normalized union from one or more possible value shapes.
+    ///
+    /// Nested unions are flattened, duplicate alternatives are removed, and alternatives are
+    /// sorted into a canonical order. A single distinct alternative is returned directly.
+    ///
+    /// # Panics
+    ///
+    /// Panics when `alternatives` is empty. Use [`ShapeRef::try_union`] when the input may be
+    /// empty.
+    pub fn union<I>(alternatives: I) -> Self
+    where
+        I: IntoIterator<Item = Self>,
+    {
+        Self::try_union(alternatives).expect("shape union requires at least one alternative")
+    }
+
+    /// Try to build a normalized union from possible value shapes.
+    ///
+    /// Returns `None` when `alternatives` is empty. Nested unions are flattened, duplicate
+    /// alternatives are removed, and alternatives are sorted into a canonical order. A single
+    /// distinct alternative is returned directly.
+    pub fn try_union<I>(alternatives: I) -> Option<Self>
+    where
+        I: IntoIterator<Item = Self>,
+    {
+        let mut normalized = Vec::new();
+        for alternative in alternatives {
+            match alternative {
+                Self::Union(union) => normalized.extend(union.alternatives),
+                alternative => normalized.push(alternative),
+            }
+        }
+        let mut alternatives = normalized;
+        alternatives.sort();
+        alternatives.dedup();
+
+        match alternatives.len() {
+            0 => None,
+            1 => alternatives.pop(),
+            _ => Some(Self::Union(UnionShape { alternatives })),
+        }
+    }
+
     /// Return whether this is a signed integer shape.
     pub fn is_signed_integer(&self) -> bool {
         match self {
             Self::I8 | Self::I16 | Self::I32 | Self::I64 | Self::I128 | Self::Isize => true,
-            Self::OneOf(alternatives) => {
-                !alternatives.is_empty() && alternatives.iter().all(Self::is_signed_integer)
-            }
+            Self::Union(union) => union.alternatives.iter().all(Self::is_signed_integer),
             _ => false,
         }
     }
@@ -558,9 +604,7 @@ impl ShapeRef {
     pub fn is_unsigned_integer(&self) -> bool {
         match self {
             Self::U8 | Self::U16 | Self::U32 | Self::U64 | Self::U128 | Self::Usize => true,
-            Self::OneOf(alternatives) => {
-                !alternatives.is_empty() && alternatives.iter().all(Self::is_unsigned_integer)
-            }
+            Self::Union(union) => union.alternatives.iter().all(Self::is_unsigned_integer),
             _ => false,
         }
     }
@@ -568,9 +612,7 @@ impl ShapeRef {
     /// Return whether this is any integer shape.
     pub fn is_integer(&self) -> bool {
         match self {
-            Self::OneOf(alternatives) => {
-                !alternatives.is_empty() && alternatives.iter().all(Self::is_integer)
-            }
+            Self::Union(union) => union.alternatives.iter().all(Self::is_integer),
             _ => self.is_signed_integer() || self.is_unsigned_integer(),
         }
     }
@@ -579,9 +621,7 @@ impl ShapeRef {
     pub fn is_float(&self) -> bool {
         match self {
             Self::F32 | Self::F64 => true,
-            Self::OneOf(alternatives) => {
-                !alternatives.is_empty() && alternatives.iter().all(Self::is_float)
-            }
+            Self::Union(union) => union.alternatives.iter().all(Self::is_float),
             _ => false,
         }
     }
@@ -589,11 +629,32 @@ impl ShapeRef {
     /// Return whether this is any numeric shape.
     pub fn is_number(&self) -> bool {
         match self {
-            Self::OneOf(alternatives) => {
-                !alternatives.is_empty() && alternatives.iter().all(Self::is_number)
-            }
+            Self::Union(union) => union.alternatives.iter().all(Self::is_number),
             _ => self.is_integer() || self.is_float(),
         }
+    }
+}
+
+/// The normalized alternatives contained by [`ShapeRef::Union`].
+///
+/// A union always contains at least two distinct alternatives in canonical order. Use
+/// [`ShapeRef::union`] or [`ShapeRef::try_union`] to construct one. Alternatives may overlap; a
+/// union means that any alternative is possible, not that exactly one alternative must match.
+#[derive(Clone, Eq, Hash, Ord, PartialEq, PartialOrd)]
+pub struct UnionShape {
+    alternatives: Vec<ShapeRef>,
+}
+
+impl UnionShape {
+    /// Return the canonical union alternatives.
+    pub fn alternatives(&self) -> &[ShapeRef] {
+        &self.alternatives
+    }
+}
+
+impl fmt::Debug for UnionShape {
+    fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
+        self.alternatives.fmt(formatter)
     }
 }
 
@@ -760,16 +821,8 @@ pub struct SerializeFieldShape {
     pub name: &'static str,
     /// How this field contributes to the serialized wire shape.
     pub wire_shape: FieldWireShape,
-    /// Whether the field is flattened into the containing map.
-    pub flatten: bool,
-    /// Whether Serde skips this field during serialization.
-    pub skip: bool,
     /// The predicate used to skip this field during serialization.
     pub skip_if: Option<&'static str>,
-    /// Whether this field uses a custom serializer.
-    pub custom_serializer: bool,
-    /// Whether this is the transparent field of a transparent container.
-    pub transparent: bool,
 }
 
 /// Field-level deserialization metadata.
@@ -785,14 +838,6 @@ pub struct DeserializeFieldShape {
     pub wire_shape: FieldWireShape,
     /// The default used if this field is missing.
     pub default: DefaultShape,
-    /// Whether the field is flattened into the containing map.
-    pub flatten: bool,
-    /// Whether Serde skips this field during deserialization.
-    pub skip: bool,
-    /// Whether this field uses a custom deserializer.
-    pub custom_deserializer: bool,
-    /// Whether this is the transparent field of a transparent container.
-    pub transparent: bool,
 }
 
 /// The Rust member represented by a field.
@@ -806,6 +851,7 @@ pub enum FieldMember {
 
 /// How a field contributes to the wire representation in one Serde direction.
 #[derive(Clone, Debug, Eq, PartialEq)]
+#[non_exhaustive]
 pub enum FieldWireShape {
     /// The field emits or accepts no value in this direction.
     Omitted,
@@ -813,8 +859,8 @@ pub enum FieldWireShape {
     Value(ShapeRef),
     /// The field is flattened into the containing map.
     Flatten(ShapeRef),
-    /// A custom serializer or deserializer controls the field representation.
-    Custom(OpaqueShape),
+    /// The field is serialized or deserialized directly at the containing type's position.
+    Inline(ShapeRef),
 }
 
 /// Variant-level serialization metadata.
@@ -826,14 +872,22 @@ pub struct SerializeVariantShape {
     pub name: &'static str,
     /// The variant field style.
     pub style: FieldsStyle,
-    /// The variant fields, if their output shape can be inferred.
-    pub fields: Vec<SerializeFieldShape>,
-    /// Whether Serde skips this variant during serialization.
-    pub skip: bool,
-    /// Whether this variant uses a custom serializer.
-    pub custom_serializer: bool,
+    /// How the variant contributes its serialized content.
+    pub content: SerializeVariantContent,
     /// Whether this variant is individually marked untagged.
     pub untagged: bool,
+}
+
+/// The serialized content controlled by an enum variant.
+#[derive(Clone, Debug, Eq, PartialEq)]
+#[non_exhaustive]
+pub enum SerializeVariantContent {
+    /// The variant is omitted during serialization.
+    Omitted,
+    /// Serde derives the variant content from these fields.
+    Fields(Vec<SerializeFieldShape>),
+    /// A custom serializer controls the variant content.
+    Custom(OpaqueShape),
 }
 
 /// Variant-level deserialization metadata.
@@ -847,16 +901,24 @@ pub struct DeserializeVariantShape {
     pub aliases: Vec<&'static str>,
     /// The variant field style.
     pub style: FieldsStyle,
-    /// The variant fields, if their input shape can be inferred.
-    pub fields: Vec<DeserializeFieldShape>,
-    /// Whether Serde skips this variant during deserialization.
-    pub skip: bool,
-    /// Whether this variant uses a custom deserializer.
-    pub custom_deserializer: bool,
+    /// How the variant contributes its deserialized content.
+    pub content: DeserializeVariantContent,
     /// Whether this is a Serde `other` catch-all variant.
     pub other: bool,
     /// Whether this variant is individually marked untagged.
     pub untagged: bool,
+}
+
+/// The deserialized content controlled by an enum variant.
+#[derive(Clone, Debug, Eq, PartialEq)]
+#[non_exhaustive]
+pub enum DeserializeVariantContent {
+    /// The variant is omitted during deserialization.
+    Omitted,
+    /// Serde derives the variant content from these fields.
+    Fields(Vec<DeserializeFieldShape>),
+    /// A custom deserializer controls the variant content.
+    Custom(OpaqueShape),
 }
 
 /// A Serde default marker.
@@ -878,7 +940,7 @@ impl DefaultShape {
 }
 
 /// Shape intentionally left opaque.
-#[derive(Clone, Debug, Eq, PartialEq)]
+#[derive(Clone, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
 pub struct OpaqueShape {
     /// The Rust type or Serde item that is opaque.
     pub type_name: &'static str,
@@ -889,7 +951,7 @@ pub struct OpaqueShape {
 }
 
 /// Reason a shape cannot be represented precisely.
-#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+#[derive(Clone, Copy, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
 pub enum OpaqueReason {
     /// The type uses `#[serde(from = "...")]`.
     FromType,
