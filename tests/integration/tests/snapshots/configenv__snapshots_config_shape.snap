@@ -1,5 +1,5 @@
 ---
-source: tests/integration/tests/env_vars.rs
+source: tests/integration/tests/configenv.rs
 expression: "Config::deserialize_shape()"
 ---
 DeserializeShapeGraph {
@@ -14,7 +14,7 @@ DeserializeShapeGraph {
                 0,
             ),
             type_name: DeserializeTypeName {
-                rust_name: "env_vars::Config",
+                rust_name: "configenv::Config",
                 name: "Config",
             },
             kind: Struct(
@@ -90,7 +90,7 @@ DeserializeShapeGraph {
                 1,
             ),
             type_name: DeserializeTypeName {
-                rust_name: "env_vars::ServerConfig",
+                rust_name: "configenv::ServerConfig",
                 name: "ServerConfig",
             },
             kind: Struct(
@@ -190,7 +190,7 @@ DeserializeShapeGraph {
                 2,
             ),
             type_name: DeserializeTypeName {
-                rust_name: "env_vars::StorageConfig",
+                rust_name: "configenv::StorageConfig",
                 name: "StorageConfig",
             },
             kind: Struct(
@@ -313,7 +313,7 @@ DeserializeShapeGraph {
                 3,
             ),
             type_name: DeserializeTypeName {
-                rust_name: "env_vars::StorageBackend",
+                rust_name: "configenv::StorageBackend",
                 name: "StorageBackend",
             },
             kind: Enum(
@@ -409,7 +409,7 @@ DeserializeShapeGraph {
                 4,
             ),
             type_name: DeserializeTypeName {
-                rust_name: "env_vars::DiskThrottle",
+                rust_name: "configenv::DiskThrottle",
                 name: "DiskThrottle",
             },
             kind: Struct(
@@ -477,7 +477,7 @@ DeserializeShapeGraph {
                 5,
             ),
             type_name: DeserializeTypeName {
-                rust_name: "env_vars::CounterConfig",
+                rust_name: "configenv::CounterConfig",
                 name: "CounterConfig",
             },
             kind: Struct(
@@ -532,7 +532,7 @@ DeserializeShapeGraph {
                 6,
             ),
             type_name: DeserializeTypeName {
-                rust_name: "env_vars::CounterMode",
+                rust_name: "configenv::CounterMode",
                 name: "CounterMode",
             },
             kind: Enum(
@@ -583,7 +583,7 @@ DeserializeShapeGraph {
                 7,
             ),
             type_name: DeserializeTypeName {
-                rust_name: "env_vars::TelemetryConfig",
+                rust_name: "configenv::TelemetryConfig",
                 name: "TelemetryConfig",
             },
             kind: Struct(
@@ -663,7 +663,7 @@ DeserializeShapeGraph {
                 8,
             ),
             type_name: DeserializeTypeName {
-                rust_name: "env_vars::LogsConfig",
+                rust_name: "configenv::LogsConfig",
                 name: "LogsConfig",
             },
             kind: Struct(
@@ -718,7 +718,7 @@ DeserializeShapeGraph {
                 9,
             ),
             type_name: DeserializeTypeName {
-                rust_name: "env_vars::LogSink",
+                rust_name: "configenv::LogSink",
                 name: "LogSink",
             },
             kind: Enum(
@@ -829,7 +829,7 @@ DeserializeShapeGraph {
                 10,
             ),
             type_name: DeserializeTypeName {
-                rust_name: "env_vars::TracesConfig",
+                rust_name: "configenv::TracesConfig",
                 name: "TracesConfig",
             },
             kind: Struct(
@@ -886,7 +886,7 @@ DeserializeShapeGraph {
                 11,
             ),
             type_name: DeserializeTypeName {
-                rust_name: "env_vars::OpentelemetryTracesConfig",
+                rust_name: "configenv::OpentelemetryTracesConfig",
                 name: "OpentelemetryTracesConfig",
             },
             kind: Struct(
@@ -924,7 +924,7 @@ DeserializeShapeGraph {
                 12,
             ),
             type_name: DeserializeTypeName {
-                rust_name: "env_vars::MetricsConfig",
+                rust_name: "configenv::MetricsConfig",
                 name: "MetricsConfig",
             },
             kind: Struct(
@@ -968,7 +968,7 @@ DeserializeShapeGraph {
                 13,
             ),
             type_name: DeserializeTypeName {
-                rust_name: "env_vars::OpentelemetryMetricsConfig",
+                rust_name: "configenv::OpentelemetryMetricsConfig",
                 name: "OpentelemetryMetricsConfig",
             },
             kind: Struct(

@@ -19,6 +19,8 @@ use std::net::SocketAddr;
 use std::num::NonZeroUsize;
 use std::path::PathBuf;
 
+use serde::Deserialize;
+use serde::de::IntoDeserializer;
 use serde_shape::DeserializeDefinitionKind;
 use serde_shape::DeserializeEnumShape;
 use serde_shape::DeserializeShape;
@@ -32,11 +34,12 @@ use serde_shape::ShapeId;
 use serde_shape::ShapeRef;
 use serde_shape::Tagging;
 use serde_shape::UnionShape;
+use toml_edit::DocumentMut;
 
 #[derive(Clone, Debug, Eq, PartialEq)]
 struct EnvOption {
     env_name: String,
-    config_path: String,
+    path: Vec<String>,
     value_kind: String,
     optional: bool,
     condition: Option<String>,
@@ -177,6 +180,25 @@ struct OpentelemetryMetricsConfig {
     push_interval: HumanDuration,
 }
 
+#[derive(Debug, Deserialize, DeserializeShape, PartialEq)]
+#[serde(deny_unknown_fields)]
+struct ClientConfig {
+    transport: Transport,
+}
+
+#[derive(Debug, Deserialize, DeserializeShape, PartialEq)]
+#[serde(tag = "kind", rename_all = "snake_case")]
+enum Transport {
+    Tcp(TcpTransport),
+}
+
+#[derive(Debug, Deserialize, DeserializeShape, PartialEq)]
+#[serde(deny_unknown_fields)]
+struct TcpTransport {
+    host: String,
+    port: u16,
+}
+
 #[derive(Clone, Copy, Debug)]
 struct ByteSize(u64);
 
@@ -247,6 +269,58 @@ fn snapshots_env_options() {
     insta::assert_debug_snapshot!(env_options::<Config>("PERCAS_CONFIG"));
 }
 
+#[test]
+fn edits_an_internally_tagged_newtype_variant_through_generated_paths() {
+    let options = env_options::<ClientConfig>("APP_CONFIG");
+    let mut document = r#"
+        [transport]
+        kind = "tcp"
+        host = "localhost"
+        port = 8080
+    "#
+    .parse::<DocumentMut>()
+    .expect("config should be valid TOML");
+
+    let overrides = [
+        (
+            "APP_CONFIG_TRANSPORT_KIND",
+            toml_edit::value("tcp"),
+            ["transport", "kind"],
+        ),
+        (
+            "APP_CONFIG_TRANSPORT_HOST",
+            toml_edit::value("example.com"),
+            ["transport", "host"],
+        ),
+        (
+            "APP_CONFIG_TRANSPORT_PORT",
+            toml_edit::value(443),
+            ["transport", "port"],
+        ),
+    ];
+
+    for (env_name, value, expected_path) in overrides {
+        let option = options
+            .iter()
+            .find(|option| option.env_name == env_name)
+            .expect("generated environment option should exist");
+        assert_eq!(option.path, expected_path);
+        set_toml_path(&mut document, &option.path, value);
+    }
+
+    let config = ClientConfig::deserialize(document.into_deserializer())
+        .expect("edited TOML should deserialize");
+    assert_eq!(
+        config,
+        ClientConfig {
+            transport: Transport::Tcp(TcpTransport {
+                host: "example.com".to_owned(),
+                port: 443,
+            }),
+        }
+    );
+}
+
 fn env_options<T: DeserializeShape>(env_prefix: &str) -> Vec<EnvOption> {
     let shape = DeserializeShapeGraph::for_type::<T>();
     let mut collector = EnvCollector {
@@ -261,7 +335,7 @@ fn env_options<T: DeserializeShape>(env_prefix: &str) -> Vec<EnvOption> {
 struct EnvCollector<'a> {
     shape: &'a DeserializeShapeGraph,
     env_prefix: &'a str,
-    options: BTreeMap<String, EnvOption>,
+    options: BTreeMap<Vec<String>, EnvOption>,
 }
 
 impl EnvCollector<'_> {
@@ -412,6 +486,16 @@ impl EnvCollector<'_> {
 
                 match &variant.content {
                     DeserializeVariantContent::Omitted => {}
+                    DeserializeVariantContent::Fields(fields)
+                        if variant.style == FieldsStyle::Newtype && fields.len() == 1 =>
+                    {
+                        self.visit_newtype_wire_shape(
+                            &fields[0].wire_shape,
+                            path,
+                            optional,
+                            variant_condition,
+                        );
+                    }
                     DeserializeVariantContent::Fields(fields) => {
                         for field in fields {
                             self.visit_field_wire_shape(
@@ -578,12 +662,12 @@ impl EnvCollector<'_> {
             return;
         }
 
-        let config_path = path.join(".");
+        let path = path.to_vec();
         self.options
-            .entry(config_path.clone())
+            .entry(path.clone())
             .or_insert_with(|| EnvOption {
-                env_name: env_name(self.env_prefix, path),
-                config_path,
+                env_name: env_name(self.env_prefix, &path),
+                path,
                 value_kind: value_kind.to_owned(),
                 optional,
                 condition,
@@ -595,6 +679,15 @@ fn appended_path(path: &[String], segment: &str) -> Vec<String> {
     let mut path = path.to_owned();
     path.push(segment.to_owned());
     path
+}
+
+fn set_toml_path(document: &mut DocumentMut, path: &[String], value: toml_edit::Item) {
+    let (key, parents) = path.split_last().expect("config path should not be empty");
+    let mut current = document.as_item_mut();
+    for parent in parents {
+        current = &mut current[parent.as_str()];
+    }
+    current[key.as_str()] = value;
 }
 
 fn merge_conditions(existing: Option<&str>, new: &str) -> String {
