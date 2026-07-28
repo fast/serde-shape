@@ -476,7 +476,7 @@ pub struct DeserializeTypeName {
 }
 
 /// A reference to a shape node.
-#[derive(Clone, Debug, Eq, PartialEq)]
+#[derive(Clone, Debug, Eq, Ord, PartialEq, PartialOrd)]
 #[non_exhaustive]
 pub enum ShapeRef {
     /// Unit shape.
@@ -537,7 +537,7 @@ pub enum ShapeRef {
     },
     /// Tuple shape.
     Tuple(Vec<ShapeRef>),
-    /// A union of two or more distinct possible value shapes.
+    /// A normalized union of two or more possible value shapes.
     ///
     /// Construct unions with [`ShapeRef::union`] or [`ShapeRef::try_union`].
     Union(UnionShape),
@@ -548,10 +548,10 @@ pub enum ShapeRef {
 }
 
 impl ShapeRef {
-    /// Build a union from one or more possible value shapes.
+    /// Build a normalized union from one or more possible value shapes.
     ///
-    /// Nested unions are flattened and duplicate alternatives are removed while retaining their
-    /// first-occurrence order. A single distinct alternative is returned directly.
+    /// Nested unions are flattened, duplicate alternatives are removed, and alternatives are
+    /// sorted into a canonical order. A single distinct alternative is returned directly.
     ///
     /// # Panics
     ///
@@ -564,33 +564,30 @@ impl ShapeRef {
         Self::try_union(alternatives).expect("shape union requires at least one alternative")
     }
 
-    /// Try to build a union from possible value shapes.
+    /// Try to build a normalized union from possible value shapes.
     ///
     /// Returns `None` when `alternatives` is empty. Nested unions are flattened, duplicate
-    /// alternatives are removed while retaining their first-occurrence order, and a single
+    /// alternatives are removed, and alternatives are sorted into a canonical order. A single
     /// distinct alternative is returned directly.
     pub fn try_union<I>(alternatives: I) -> Option<Self>
     where
         I: IntoIterator<Item = Self>,
     {
-        let mut unique_alternatives = Vec::new();
+        let mut normalized = Vec::new();
         for alternative in alternatives {
             match alternative {
-                Self::Union(union) => {
-                    for alternative in union.alternatives {
-                        push_unique(&mut unique_alternatives, alternative);
-                    }
-                }
-                alternative => push_unique(&mut unique_alternatives, alternative),
+                Self::Union(union) => normalized.extend(union.alternatives),
+                alternative => normalized.push(alternative),
             }
         }
+        let mut alternatives = normalized;
+        alternatives.sort();
+        alternatives.dedup();
 
-        match unique_alternatives.len() {
+        match alternatives.len() {
             0 => None,
-            1 => unique_alternatives.pop(),
-            _ => Some(Self::Union(UnionShape {
-                alternatives: unique_alternatives,
-            })),
+            1 => alternatives.pop(),
+            _ => Some(Self::Union(UnionShape { alternatives })),
         }
     }
 
@@ -638,24 +635,18 @@ impl ShapeRef {
     }
 }
 
-fn push_unique(alternatives: &mut Vec<ShapeRef>, alternative: ShapeRef) {
-    if !alternatives.contains(&alternative) {
-        alternatives.push(alternative);
-    }
-}
-
-/// The distinct alternatives contained by [`ShapeRef::Union`].
+/// The normalized alternatives contained by [`ShapeRef::Union`].
 ///
-/// A union always contains at least two distinct alternatives in first-occurrence order. Use
+/// A union always contains at least two distinct alternatives in canonical order. Use
 /// [`ShapeRef::union`] or [`ShapeRef::try_union`] to construct one. Alternatives may overlap; a
 /// union means that any alternative is possible, not that exactly one alternative must match.
-#[derive(Clone, Eq, PartialEq)]
+#[derive(Clone, Eq, Ord, PartialEq, PartialOrd)]
 pub struct UnionShape {
     alternatives: Vec<ShapeRef>,
 }
 
 impl UnionShape {
-    /// Return the union alternatives in first-occurrence order.
+    /// Return the canonical union alternatives.
     pub fn alternatives(&self) -> &[ShapeRef] {
         &self.alternatives
     }
@@ -949,7 +940,7 @@ impl DefaultShape {
 }
 
 /// Shape intentionally left opaque.
-#[derive(Clone, Debug, Eq, PartialEq)]
+#[derive(Clone, Debug, Eq, Ord, PartialEq, PartialOrd)]
 pub struct OpaqueShape {
     /// The Rust type or Serde item that is opaque.
     pub type_name: &'static str,
@@ -960,7 +951,7 @@ pub struct OpaqueShape {
 }
 
 /// Reason a shape cannot be represented precisely.
-#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+#[derive(Clone, Copy, Debug, Eq, Ord, PartialEq, PartialOrd)]
 pub enum OpaqueReason {
     /// The type uses `#[serde(from = "...")]`.
     FromType,

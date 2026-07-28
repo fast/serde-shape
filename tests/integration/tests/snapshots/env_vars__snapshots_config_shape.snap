@@ -225,7 +225,6 @@ DeserializeShapeGraph {
                             wire_shape: Value(
                                 Union(
                                     [
-                                        String,
                                         I8,
                                         I16,
                                         I32,
@@ -238,6 +237,7 @@ DeserializeShapeGraph {
                                         U64,
                                         U128,
                                         Usize,
+                                        String,
                                     ],
                                 ),
                             ),
@@ -256,7 +256,6 @@ DeserializeShapeGraph {
                             wire_shape: Value(
                                 Union(
                                     [
-                                        String,
                                         I8,
                                         I16,
                                         I32,
@@ -269,6 +268,7 @@ DeserializeShapeGraph {
                                         U64,
                                         U128,
                                         Usize,
+                                        String,
                                     ],
                                 ),
                             ),
@@ -999,7 +999,6 @@ DeserializeShapeGraph {
                             wire_shape: Value(
                                 Union(
                                     [
-                                        String,
                                         I8,
                                         I16,
                                         I32,
@@ -1012,6 +1011,7 @@ DeserializeShapeGraph {
                                         U64,
                                         U128,
                                         Usize,
+                                        String,
                                     ],
                                 ),
                             ),

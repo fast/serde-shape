@@ -50,6 +50,10 @@ fn classifies_union_numeric_shapes() {
 fn normalizes_union_shapes() {
     assert_eq!(ShapeRef::try_union([]), None);
     assert_eq!(ShapeRef::union([ShapeRef::String]), ShapeRef::String);
+    assert_eq!(
+        ShapeRef::union([ShapeRef::String, ShapeRef::I8]),
+        ShapeRef::union([ShapeRef::I8, ShapeRef::String])
+    );
 
     let union = ShapeRef::union([
         ShapeRef::String,
@@ -62,7 +66,7 @@ fn normalizes_union_shapes() {
     };
     assert_eq!(
         union.alternatives(),
-        &[ShapeRef::String, ShapeRef::I8, ShapeRef::U64]
+        &[ShapeRef::I8, ShapeRef::U64, ShapeRef::String]
     );
 }
 
