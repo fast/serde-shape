@@ -24,10 +24,7 @@ use core::cmp::Reverse;
 use core::num::Wrapping;
 
 use crate::DeserializeShapeGraph;
-use crate::OpaqueReason;
-use crate::OpaqueShape;
 use crate::SerializeShapeGraph;
-use crate::ShapeId;
 use crate::ShapeRef;
 
 #[test]
@@ -53,10 +50,6 @@ fn classifies_union_numeric_shapes() {
 fn normalizes_union_shapes() {
     assert_eq!(ShapeRef::try_union([]), None);
     assert_eq!(ShapeRef::union([ShapeRef::String]), ShapeRef::String);
-    assert_eq!(
-        ShapeRef::union([ShapeRef::String, ShapeRef::I8]),
-        ShapeRef::union([ShapeRef::I8, ShapeRef::String])
-    );
 
     let union = ShapeRef::union([
         ShapeRef::String,
@@ -69,61 +62,7 @@ fn normalizes_union_shapes() {
     };
     assert_eq!(
         union.alternatives(),
-        &[ShapeRef::I8, ShapeRef::U64, ShapeRef::String]
-    );
-}
-
-#[test]
-fn normalizes_compound_union_shapes_independent_of_input_order() {
-    let alternatives = [
-        ShapeRef::Option(Box::new(ShapeRef::union([ShapeRef::String, ShapeRef::I8]))),
-        ShapeRef::Option(Box::new(ShapeRef::union([ShapeRef::U64, ShapeRef::I8]))),
-        ShapeRef::Seq(Box::new(ShapeRef::String)),
-        ShapeRef::Seq(Box::new(ShapeRef::I8)),
-        ShapeRef::Array {
-            item: Box::new(ShapeRef::I8),
-            len: 2,
-        },
-        ShapeRef::Array {
-            item: Box::new(ShapeRef::I8),
-            len: 1,
-        },
-        ShapeRef::Array {
-            item: Box::new(ShapeRef::String),
-            len: 1,
-        },
-        ShapeRef::Map {
-            key: Box::new(ShapeRef::I8),
-            value: Box::new(ShapeRef::String),
-        },
-        ShapeRef::Map {
-            key: Box::new(ShapeRef::I8),
-            value: Box::new(ShapeRef::U64),
-        },
-        ShapeRef::Tuple([ShapeRef::I8].into()),
-        ShapeRef::Tuple([ShapeRef::I8, ShapeRef::String].into()),
-        ShapeRef::Definition(ShapeId(2)),
-        ShapeRef::Definition(ShapeId(1)),
-        ShapeRef::Opaque(OpaqueShape {
-            type_name: "opaque",
-            reason: OpaqueReason::Unsupported,
-            detail: None,
-        }),
-        ShapeRef::Opaque(OpaqueShape {
-            type_name: "opaque",
-            reason: OpaqueReason::CustomDeserializer,
-            detail: Some("z"),
-        }),
-        ShapeRef::Opaque(OpaqueShape {
-            type_name: "opaque",
-            reason: OpaqueReason::CustomDeserializer,
-            detail: Some("handler"),
-        }),
-    ];
-
-    assert_eq!(
-        ShapeRef::union(alternatives.clone()),
-        ShapeRef::union(alternatives.into_iter().rev())
+        &[ShapeRef::String, ShapeRef::I8, ShapeRef::U64]
     );
 }
 

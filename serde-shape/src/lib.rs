@@ -197,7 +197,6 @@ extern crate std;
 use alloc::boxed::Box;
 use alloc::collections::BTreeMap;
 use alloc::vec::Vec;
-use core::cmp::Ordering;
 use core::fmt;
 
 /// Private exports used by generated derive code.
@@ -538,7 +537,7 @@ pub enum ShapeRef {
     },
     /// Tuple shape.
     Tuple(Vec<ShapeRef>),
-    /// A normalized union of two or more possible value shapes.
+    /// A union of two or more distinct possible value shapes.
     ///
     /// Construct unions with [`ShapeRef::union`] or [`ShapeRef::try_union`].
     Union(UnionShape),
@@ -549,10 +548,10 @@ pub enum ShapeRef {
 }
 
 impl ShapeRef {
-    /// Build a normalized union from one or more possible value shapes.
+    /// Build a union from one or more possible value shapes.
     ///
-    /// Nested unions are flattened, duplicate alternatives are removed, and alternatives are
-    /// sorted into a canonical order. A single distinct alternative is returned directly.
+    /// Nested unions are flattened and duplicate alternatives are removed while retaining their
+    /// first-occurrence order. A single distinct alternative is returned directly.
     ///
     /// # Panics
     ///
@@ -565,30 +564,33 @@ impl ShapeRef {
         Self::try_union(alternatives).expect("shape union requires at least one alternative")
     }
 
-    /// Try to build a normalized union from possible value shapes.
+    /// Try to build a union from possible value shapes.
     ///
     /// Returns `None` when `alternatives` is empty. Nested unions are flattened, duplicate
-    /// alternatives are removed, and alternatives are sorted into a canonical order. A single
+    /// alternatives are removed while retaining their first-occurrence order, and a single
     /// distinct alternative is returned directly.
     pub fn try_union<I>(alternatives: I) -> Option<Self>
     where
         I: IntoIterator<Item = Self>,
     {
-        let mut normalized = Vec::new();
+        let mut unique_alternatives = Vec::new();
         for alternative in alternatives {
             match alternative {
-                Self::Union(union) => normalized.extend(union.alternatives),
-                alternative => normalized.push(alternative),
+                Self::Union(union) => {
+                    for alternative in union.alternatives {
+                        push_unique(&mut unique_alternatives, alternative);
+                    }
+                }
+                alternative => push_unique(&mut unique_alternatives, alternative),
             }
         }
-        let mut alternatives = normalized;
-        alternatives.sort_by(compare_shape_refs);
-        alternatives.dedup();
 
-        match alternatives.len() {
+        match unique_alternatives.len() {
             0 => None,
-            1 => alternatives.pop(),
-            _ => Some(Self::Union(UnionShape { alternatives })),
+            1 => unique_alternatives.pop(),
+            _ => Some(Self::Union(UnionShape {
+                alternatives: unique_alternatives,
+            })),
         }
     }
 
@@ -636,127 +638,15 @@ impl ShapeRef {
     }
 }
 
-fn compare_shape_refs(left: &ShapeRef, right: &ShapeRef) -> Ordering {
-    shape_ref_rank(left)
-        .cmp(&shape_ref_rank(right))
-        .then_with(|| match (left, right) {
-            (ShapeRef::Unit, ShapeRef::Unit)
-            | (ShapeRef::Bool, ShapeRef::Bool)
-            | (ShapeRef::Char, ShapeRef::Char)
-            | (ShapeRef::I8, ShapeRef::I8)
-            | (ShapeRef::I16, ShapeRef::I16)
-            | (ShapeRef::I32, ShapeRef::I32)
-            | (ShapeRef::I64, ShapeRef::I64)
-            | (ShapeRef::I128, ShapeRef::I128)
-            | (ShapeRef::Isize, ShapeRef::Isize)
-            | (ShapeRef::U8, ShapeRef::U8)
-            | (ShapeRef::U16, ShapeRef::U16)
-            | (ShapeRef::U32, ShapeRef::U32)
-            | (ShapeRef::U64, ShapeRef::U64)
-            | (ShapeRef::U128, ShapeRef::U128)
-            | (ShapeRef::Usize, ShapeRef::Usize)
-            | (ShapeRef::F32, ShapeRef::F32)
-            | (ShapeRef::F64, ShapeRef::F64)
-            | (ShapeRef::String, ShapeRef::String)
-            | (ShapeRef::Bytes, ShapeRef::Bytes) => Ordering::Equal,
-            (ShapeRef::Option(left), ShapeRef::Option(right))
-            | (ShapeRef::Seq(left), ShapeRef::Seq(right)) => compare_shape_refs(left, right),
-            (
-                ShapeRef::Array {
-                    item: left_item,
-                    len: left_len,
-                },
-                ShapeRef::Array {
-                    item: right_item,
-                    len: right_len,
-                },
-            ) => compare_shape_refs(left_item, right_item).then_with(|| left_len.cmp(right_len)),
-            (
-                ShapeRef::Map {
-                    key: left_key,
-                    value: left_value,
-                },
-                ShapeRef::Map {
-                    key: right_key,
-                    value: right_value,
-                },
-            ) => compare_shape_refs(left_key, right_key)
-                .then_with(|| compare_shape_refs(left_value, right_value)),
-            (ShapeRef::Tuple(left), ShapeRef::Tuple(right)) => {
-                compare_shape_ref_slices(left, right)
-            }
-            (ShapeRef::Union(left), ShapeRef::Union(right)) => {
-                compare_shape_ref_slices(&left.alternatives, &right.alternatives)
-            }
-            (ShapeRef::Definition(left), ShapeRef::Definition(right)) => left.0.cmp(&right.0),
-            (ShapeRef::Opaque(left), ShapeRef::Opaque(right)) => left
-                .type_name
-                .cmp(right.type_name)
-                .then_with(|| {
-                    opaque_reason_rank(left.reason).cmp(&opaque_reason_rank(right.reason))
-                })
-                .then_with(|| left.detail.cmp(&right.detail)),
-            _ => unreachable!("equal shape ranks must identify the same variant"),
-        })
-}
-
-fn compare_shape_ref_slices(left: &[ShapeRef], right: &[ShapeRef]) -> Ordering {
-    left.iter()
-        .zip(right)
-        .find_map(|(left, right)| {
-            let ordering = compare_shape_refs(left, right);
-            (ordering != Ordering::Equal).then_some(ordering)
-        })
-        .unwrap_or_else(|| left.len().cmp(&right.len()))
-}
-
-fn shape_ref_rank(shape: &ShapeRef) -> u8 {
-    match shape {
-        ShapeRef::Unit => 0,
-        ShapeRef::Bool => 1,
-        ShapeRef::Char => 2,
-        ShapeRef::I8 => 3,
-        ShapeRef::I16 => 4,
-        ShapeRef::I32 => 5,
-        ShapeRef::I64 => 6,
-        ShapeRef::I128 => 7,
-        ShapeRef::Isize => 8,
-        ShapeRef::U8 => 9,
-        ShapeRef::U16 => 10,
-        ShapeRef::U32 => 11,
-        ShapeRef::U64 => 12,
-        ShapeRef::U128 => 13,
-        ShapeRef::Usize => 14,
-        ShapeRef::F32 => 15,
-        ShapeRef::F64 => 16,
-        ShapeRef::String => 17,
-        ShapeRef::Bytes => 18,
-        ShapeRef::Option(_) => 19,
-        ShapeRef::Seq(_) => 20,
-        ShapeRef::Array { .. } => 21,
-        ShapeRef::Map { .. } => 22,
-        ShapeRef::Tuple(_) => 23,
-        ShapeRef::Union(_) => 24,
-        ShapeRef::Definition(_) => 25,
-        ShapeRef::Opaque(_) => 26,
+fn push_unique(alternatives: &mut Vec<ShapeRef>, alternative: ShapeRef) {
+    if !alternatives.contains(&alternative) {
+        alternatives.push(alternative);
     }
 }
 
-fn opaque_reason_rank(reason: OpaqueReason) -> u8 {
-    match reason {
-        OpaqueReason::FromType => 0,
-        OpaqueReason::TryFromType => 1,
-        OpaqueReason::IntoType => 2,
-        OpaqueReason::Remote => 3,
-        OpaqueReason::CustomSerializer => 4,
-        OpaqueReason::CustomDeserializer => 5,
-        OpaqueReason::Unsupported => 6,
-    }
-}
-
-/// The normalized alternatives contained by [`ShapeRef::Union`].
+/// The distinct alternatives contained by [`ShapeRef::Union`].
 ///
-/// A union always contains at least two distinct alternatives in canonical order. Use
+/// A union always contains at least two distinct alternatives in first-occurrence order. Use
 /// [`ShapeRef::union`] or [`ShapeRef::try_union`] to construct one. Alternatives may overlap; a
 /// union means that any alternative is possible, not that exactly one alternative must match.
 #[derive(Clone, Eq, PartialEq)]
@@ -765,7 +655,7 @@ pub struct UnionShape {
 }
 
 impl UnionShape {
-    /// Return the canonical union alternatives.
+    /// Return the union alternatives in first-occurrence order.
     pub fn alternatives(&self) -> &[ShapeRef] {
         &self.alternatives
     }
