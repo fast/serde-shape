@@ -126,7 +126,6 @@ struct TelemetryConfig {
 }
 
 #[derive(DeserializeShape)]
-#[serde(deny_unknown_fields)]
 struct LogsConfig {
     #[serde(flatten)]
     sink: LogSink,
@@ -197,6 +196,21 @@ enum Transport {
 struct TcpTransport {
     host: String,
     port: u16,
+    #[serde(rename = "tls.version")]
+    tls_version: String,
+}
+
+#[derive(Debug, Deserialize, DeserializeShape, PartialEq)]
+#[serde(deny_unknown_fields)]
+struct ModeConfig {
+    mode: ExecutionMode,
+}
+
+#[derive(Debug, Deserialize, DeserializeShape, PartialEq)]
+#[serde(tag = "kind", rename_all = "snake_case")]
+enum ExecutionMode {
+    Fast,
+    Safe,
 }
 
 #[derive(Clone, Copy, Debug)]
@@ -277,6 +291,7 @@ fn edits_an_internally_tagged_newtype_variant_through_generated_paths() {
         kind = "tcp"
         host = "localhost"
         port = 8080
+        "tls.version" = "1.2"
     "#
     .parse::<DocumentMut>()
     .expect("config should be valid TOML");
@@ -297,6 +312,11 @@ fn edits_an_internally_tagged_newtype_variant_through_generated_paths() {
             toml_edit::value(443),
             ["transport", "port"],
         ),
+        (
+            "APP_CONFIG_TRANSPORT_TLS_VERSION",
+            toml_edit::value("1.3"),
+            ["transport", "tls.version"],
+        ),
     ];
 
     for (env_name, value, expected_path) in overrides {
@@ -316,7 +336,36 @@ fn edits_an_internally_tagged_newtype_variant_through_generated_paths() {
             transport: Transport::Tcp(TcpTransport {
                 host: "example.com".to_owned(),
                 port: 443,
+                tls_version: "1.3".to_owned(),
             }),
+        }
+    );
+}
+
+#[test]
+fn edits_an_internally_tagged_unit_enum_through_its_tag_path() {
+    let options = env_options::<ModeConfig>("APP_CONFIG");
+    let option = options
+        .iter()
+        .find(|option| option.env_name == "APP_CONFIG_MODE_KIND")
+        .expect("generated tag option should exist");
+    assert_eq!(option.path, ["mode", "kind"]);
+    assert_eq!(option.value_kind, "enum[fast|safe]");
+
+    let mut document = r#"
+        [mode]
+        kind = "fast"
+    "#
+    .parse::<DocumentMut>()
+    .expect("config should be valid TOML");
+    set_toml_path(&mut document, &option.path, toml_edit::value("safe"));
+
+    let config = ModeConfig::deserialize(document.into_deserializer())
+        .expect("edited TOML should deserialize");
+    assert_eq!(
+        config,
+        ModeConfig {
+            mode: ExecutionMode::Safe,
         }
     );
 }
@@ -454,11 +503,14 @@ impl EnvCollector<'_> {
             .map(|variant| variant.name)
             .collect::<Vec<_>>();
 
-        if shape
+        let all_variants_are_unit = shape
             .variants
             .iter()
+            .filter(|variant| !matches!(&variant.content, DeserializeVariantContent::Omitted))
             .all(|variant| variant.style == FieldsStyle::Unit)
-        {
+            && !variants.is_empty();
+
+        if matches!(&shape.repr, Tagging::External) && all_variants_are_unit {
             self.push_leaf(
                 path,
                 &format!("enum[{}]", variants.join("|")),

@@ -703,7 +703,7 @@ DeserializeShapeGraph {
                     ],
                     attributes: DeserializeContainerAttributes {
                         tagging: External,
-                        deny_unknown_fields: true,
+                        deny_unknown_fields: false,
                         default: None,
                         has_flatten: true,
                         transparent: false,
