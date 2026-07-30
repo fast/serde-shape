@@ -29,14 +29,10 @@ DeserializeShapeGraph {
                             aliases: [
                                 "name",
                             ],
-                            value_shape: Some(
+                            wire_shape: Value(
                                 String,
                             ),
                             default: None,
-                            flatten: false,
-                            skip: false,
-                            custom_deserializer: false,
-                            transparent: false,
                         },
                         DeserializeFieldShape {
                             member: Named(
@@ -46,7 +42,7 @@ DeserializeShapeGraph {
                             aliases: [
                                 "values",
                             ],
-                            value_shape: Some(
+                            wire_shape: Value(
                                 Seq(
                                     Option(
                                         U16,
@@ -54,10 +50,6 @@ DeserializeShapeGraph {
                                 ),
                             ),
                             default: None,
-                            flatten: false,
-                            skip: false,
-                            custom_deserializer: false,
-                            transparent: false,
                         },
                         DeserializeFieldShape {
                             member: Named(
@@ -67,7 +59,7 @@ DeserializeShapeGraph {
                             aliases: [
                                 "child",
                             ],
-                            value_shape: Some(
+                            wire_shape: Value(
                                 Option(
                                     Definition(
                                         ShapeId(
@@ -77,10 +69,6 @@ DeserializeShapeGraph {
                                 ),
                             ),
                             default: None,
-                            flatten: false,
-                            skip: false,
-                            custom_deserializer: false,
-                            transparent: false,
                         },
                     ],
                     attributes: DeserializeContainerAttributes {

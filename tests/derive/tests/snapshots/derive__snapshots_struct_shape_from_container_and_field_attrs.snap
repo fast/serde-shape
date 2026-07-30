@@ -29,14 +29,10 @@ DeserializeShapeGraph {
                             aliases: [
                                 "http-port",
                             ],
-                            value_shape: Some(
+                            wire_shape: Value(
                                 U16,
                             ),
                             default: None,
-                            flatten: false,
-                            skip: false,
-                            custom_deserializer: false,
-                            transparent: false,
                         },
                         DeserializeFieldShape {
                             member: Named(
@@ -47,16 +43,12 @@ DeserializeShapeGraph {
                                 "api-url",
                                 "endpoint",
                             ],
-                            value_shape: Some(
+                            wire_shape: Value(
                                 Option(
                                     String,
                                 ),
                             ),
                             default: None,
-                            flatten: false,
-                            skip: false,
-                            custom_deserializer: false,
-                            transparent: false,
                         },
                         DeserializeFieldShape {
                             member: Named(
@@ -66,16 +58,12 @@ DeserializeShapeGraph {
                             aliases: [
                                 "retries",
                             ],
-                            value_shape: Some(
+                            wire_shape: Value(
                                 U8,
                             ),
                             default: Path(
                                 "default_retries",
                             ),
-                            flatten: false,
-                            skip: false,
-                            custom_deserializer: false,
-                            transparent: false,
                         },
                         DeserializeFieldShape {
                             member: Named(
@@ -85,7 +73,7 @@ DeserializeShapeGraph {
                             aliases: [
                                 "storage",
                             ],
-                            value_shape: Some(
+                            wire_shape: Flatten(
                                 Definition(
                                     ShapeId(
                                         1,
@@ -93,10 +81,6 @@ DeserializeShapeGraph {
                                 ),
                             ),
                             default: None,
-                            flatten: true,
-                            skip: false,
-                            custom_deserializer: false,
-                            transparent: false,
                         },
                         DeserializeFieldShape {
                             member: Named(
@@ -106,12 +90,8 @@ DeserializeShapeGraph {
                             aliases: [
                                 "skipped",
                             ],
-                            value_shape: None,
+                            wire_shape: Omitted,
                             default: None,
-                            flatten: false,
-                            skip: true,
-                            custom_deserializer: false,
-                            transparent: false,
                         },
                         DeserializeFieldShape {
                             member: Named(
@@ -121,12 +101,18 @@ DeserializeShapeGraph {
                             aliases: [
                                 "secret",
                             ],
-                            value_shape: None,
+                            wire_shape: Value(
+                                Opaque(
+                                    OpaqueShape {
+                                        type_name: "derive::NotShape",
+                                        reason: CustomDeserializer,
+                                        detail: Some(
+                                            "custom_secret",
+                                        ),
+                                    },
+                                ),
+                            ),
                             default: None,
-                            flatten: false,
-                            skip: false,
-                            custom_deserializer: true,
-                            transparent: false,
                         },
                     ],
                     attributes: DeserializeContainerAttributes {
@@ -165,27 +151,23 @@ DeserializeShapeGraph {
                                 "s3-compatible",
                             ],
                             style: Struct,
-                            fields: [
-                                DeserializeFieldShape {
-                                    member: Named(
-                                        "bucket_name",
-                                    ),
-                                    name: "bucket-name",
-                                    aliases: [
-                                        "bucket-name",
-                                    ],
-                                    value_shape: Some(
-                                        String,
-                                    ),
-                                    default: None,
-                                    flatten: false,
-                                    skip: false,
-                                    custom_deserializer: false,
-                                    transparent: false,
-                                },
-                            ],
-                            skip: false,
-                            custom_deserializer: false,
+                            content: Fields(
+                                [
+                                    DeserializeFieldShape {
+                                        member: Named(
+                                            "bucket_name",
+                                        ),
+                                        name: "bucket-name",
+                                        aliases: [
+                                            "bucket-name",
+                                        ],
+                                        wire_shape: Value(
+                                            String,
+                                        ),
+                                        default: None,
+                                    },
+                                ],
+                            ),
                             other: false,
                             untagged: false,
                         },
@@ -196,27 +178,23 @@ DeserializeShapeGraph {
                                 "az-blob",
                             ],
                             style: Struct,
-                            fields: [
-                                DeserializeFieldShape {
-                                    member: Named(
-                                        "container_name",
-                                    ),
-                                    name: "container-name",
-                                    aliases: [
-                                        "container-name",
-                                    ],
-                                    value_shape: Some(
-                                        String,
-                                    ),
-                                    default: None,
-                                    flatten: false,
-                                    skip: false,
-                                    custom_deserializer: false,
-                                    transparent: false,
-                                },
-                            ],
-                            skip: false,
-                            custom_deserializer: false,
+                            content: Fields(
+                                [
+                                    DeserializeFieldShape {
+                                        member: Named(
+                                            "container_name",
+                                        ),
+                                        name: "container-name",
+                                        aliases: [
+                                            "container-name",
+                                        ],
+                                        wire_shape: Value(
+                                            String,
+                                        ),
+                                        default: None,
+                                    },
+                                ],
+                            ),
                             other: false,
                             untagged: false,
                         },
@@ -227,9 +205,9 @@ DeserializeShapeGraph {
                                 "other",
                             ],
                             style: Unit,
-                            fields: [],
-                            skip: false,
-                            custom_deserializer: false,
+                            content: Fields(
+                                [],
+                            ),
                             other: true,
                             untagged: false,
                         },

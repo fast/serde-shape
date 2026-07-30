@@ -26,39 +26,31 @@ SerializeShapeGraph {
                                 "name",
                             ),
                             name: "name",
-                            value_shape: Some(
+                            wire_shape: Value(
                                 String,
                             ),
-                            flatten: false,
-                            skip: false,
                             skip_if: None,
-                            custom_serializer: false,
-                            transparent: false,
                         },
                         SerializeFieldShape {
                             member: Named(
                                 "values",
                             ),
                             name: "values",
-                            value_shape: Some(
+                            wire_shape: Value(
                                 Seq(
                                     Option(
                                         U16,
                                     ),
                                 ),
                             ),
-                            flatten: false,
-                            skip: false,
                             skip_if: None,
-                            custom_serializer: false,
-                            transparent: false,
                         },
                         SerializeFieldShape {
                             member: Named(
                                 "child",
                             ),
                             name: "child",
-                            value_shape: Some(
+                            wire_shape: Value(
                                 Option(
                                     Definition(
                                         ShapeId(
@@ -67,11 +59,7 @@ SerializeShapeGraph {
                                     ),
                                 ),
                             ),
-                            flatten: false,
-                            skip: false,
                             skip_if: None,
-                            custom_serializer: false,
-                            transparent: false,
                         },
                     ],
                     attributes: SerializeContainerAttributes {

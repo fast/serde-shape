@@ -29,14 +29,10 @@ DeserializeShapeGraph {
                             aliases: [
                                 "marker",
                             ],
-                            value_shape: Some(
+                            wire_shape: Value(
                                 Unit,
                             ),
                             default: None,
-                            flatten: false,
-                            skip: false,
-                            custom_deserializer: false,
-                            transparent: false,
                         },
                     ],
                     attributes: DeserializeContainerAttributes {

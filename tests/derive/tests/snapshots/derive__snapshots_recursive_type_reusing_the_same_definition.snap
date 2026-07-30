@@ -29,7 +29,7 @@ DeserializeShapeGraph {
                             aliases: [
                                 "child",
                             ],
-                            value_shape: Some(
+                            wire_shape: Value(
                                 Option(
                                     Definition(
                                         ShapeId(
@@ -39,10 +39,6 @@ DeserializeShapeGraph {
                                 ),
                             ),
                             default: None,
-                            flatten: false,
-                            skip: false,
-                            custom_deserializer: false,
-                            transparent: false,
                         },
                     ],
                     attributes: DeserializeContainerAttributes {

@@ -41,8 +41,11 @@ clap = { version = "4.6.1" }
 insta = { version = "1.48.0" }
 proc-macro2 = { version = "1.0.95" }
 quote = { version = "1.0.40" }
+serde = { version = "1.0.229", features = ["derive"] }
 serde_derive_internals = { version = "0.29.1" }
+serde_json = { version = "1.0.151" }
 syn = { version = "2.0.104" }
+toml_edit = { version = "0.25.13", features = ["serde"] }
 which = { version = "8.0.4" }
 
 [workspace.lints.rust]

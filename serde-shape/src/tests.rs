@@ -38,6 +38,38 @@ fn classifies_flat_numeric_shapes() {
     assert!(!ShapeRef::String.is_number());
 }
 
+#[test]
+fn classifies_union_numeric_shapes() {
+    assert!(ShapeRef::union([ShapeRef::I8, ShapeRef::U64]).is_integer());
+    assert!(ShapeRef::union([ShapeRef::F32, ShapeRef::F64]).is_float());
+    assert!(ShapeRef::union([ShapeRef::I16, ShapeRef::F64]).is_number());
+    assert!(!ShapeRef::union([ShapeRef::String, ShapeRef::U64]).is_integer());
+}
+
+#[test]
+fn normalizes_union_shapes() {
+    assert_eq!(ShapeRef::try_union([]), None);
+    assert_eq!(ShapeRef::union([ShapeRef::String]), ShapeRef::String);
+    assert_eq!(
+        ShapeRef::union([ShapeRef::String, ShapeRef::I8]),
+        ShapeRef::union([ShapeRef::I8, ShapeRef::String])
+    );
+
+    let union = ShapeRef::union([
+        ShapeRef::String,
+        ShapeRef::I8,
+        ShapeRef::union([ShapeRef::U64, ShapeRef::String]),
+        ShapeRef::I8,
+    ]);
+    let ShapeRef::Union(union) = union else {
+        panic!("multiple distinct alternatives should produce a union");
+    };
+    assert_eq!(
+        union.alternatives(),
+        &[ShapeRef::I8, ShapeRef::U64, ShapeRef::String]
+    );
+}
+
 #[cfg(target_has_atomic = "ptr")]
 #[test]
 fn maps_atomic_shapes() {

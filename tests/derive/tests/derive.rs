@@ -16,9 +16,14 @@
 
 use serde_shape::DeserializeDefinitionKind;
 use serde_shape::DeserializeShape;
+use serde_shape::DeserializeVariantContent;
 use serde_shape::FieldMember;
+use serde_shape::FieldWireShape;
+use serde_shape::OpaqueReason;
 use serde_shape::SerializeDefinitionKind;
 use serde_shape::SerializeShape;
+use serde_shape::SerializeVariantContent;
+use serde_shape::ShapeRef;
 
 #[derive(DeserializeShape)]
 #[serde(
@@ -199,19 +204,16 @@ fn exposes_deserialize_field_metadata() {
     assert_eq!(id.member, FieldMember::Named("id"));
     assert_eq!(id.name, "in-id");
     assert_eq!(id.aliases, vec!["in-id", "legacy-id"]);
-    assert!(!id.skip);
-    assert!(!id.custom_deserializer);
+    assert!(matches!(&id.wire_shape, FieldWireShape::Value(_)));
 
     assert_eq!(maybe.name, "maybe");
-    assert!(!maybe.skip);
+    assert!(matches!(&maybe.wire_shape, FieldWireShape::Value(_)));
 
     assert_eq!(secret.name, "secret-in");
-    assert!(!secret.skip);
+    assert!(matches!(&secret.wire_shape, FieldWireShape::Value(_)));
 
     assert_eq!(output_only.name, "only-in");
-    assert!(output_only.skip);
-    assert!(!output_only.custom_deserializer);
-    assert_eq!(output_only.value_shape, None);
+    assert_eq!(output_only.wire_shape, FieldWireShape::Omitted);
 }
 
 #[test]
@@ -233,21 +235,21 @@ fn exposes_serialize_field_metadata() {
 
     assert_eq!(id.member, FieldMember::Named("id"));
     assert_eq!(id.name, "out-id");
-    assert!(!id.skip);
     assert_eq!(id.skip_if, None);
-    assert!(!id.custom_serializer);
+    assert!(matches!(&id.wire_shape, FieldWireShape::Value(_)));
 
     assert_eq!(maybe.name, "maybe");
     assert_eq!(maybe.skip_if, Some("is_missing"));
 
     assert_eq!(secret.name, "secret");
-    assert!(secret.skip);
-    assert_eq!(secret.value_shape, None);
+    assert_eq!(secret.wire_shape, FieldWireShape::Omitted);
 
     assert_eq!(output_only.name, "only-out");
-    assert!(!output_only.skip);
-    assert!(output_only.custom_serializer);
-    assert_eq!(output_only.value_shape, None);
+    let FieldWireShape::Value(ShapeRef::Opaque(opaque)) = &output_only.wire_shape else {
+        panic!("custom serialized field should expose an opaque wire shape");
+    };
+    assert_eq!(opaque.reason, OpaqueReason::CustomSerializer);
+    assert_eq!(opaque.detail, Some("serialize_not_shape"));
 }
 
 #[test]
@@ -267,9 +269,11 @@ fn exposes_deserialize_variant_metadata() {
 
     assert_eq!(struct_variant.rust_name, "StructVariant");
     assert_eq!(struct_variant.name, "struct-variant");
-    assert!(!struct_variant.skip);
 
-    let [field] = struct_variant.fields.as_slice() else {
+    let DeserializeVariantContent::Fields(fields) = &struct_variant.content else {
+        panic!("struct variant should expose derived fields");
+    };
+    let [field] = fields.as_slice() else {
         panic!("struct variant should expose its field");
     };
     assert_eq!(field.name, "field_name");
@@ -278,12 +282,13 @@ fn exposes_deserialize_variant_metadata() {
     assert_eq!(renamed.aliases, vec!["deserialized", "legacy"]);
 
     assert_eq!(input_only.name, "input-only");
-    assert!(!input_only.skip);
+    assert!(matches!(
+        &input_only.content,
+        DeserializeVariantContent::Fields(_)
+    ));
 
     assert_eq!(output_only.name, "output-only");
-    assert!(output_only.skip);
-    assert!(!output_only.custom_deserializer);
-    assert!(output_only.fields.is_empty());
+    assert_eq!(output_only.content, DeserializeVariantContent::Omitted);
 }
 
 #[test]
@@ -303,9 +308,11 @@ fn exposes_serialize_variant_metadata() {
 
     assert_eq!(struct_variant.rust_name, "StructVariant");
     assert_eq!(struct_variant.name, "STRUCT_VARIANT");
-    assert!(!struct_variant.skip);
 
-    let [field] = struct_variant.fields.as_slice() else {
+    let SerializeVariantContent::Fields(fields) = &struct_variant.content else {
+        panic!("struct variant should expose derived fields");
+    };
+    let [field] = fields.as_slice() else {
         panic!("struct variant should expose its field");
     };
     assert_eq!(field.name, "fieldName");
@@ -313,12 +320,14 @@ fn exposes_serialize_variant_metadata() {
     assert_eq!(renamed.name, "SERIALIZED");
 
     assert_eq!(input_only.name, "INPUT_ONLY");
-    assert!(input_only.skip);
+    assert_eq!(input_only.content, SerializeVariantContent::Omitted);
 
     assert_eq!(output_only.name, "OUTPUT_ONLY");
-    assert!(!output_only.skip);
-    assert!(output_only.custom_serializer);
-    assert!(output_only.fields.is_empty());
+    let SerializeVariantContent::Custom(opaque) = &output_only.content else {
+        panic!("custom serialized variant should expose opaque content");
+    };
+    assert_eq!(opaque.reason, OpaqueReason::CustomSerializer);
+    assert_eq!(opaque.detail, Some("serialize_variant"));
 }
 
 #[test]

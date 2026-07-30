@@ -1,5 +1,5 @@
 ---
-source: tests/integration/tests/env_vars.rs
+source: tests/integration/tests/configenv.rs
 expression: "Config::deserialize_shape()"
 ---
 DeserializeShapeGraph {
@@ -14,7 +14,7 @@ DeserializeShapeGraph {
                 0,
             ),
             type_name: DeserializeTypeName {
-                rust_name: "env_vars::Config",
+                rust_name: "configenv::Config",
                 name: "Config",
             },
             kind: Struct(
@@ -29,7 +29,7 @@ DeserializeShapeGraph {
                             aliases: [
                                 "server",
                             ],
-                            value_shape: Some(
+                            wire_shape: Value(
                                 Definition(
                                     ShapeId(
                                         1,
@@ -37,10 +37,6 @@ DeserializeShapeGraph {
                                 ),
                             ),
                             default: None,
-                            flatten: false,
-                            skip: false,
-                            custom_deserializer: false,
-                            transparent: false,
                         },
                         DeserializeFieldShape {
                             member: Named(
@@ -50,7 +46,7 @@ DeserializeShapeGraph {
                             aliases: [
                                 "storage",
                             ],
-                            value_shape: Some(
+                            wire_shape: Value(
                                 Definition(
                                     ShapeId(
                                         2,
@@ -58,10 +54,6 @@ DeserializeShapeGraph {
                                 ),
                             ),
                             default: None,
-                            flatten: false,
-                            skip: false,
-                            custom_deserializer: false,
-                            transparent: false,
                         },
                         DeserializeFieldShape {
                             member: Named(
@@ -71,7 +63,7 @@ DeserializeShapeGraph {
                             aliases: [
                                 "telemetry",
                             ],
-                            value_shape: Some(
+                            wire_shape: Value(
                                 Definition(
                                     ShapeId(
                                         7,
@@ -79,10 +71,6 @@ DeserializeShapeGraph {
                                 ),
                             ),
                             default: None,
-                            flatten: false,
-                            skip: false,
-                            custom_deserializer: false,
-                            transparent: false,
                         },
                     ],
                     attributes: DeserializeContainerAttributes {
@@ -102,7 +90,7 @@ DeserializeShapeGraph {
                 1,
             ),
             type_name: DeserializeTypeName {
-                rust_name: "env_vars::ServerConfig",
+                rust_name: "configenv::ServerConfig",
                 name: "ServerConfig",
             },
             kind: Struct(
@@ -117,16 +105,12 @@ DeserializeShapeGraph {
                             aliases: [
                                 "dir",
                             ],
-                            value_shape: Some(
+                            wire_shape: Value(
                                 String,
                             ),
                             default: Path(
                                 "default_dir",
                             ),
-                            flatten: false,
-                            skip: false,
-                            custom_deserializer: false,
-                            transparent: false,
                         },
                         DeserializeFieldShape {
                             member: Named(
@@ -136,16 +120,12 @@ DeserializeShapeGraph {
                             aliases: [
                                 "listen_data_addr",
                             ],
-                            value_shape: Some(
+                            wire_shape: Value(
                                 String,
                             ),
                             default: Path(
                                 "default_listen_data_addr",
                             ),
-                            flatten: false,
-                            skip: false,
-                            custom_deserializer: false,
-                            transparent: false,
                         },
                         DeserializeFieldShape {
                             member: Named(
@@ -155,16 +135,12 @@ DeserializeShapeGraph {
                             aliases: [
                                 "advertise_data_addr",
                             ],
-                            value_shape: Some(
+                            wire_shape: Value(
                                 Option(
                                     String,
                                 ),
                             ),
                             default: None,
-                            flatten: false,
-                            skip: false,
-                            custom_deserializer: false,
-                            transparent: false,
                         },
                         DeserializeFieldShape {
                             member: Named(
@@ -174,16 +150,12 @@ DeserializeShapeGraph {
                             aliases: [
                                 "initial_peers",
                             ],
-                            value_shape: Some(
+                            wire_shape: Value(
                                 Seq(
                                     String,
                                 ),
                             ),
                             default: Default,
-                            flatten: false,
-                            skip: false,
-                            custom_deserializer: false,
-                            transparent: false,
                         },
                         DeserializeFieldShape {
                             member: Named(
@@ -193,16 +165,12 @@ DeserializeShapeGraph {
                             aliases: [
                                 "cluster_id",
                             ],
-                            value_shape: Some(
+                            wire_shape: Value(
                                 String,
                             ),
                             default: Path(
                                 "default_cluster_id",
                             ),
-                            flatten: false,
-                            skip: false,
-                            custom_deserializer: false,
-                            transparent: false,
                         },
                     ],
                     attributes: DeserializeContainerAttributes {
@@ -222,7 +190,7 @@ DeserializeShapeGraph {
                 2,
             ),
             type_name: DeserializeTypeName {
-                rust_name: "env_vars::StorageConfig",
+                rust_name: "configenv::StorageConfig",
                 name: "StorageConfig",
             },
             kind: Struct(
@@ -237,7 +205,7 @@ DeserializeShapeGraph {
                             aliases: [
                                 "backend",
                             ],
-                            value_shape: Some(
+                            wire_shape: Value(
                                 Definition(
                                     ShapeId(
                                         3,
@@ -245,10 +213,6 @@ DeserializeShapeGraph {
                                 ),
                             ),
                             default: Default,
-                            flatten: false,
-                            skip: false,
-                            custom_deserializer: false,
-                            transparent: false,
                         },
                         DeserializeFieldShape {
                             member: Named(
@@ -258,16 +222,28 @@ DeserializeShapeGraph {
                             aliases: [
                                 "disk_capacity",
                             ],
-                            value_shape: Some(
-                                String,
+                            wire_shape: Value(
+                                Union(
+                                    [
+                                        I8,
+                                        I16,
+                                        I32,
+                                        I64,
+                                        I128,
+                                        Isize,
+                                        U8,
+                                        U16,
+                                        U32,
+                                        U64,
+                                        U128,
+                                        Usize,
+                                        String,
+                                    ],
+                                ),
                             ),
                             default: Path(
                                 "default_disk_capacity",
                             ),
-                            flatten: false,
-                            skip: false,
-                            custom_deserializer: false,
-                            transparent: false,
                         },
                         DeserializeFieldShape {
                             member: Named(
@@ -277,16 +253,28 @@ DeserializeShapeGraph {
                             aliases: [
                                 "memory_capacity",
                             ],
-                            value_shape: Some(
-                                String,
+                            wire_shape: Value(
+                                Union(
+                                    [
+                                        I8,
+                                        I16,
+                                        I32,
+                                        I64,
+                                        I128,
+                                        Isize,
+                                        U8,
+                                        U16,
+                                        U32,
+                                        U64,
+                                        U128,
+                                        Usize,
+                                        String,
+                                    ],
+                                ),
                             ),
                             default: Path(
                                 "default_memory_capacity",
                             ),
-                            flatten: false,
-                            skip: false,
-                            custom_deserializer: false,
-                            transparent: false,
                         },
                         DeserializeFieldShape {
                             member: Named(
@@ -296,7 +284,7 @@ DeserializeShapeGraph {
                             aliases: [
                                 "disk_throttle",
                             ],
-                            value_shape: Some(
+                            wire_shape: Value(
                                 Option(
                                     Definition(
                                         ShapeId(
@@ -306,10 +294,6 @@ DeserializeShapeGraph {
                                 ),
                             ),
                             default: None,
-                            flatten: false,
-                            skip: false,
-                            custom_deserializer: false,
-                            transparent: false,
                         },
                     ],
                     attributes: DeserializeContainerAttributes {
@@ -329,7 +313,7 @@ DeserializeShapeGraph {
                 3,
             ),
             type_name: DeserializeTypeName {
-                rust_name: "env_vars::StorageBackend",
+                rust_name: "configenv::StorageBackend",
                 name: "StorageBackend",
             },
             kind: Enum(
@@ -345,27 +329,23 @@ DeserializeShapeGraph {
                                 "local",
                             ],
                             style: Struct,
-                            fields: [
-                                DeserializeFieldShape {
-                                    member: Named(
-                                        "data_dir",
-                                    ),
-                                    name: "data_dir",
-                                    aliases: [
-                                        "data_dir",
-                                    ],
-                                    value_shape: Some(
-                                        String,
-                                    ),
-                                    default: None,
-                                    flatten: false,
-                                    skip: false,
-                                    custom_deserializer: false,
-                                    transparent: false,
-                                },
-                            ],
-                            skip: false,
-                            custom_deserializer: false,
+                            content: Fields(
+                                [
+                                    DeserializeFieldShape {
+                                        member: Named(
+                                            "data_dir",
+                                        ),
+                                        name: "data_dir",
+                                        aliases: [
+                                            "data_dir",
+                                        ],
+                                        wire_shape: Value(
+                                            String,
+                                        ),
+                                        default: None,
+                                    },
+                                ],
+                            ),
                             other: false,
                             untagged: false,
                         },
@@ -376,44 +356,36 @@ DeserializeShapeGraph {
                                 "s3",
                             ],
                             style: Struct,
-                            fields: [
-                                DeserializeFieldShape {
-                                    member: Named(
-                                        "bucket",
-                                    ),
-                                    name: "bucket",
-                                    aliases: [
-                                        "bucket",
-                                    ],
-                                    value_shape: Some(
-                                        String,
-                                    ),
-                                    default: None,
-                                    flatten: false,
-                                    skip: false,
-                                    custom_deserializer: false,
-                                    transparent: false,
-                                },
-                                DeserializeFieldShape {
-                                    member: Named(
-                                        "region",
-                                    ),
-                                    name: "region",
-                                    aliases: [
-                                        "region",
-                                    ],
-                                    value_shape: Some(
-                                        String,
-                                    ),
-                                    default: None,
-                                    flatten: false,
-                                    skip: false,
-                                    custom_deserializer: false,
-                                    transparent: false,
-                                },
-                            ],
-                            skip: false,
-                            custom_deserializer: false,
+                            content: Fields(
+                                [
+                                    DeserializeFieldShape {
+                                        member: Named(
+                                            "bucket",
+                                        ),
+                                        name: "bucket",
+                                        aliases: [
+                                            "bucket",
+                                        ],
+                                        wire_shape: Value(
+                                            String,
+                                        ),
+                                        default: None,
+                                    },
+                                    DeserializeFieldShape {
+                                        member: Named(
+                                            "region",
+                                        ),
+                                        name: "region",
+                                        aliases: [
+                                            "region",
+                                        ],
+                                        wire_shape: Value(
+                                            String,
+                                        ),
+                                        default: None,
+                                    },
+                                ],
+                            ),
                             other: false,
                             untagged: false,
                         },
@@ -437,7 +409,7 @@ DeserializeShapeGraph {
                 4,
             ),
             type_name: DeserializeTypeName {
-                rust_name: "env_vars::DiskThrottle",
+                rust_name: "configenv::DiskThrottle",
                 name: "DiskThrottle",
             },
             kind: Struct(
@@ -452,14 +424,10 @@ DeserializeShapeGraph {
                             aliases: [
                                 "read_iops",
                             ],
-                            value_shape: Some(
+                            wire_shape: Value(
                                 U64,
                             ),
                             default: None,
-                            flatten: false,
-                            skip: false,
-                            custom_deserializer: false,
-                            transparent: false,
                         },
                         DeserializeFieldShape {
                             member: Named(
@@ -469,14 +437,10 @@ DeserializeShapeGraph {
                             aliases: [
                                 "write_iops",
                             ],
-                            value_shape: Some(
+                            wire_shape: Value(
                                 U64,
                             ),
                             default: None,
-                            flatten: false,
-                            skip: false,
-                            custom_deserializer: false,
-                            transparent: false,
                         },
                         DeserializeFieldShape {
                             member: Named(
@@ -486,7 +450,7 @@ DeserializeShapeGraph {
                             aliases: [
                                 "iops_counter",
                             ],
-                            value_shape: Some(
+                            wire_shape: Value(
                                 Definition(
                                     ShapeId(
                                         5,
@@ -494,10 +458,6 @@ DeserializeShapeGraph {
                                 ),
                             ),
                             default: None,
-                            flatten: false,
-                            skip: false,
-                            custom_deserializer: false,
-                            transparent: false,
                         },
                     ],
                     attributes: DeserializeContainerAttributes {
@@ -517,7 +477,7 @@ DeserializeShapeGraph {
                 5,
             ),
             type_name: DeserializeTypeName {
-                rust_name: "env_vars::CounterConfig",
+                rust_name: "configenv::CounterConfig",
                 name: "CounterConfig",
             },
             kind: Struct(
@@ -532,7 +492,7 @@ DeserializeShapeGraph {
                             aliases: [
                                 "mode",
                             ],
-                            value_shape: Some(
+                            wire_shape: Value(
                                 Definition(
                                     ShapeId(
                                         6,
@@ -540,10 +500,6 @@ DeserializeShapeGraph {
                                 ),
                             ),
                             default: None,
-                            flatten: false,
-                            skip: false,
-                            custom_deserializer: false,
-                            transparent: false,
                         },
                         DeserializeFieldShape {
                             member: Named(
@@ -553,14 +509,10 @@ DeserializeShapeGraph {
                             aliases: [
                                 "size",
                             ],
-                            value_shape: Some(
+                            wire_shape: Value(
                                 Usize,
                             ),
                             default: None,
-                            flatten: false,
-                            skip: false,
-                            custom_deserializer: false,
-                            transparent: false,
                         },
                     ],
                     attributes: DeserializeContainerAttributes {
@@ -580,7 +532,7 @@ DeserializeShapeGraph {
                 6,
             ),
             type_name: DeserializeTypeName {
-                rust_name: "env_vars::CounterMode",
+                rust_name: "configenv::CounterMode",
                 name: "CounterMode",
             },
             kind: Enum(
@@ -594,9 +546,9 @@ DeserializeShapeGraph {
                                 "window",
                             ],
                             style: Unit,
-                            fields: [],
-                            skip: false,
-                            custom_deserializer: false,
+                            content: Fields(
+                                [],
+                            ),
                             other: false,
                             untagged: false,
                         },
@@ -607,9 +559,9 @@ DeserializeShapeGraph {
                                 "leaky_bucket",
                             ],
                             style: Unit,
-                            fields: [],
-                            skip: false,
-                            custom_deserializer: false,
+                            content: Fields(
+                                [],
+                            ),
                             other: false,
                             untagged: false,
                         },
@@ -631,7 +583,7 @@ DeserializeShapeGraph {
                 7,
             ),
             type_name: DeserializeTypeName {
-                rust_name: "env_vars::TelemetryConfig",
+                rust_name: "configenv::TelemetryConfig",
                 name: "TelemetryConfig",
             },
             kind: Struct(
@@ -646,7 +598,7 @@ DeserializeShapeGraph {
                             aliases: [
                                 "logs",
                             ],
-                            value_shape: Some(
+                            wire_shape: Value(
                                 Definition(
                                     ShapeId(
                                         8,
@@ -654,10 +606,6 @@ DeserializeShapeGraph {
                                 ),
                             ),
                             default: Default,
-                            flatten: false,
-                            skip: false,
-                            custom_deserializer: false,
-                            transparent: false,
                         },
                         DeserializeFieldShape {
                             member: Named(
@@ -667,7 +615,7 @@ DeserializeShapeGraph {
                             aliases: [
                                 "traces",
                             ],
-                            value_shape: Some(
+                            wire_shape: Value(
                                 Option(
                                     Definition(
                                         ShapeId(
@@ -677,10 +625,6 @@ DeserializeShapeGraph {
                                 ),
                             ),
                             default: None,
-                            flatten: false,
-                            skip: false,
-                            custom_deserializer: false,
-                            transparent: false,
                         },
                         DeserializeFieldShape {
                             member: Named(
@@ -690,7 +634,7 @@ DeserializeShapeGraph {
                             aliases: [
                                 "metrics",
                             ],
-                            value_shape: Some(
+                            wire_shape: Value(
                                 Option(
                                     Definition(
                                         ShapeId(
@@ -700,10 +644,6 @@ DeserializeShapeGraph {
                                 ),
                             ),
                             default: None,
-                            flatten: false,
-                            skip: false,
-                            custom_deserializer: false,
-                            transparent: false,
                         },
                     ],
                     attributes: DeserializeContainerAttributes {
@@ -723,7 +663,7 @@ DeserializeShapeGraph {
                 8,
             ),
             type_name: DeserializeTypeName {
-                rust_name: "env_vars::LogsConfig",
+                rust_name: "configenv::LogsConfig",
                 name: "LogsConfig",
             },
             kind: Struct(
@@ -738,7 +678,7 @@ DeserializeShapeGraph {
                             aliases: [
                                 "sink",
                             ],
-                            value_shape: Some(
+                            wire_shape: Flatten(
                                 Definition(
                                     ShapeId(
                                         9,
@@ -746,10 +686,6 @@ DeserializeShapeGraph {
                                 ),
                             ),
                             default: None,
-                            flatten: true,
-                            skip: false,
-                            custom_deserializer: false,
-                            transparent: false,
                         },
                         DeserializeFieldShape {
                             member: Named(
@@ -759,19 +695,15 @@ DeserializeShapeGraph {
                             aliases: [
                                 "filter",
                             ],
-                            value_shape: Some(
+                            wire_shape: Value(
                                 String,
                             ),
                             default: None,
-                            flatten: false,
-                            skip: false,
-                            custom_deserializer: false,
-                            transparent: false,
                         },
                     ],
                     attributes: DeserializeContainerAttributes {
                         tagging: External,
-                        deny_unknown_fields: true,
+                        deny_unknown_fields: false,
                         default: None,
                         has_flatten: true,
                         transparent: false,
@@ -786,7 +718,7 @@ DeserializeShapeGraph {
                 9,
             ),
             type_name: DeserializeTypeName {
-                rust_name: "env_vars::LogSink",
+                rust_name: "configenv::LogSink",
                 name: "LogSink",
             },
             kind: Enum(
@@ -802,46 +734,38 @@ DeserializeShapeGraph {
                                 "file",
                             ],
                             style: Struct,
-                            fields: [
-                                DeserializeFieldShape {
-                                    member: Named(
-                                        "dir",
-                                    ),
-                                    name: "dir",
-                                    aliases: [
-                                        "dir",
-                                    ],
-                                    value_shape: Some(
-                                        String,
-                                    ),
-                                    default: None,
-                                    flatten: false,
-                                    skip: false,
-                                    custom_deserializer: false,
-                                    transparent: false,
-                                },
-                                DeserializeFieldShape {
-                                    member: Named(
-                                        "max_files",
-                                    ),
-                                    name: "max_files",
-                                    aliases: [
-                                        "max_files",
-                                    ],
-                                    value_shape: Some(
-                                        Option(
-                                            Usize,
+                            content: Fields(
+                                [
+                                    DeserializeFieldShape {
+                                        member: Named(
+                                            "dir",
                                         ),
-                                    ),
-                                    default: None,
-                                    flatten: false,
-                                    skip: false,
-                                    custom_deserializer: false,
-                                    transparent: false,
-                                },
-                            ],
-                            skip: false,
-                            custom_deserializer: false,
+                                        name: "dir",
+                                        aliases: [
+                                            "dir",
+                                        ],
+                                        wire_shape: Value(
+                                            String,
+                                        ),
+                                        default: None,
+                                    },
+                                    DeserializeFieldShape {
+                                        member: Named(
+                                            "max_files",
+                                        ),
+                                        name: "max_files",
+                                        aliases: [
+                                            "max_files",
+                                        ],
+                                        wire_shape: Value(
+                                            Option(
+                                                Usize,
+                                            ),
+                                        ),
+                                        default: None,
+                                    },
+                                ],
+                            ),
                             other: false,
                             untagged: false,
                         },
@@ -852,9 +776,9 @@ DeserializeShapeGraph {
                                 "stderr",
                             ],
                             style: Unit,
-                            fields: [],
-                            skip: false,
-                            custom_deserializer: false,
+                            content: Fields(
+                                [],
+                            ),
                             other: false,
                             untagged: false,
                         },
@@ -865,27 +789,23 @@ DeserializeShapeGraph {
                                 "opentelemetry",
                             ],
                             style: Struct,
-                            fields: [
-                                DeserializeFieldShape {
-                                    member: Named(
-                                        "otlp_endpoint",
-                                    ),
-                                    name: "otlp_endpoint",
-                                    aliases: [
-                                        "otlp_endpoint",
-                                    ],
-                                    value_shape: Some(
-                                        String,
-                                    ),
-                                    default: None,
-                                    flatten: false,
-                                    skip: false,
-                                    custom_deserializer: false,
-                                    transparent: false,
-                                },
-                            ],
-                            skip: false,
-                            custom_deserializer: false,
+                            content: Fields(
+                                [
+                                    DeserializeFieldShape {
+                                        member: Named(
+                                            "otlp_endpoint",
+                                        ),
+                                        name: "otlp_endpoint",
+                                        aliases: [
+                                            "otlp_endpoint",
+                                        ],
+                                        wire_shape: Value(
+                                            String,
+                                        ),
+                                        default: None,
+                                    },
+                                ],
+                            ),
                             other: false,
                             untagged: false,
                         },
@@ -909,7 +829,7 @@ DeserializeShapeGraph {
                 10,
             ),
             type_name: DeserializeTypeName {
-                rust_name: "env_vars::TracesConfig",
+                rust_name: "configenv::TracesConfig",
                 name: "TracesConfig",
             },
             kind: Struct(
@@ -924,14 +844,10 @@ DeserializeShapeGraph {
                             aliases: [
                                 "capture_log_filter",
                             ],
-                            value_shape: Some(
+                            wire_shape: Value(
                                 String,
                             ),
                             default: None,
-                            flatten: false,
-                            skip: false,
-                            custom_deserializer: false,
-                            transparent: false,
                         },
                         DeserializeFieldShape {
                             member: Named(
@@ -941,7 +857,7 @@ DeserializeShapeGraph {
                             aliases: [
                                 "opentelemetry",
                             ],
-                            value_shape: Some(
+                            wire_shape: Value(
                                 Option(
                                     Definition(
                                         ShapeId(
@@ -951,10 +867,6 @@ DeserializeShapeGraph {
                                 ),
                             ),
                             default: None,
-                            flatten: false,
-                            skip: false,
-                            custom_deserializer: false,
-                            transparent: false,
                         },
                     ],
                     attributes: DeserializeContainerAttributes {
@@ -974,7 +886,7 @@ DeserializeShapeGraph {
                 11,
             ),
             type_name: DeserializeTypeName {
-                rust_name: "env_vars::OpentelemetryTracesConfig",
+                rust_name: "configenv::OpentelemetryTracesConfig",
                 name: "OpentelemetryTracesConfig",
             },
             kind: Struct(
@@ -989,14 +901,10 @@ DeserializeShapeGraph {
                             aliases: [
                                 "otlp_endpoint",
                             ],
-                            value_shape: Some(
+                            wire_shape: Value(
                                 String,
                             ),
                             default: None,
-                            flatten: false,
-                            skip: false,
-                            custom_deserializer: false,
-                            transparent: false,
                         },
                     ],
                     attributes: DeserializeContainerAttributes {
@@ -1016,7 +924,7 @@ DeserializeShapeGraph {
                 12,
             ),
             type_name: DeserializeTypeName {
-                rust_name: "env_vars::MetricsConfig",
+                rust_name: "configenv::MetricsConfig",
                 name: "MetricsConfig",
             },
             kind: Struct(
@@ -1031,7 +939,7 @@ DeserializeShapeGraph {
                             aliases: [
                                 "opentelemetry",
                             ],
-                            value_shape: Some(
+                            wire_shape: Value(
                                 Option(
                                     Definition(
                                         ShapeId(
@@ -1041,10 +949,6 @@ DeserializeShapeGraph {
                                 ),
                             ),
                             default: None,
-                            flatten: false,
-                            skip: false,
-                            custom_deserializer: false,
-                            transparent: false,
                         },
                     ],
                     attributes: DeserializeContainerAttributes {
@@ -1064,7 +968,7 @@ DeserializeShapeGraph {
                 13,
             ),
             type_name: DeserializeTypeName {
-                rust_name: "env_vars::OpentelemetryMetricsConfig",
+                rust_name: "configenv::OpentelemetryMetricsConfig",
                 name: "OpentelemetryMetricsConfig",
             },
             kind: Struct(
@@ -1079,14 +983,10 @@ DeserializeShapeGraph {
                             aliases: [
                                 "otlp_endpoint",
                             ],
-                            value_shape: Some(
+                            wire_shape: Value(
                                 String,
                             ),
                             default: None,
-                            flatten: false,
-                            skip: false,
-                            custom_deserializer: false,
-                            transparent: false,
                         },
                         DeserializeFieldShape {
                             member: Named(
@@ -1096,16 +996,28 @@ DeserializeShapeGraph {
                             aliases: [
                                 "push_interval",
                             ],
-                            value_shape: Some(
-                                String,
+                            wire_shape: Value(
+                                Union(
+                                    [
+                                        I8,
+                                        I16,
+                                        I32,
+                                        I64,
+                                        I128,
+                                        Isize,
+                                        U8,
+                                        U16,
+                                        U32,
+                                        U64,
+                                        U128,
+                                        Usize,
+                                        String,
+                                    ],
+                                ),
                             ),
                             default: Path(
                                 "default_metrics_push_interval",
                             ),
-                            flatten: false,
-                            skip: false,
-                            custom_deserializer: false,
-                            transparent: false,
                         },
                     ],
                     attributes: DeserializeContainerAttributes {
