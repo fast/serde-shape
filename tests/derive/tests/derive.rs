@@ -14,16 +14,16 @@
 
 #![allow(dead_code)]
 
-use serde_shape::DeserializeDefinitionKind;
-use serde_shape::DeserializeShape;
-use serde_shape::DeserializeVariantContent;
-use serde_shape::FieldMember;
-use serde_shape::FieldWireShape;
-use serde_shape::OpaqueReason;
-use serde_shape::SerializeDefinitionKind;
-use serde_shape::SerializeShape;
-use serde_shape::SerializeVariantContent;
-use serde_shape::ShapeRef;
+use renamed_shape::DeserializeDefinitionKind;
+use renamed_shape::DeserializeShape;
+use renamed_shape::DeserializeVariantContent;
+use renamed_shape::FieldMember;
+use renamed_shape::FieldWireShape;
+use renamed_shape::OpaqueReason;
+use renamed_shape::SerializeDefinitionKind;
+use renamed_shape::SerializeShape;
+use renamed_shape::SerializeVariantContent;
+use renamed_shape::ShapeRef;
 
 #[derive(DeserializeShape)]
 #[serde(
@@ -87,6 +87,27 @@ struct Marker<T> {
 #[derive(DeserializeShape)]
 struct Recursive {
     child: Option<Box<Recursive>>,
+}
+
+#[derive(SerializeShape, DeserializeShape)]
+struct RecursiveGeneric<T> {
+    value: T,
+    child: Option<Box<RecursiveGeneric<T>>>,
+}
+
+trait HasValue {
+    type Value;
+}
+
+struct ValueProvider;
+
+impl HasValue for ValueProvider {
+    type Value = u16;
+}
+
+#[derive(SerializeShape, DeserializeShape)]
+struct AssociatedValue<T: HasValue> {
+    value: T::Value,
 }
 
 #[derive(SerializeShape, DeserializeShape)]
@@ -185,9 +206,27 @@ fn snapshots_recursive_type_reusing_the_same_definition() {
 }
 
 #[test]
+fn derives_recursive_generic_shapes_without_cyclic_bounds() {
+    let serialize = RecursiveGeneric::<u8>::serialize_shape();
+    let deserialize = RecursiveGeneric::<u8>::deserialize_shape();
+
+    assert_eq!(serialize.definitions.len(), 1);
+    assert_eq!(deserialize.definitions.len(), 1);
+}
+
+#[test]
+fn derives_shape_bounds_for_associated_values() {
+    let serialize = AssociatedValue::<ValueProvider>::serialize_shape();
+    let deserialize = AssociatedValue::<ValueProvider>::deserialize_shape();
+
+    assert_eq!(serialize.definitions.len(), 1);
+    assert_eq!(deserialize.definitions.len(), 1);
+}
+
+#[test]
 fn exposes_deserialize_field_metadata() {
     let shape = SplitIo::deserialize_shape();
-    let serde_shape::ShapeRef::Definition(id) = shape.root else {
+    let renamed_shape::ShapeRef::Definition(id) = shape.root else {
         panic!("root shape should be a definition");
     };
     let definition = shape.definition(id).expect("definition exists");
@@ -219,7 +258,7 @@ fn exposes_deserialize_field_metadata() {
 #[test]
 fn exposes_serialize_field_metadata() {
     let shape = SplitIo::serialize_shape();
-    let serde_shape::ShapeRef::Definition(id) = shape.root else {
+    let renamed_shape::ShapeRef::Definition(id) = shape.root else {
         panic!("root shape should be a definition");
     };
     let definition = shape.definition(id).expect("definition exists");
@@ -255,7 +294,7 @@ fn exposes_serialize_field_metadata() {
 #[test]
 fn exposes_deserialize_variant_metadata() {
     let shape = SplitEnum::deserialize_shape();
-    let serde_shape::ShapeRef::Definition(id) = shape.root else {
+    let renamed_shape::ShapeRef::Definition(id) = shape.root else {
         panic!("root shape should be a definition");
     };
     let definition = shape.definition(id).expect("definition exists");
@@ -294,7 +333,7 @@ fn exposes_deserialize_variant_metadata() {
 #[test]
 fn exposes_serialize_variant_metadata() {
     let shape = SplitEnum::serialize_shape();
-    let serde_shape::ShapeRef::Definition(id) = shape.root else {
+    let renamed_shape::ShapeRef::Definition(id) = shape.root else {
         panic!("root shape should be a definition");
     };
     let definition = shape.definition(id).expect("definition exists");
@@ -337,16 +376,16 @@ fn derives_one_direction_without_requiring_the_other_direction() {
 
     assert!(matches!(
         serialize_shape.definition(match serialize_shape.root {
-            serde_shape::ShapeRef::Definition(id) => id,
+            renamed_shape::ShapeRef::Definition(id) => id,
             _ => panic!("serialize root shape should be a definition"),
         }),
-        Some(serde_shape::SerializeDefinitionShape { .. })
+        Some(renamed_shape::SerializeDefinitionShape { .. })
     ));
     assert!(matches!(
         deserialize_shape.definition(match deserialize_shape.root {
-            serde_shape::ShapeRef::Definition(id) => id,
+            renamed_shape::ShapeRef::Definition(id) => id,
             _ => panic!("deserialize root shape should be a definition"),
         }),
-        Some(serde_shape::DeserializeDefinitionShape { .. })
+        Some(renamed_shape::DeserializeDefinitionShape { .. })
     ));
 }

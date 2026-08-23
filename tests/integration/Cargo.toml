@@ -28,6 +28,7 @@ serde-shape = { workspace = true, features = ["derive", "std"] }
 [dev-dependencies]
 insta = { workspace = true }
 serde = { workspace = true }
+serde_test = { workspace = true }
 toml_edit = { workspace = true }
 
 [lints]

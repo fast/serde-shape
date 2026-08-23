@@ -23,7 +23,9 @@ rust-version.workspace = true
 release = false
 
 [dependencies]
-serde-shape = { workspace = true, features = ["derive"] }
+renamed-shape = { package = "serde-shape", path = "../../serde-shape", features = [
+  "derive",
+] }
 
 [dev-dependencies]
 insta = { workspace = true }

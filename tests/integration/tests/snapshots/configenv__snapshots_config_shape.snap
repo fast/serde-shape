@@ -49,7 +49,7 @@ DeserializeShapeGraph {
                             wire_shape: Value(
                                 Definition(
                                     ShapeId(
-                                        2,
+                                        3,
                                     ),
                                 ),
                             ),
@@ -66,7 +66,7 @@ DeserializeShapeGraph {
                             wire_shape: Value(
                                 Definition(
                                     ShapeId(
-                                        7,
+                                        8,
                                     ),
                                 ),
                             ),
@@ -121,7 +121,16 @@ DeserializeShapeGraph {
                                 "listen_data_addr",
                             ],
                             wire_shape: Value(
-                                String,
+                                Union(
+                                    [
+                                        String,
+                                        Definition(
+                                            ShapeId(
+                                                2,
+                                            ),
+                                        ),
+                                    ],
+                                ),
                             ),
                             default: Path(
                                 "default_listen_data_addr",
@@ -137,7 +146,16 @@ DeserializeShapeGraph {
                             ],
                             wire_shape: Value(
                                 Option(
-                                    String,
+                                    Union(
+                                        [
+                                            String,
+                                            Definition(
+                                                ShapeId(
+                                                    2,
+                                                ),
+                                            ),
+                                        ],
+                                    ),
                                 ),
                             ),
                             default: None,
@@ -190,6 +208,101 @@ DeserializeShapeGraph {
                 2,
             ),
             type_name: DeserializeTypeName {
+                rust_name: "core::net::socket_addr::SocketAddr",
+                name: "SocketAddr",
+            },
+            kind: Enum(
+                DeserializeEnumShape {
+                    repr: External,
+                    variants: [
+                        DeserializeVariantShape {
+                            rust_name: "V4",
+                            name: "V4",
+                            aliases: [
+                                "V4",
+                            ],
+                            style: Newtype,
+                            content: Fields(
+                                [
+                                    DeserializeFieldShape {
+                                        member: Unnamed(
+                                            0,
+                                        ),
+                                        name: "0",
+                                        aliases: [
+                                            "0",
+                                        ],
+                                        wire_shape: Value(
+                                            Tuple(
+                                                [
+                                                    Array {
+                                                        item: U8,
+                                                        len: 4,
+                                                    },
+                                                    U16,
+                                                ],
+                                            ),
+                                        ),
+                                        default: None,
+                                    },
+                                ],
+                            ),
+                            other: false,
+                            untagged: false,
+                        },
+                        DeserializeVariantShape {
+                            rust_name: "V6",
+                            name: "V6",
+                            aliases: [
+                                "V6",
+                            ],
+                            style: Newtype,
+                            content: Fields(
+                                [
+                                    DeserializeFieldShape {
+                                        member: Unnamed(
+                                            0,
+                                        ),
+                                        name: "0",
+                                        aliases: [
+                                            "0",
+                                        ],
+                                        wire_shape: Value(
+                                            Tuple(
+                                                [
+                                                    Array {
+                                                        item: U8,
+                                                        len: 16,
+                                                    },
+                                                    U16,
+                                                ],
+                                            ),
+                                        ),
+                                        default: None,
+                                    },
+                                ],
+                            ),
+                            other: false,
+                            untagged: false,
+                        },
+                    ],
+                    attributes: DeserializeContainerAttributes {
+                        tagging: External,
+                        deny_unknown_fields: false,
+                        default: None,
+                        has_flatten: false,
+                        transparent: false,
+                        expecting: None,
+                        non_exhaustive: false,
+                    },
+                },
+            ),
+        },
+        DeserializeDefinitionShape {
+            id: ShapeId(
+                3,
+            ),
+            type_name: DeserializeTypeName {
                 rust_name: "configenv::StorageConfig",
                 name: "StorageConfig",
             },
@@ -208,7 +321,7 @@ DeserializeShapeGraph {
                             wire_shape: Value(
                                 Definition(
                                     ShapeId(
-                                        3,
+                                        4,
                                     ),
                                 ),
                             ),
@@ -288,7 +401,7 @@ DeserializeShapeGraph {
                                 Option(
                                     Definition(
                                         ShapeId(
-                                            4,
+                                            5,
                                         ),
                                     ),
                                 ),
@@ -310,7 +423,7 @@ DeserializeShapeGraph {
         },
         DeserializeDefinitionShape {
             id: ShapeId(
-                3,
+                4,
             ),
             type_name: DeserializeTypeName {
                 rust_name: "configenv::StorageBackend",
@@ -406,7 +519,7 @@ DeserializeShapeGraph {
         },
         DeserializeDefinitionShape {
             id: ShapeId(
-                4,
+                5,
             ),
             type_name: DeserializeTypeName {
                 rust_name: "configenv::DiskThrottle",
@@ -453,7 +566,7 @@ DeserializeShapeGraph {
                             wire_shape: Value(
                                 Definition(
                                     ShapeId(
-                                        5,
+                                        6,
                                     ),
                                 ),
                             ),
@@ -474,7 +587,7 @@ DeserializeShapeGraph {
         },
         DeserializeDefinitionShape {
             id: ShapeId(
-                5,
+                6,
             ),
             type_name: DeserializeTypeName {
                 rust_name: "configenv::CounterConfig",
@@ -495,7 +608,7 @@ DeserializeShapeGraph {
                             wire_shape: Value(
                                 Definition(
                                     ShapeId(
-                                        6,
+                                        7,
                                     ),
                                 ),
                             ),
@@ -529,7 +642,7 @@ DeserializeShapeGraph {
         },
         DeserializeDefinitionShape {
             id: ShapeId(
-                6,
+                7,
             ),
             type_name: DeserializeTypeName {
                 rust_name: "configenv::CounterMode",
@@ -580,7 +693,7 @@ DeserializeShapeGraph {
         },
         DeserializeDefinitionShape {
             id: ShapeId(
-                7,
+                8,
             ),
             type_name: DeserializeTypeName {
                 rust_name: "configenv::TelemetryConfig",
@@ -601,7 +714,7 @@ DeserializeShapeGraph {
                             wire_shape: Value(
                                 Definition(
                                     ShapeId(
-                                        8,
+                                        9,
                                     ),
                                 ),
                             ),
@@ -619,7 +732,7 @@ DeserializeShapeGraph {
                                 Option(
                                     Definition(
                                         ShapeId(
-                                            10,
+                                            11,
                                         ),
                                     ),
                                 ),
@@ -638,7 +751,7 @@ DeserializeShapeGraph {
                                 Option(
                                     Definition(
                                         ShapeId(
-                                            12,
+                                            13,
                                         ),
                                     ),
                                 ),
@@ -660,7 +773,7 @@ DeserializeShapeGraph {
         },
         DeserializeDefinitionShape {
             id: ShapeId(
-                8,
+                9,
             ),
             type_name: DeserializeTypeName {
                 rust_name: "configenv::LogsConfig",
@@ -681,7 +794,7 @@ DeserializeShapeGraph {
                             wire_shape: Flatten(
                                 Definition(
                                     ShapeId(
-                                        9,
+                                        10,
                                     ),
                                 ),
                             ),
@@ -715,7 +828,7 @@ DeserializeShapeGraph {
         },
         DeserializeDefinitionShape {
             id: ShapeId(
-                9,
+                10,
             ),
             type_name: DeserializeTypeName {
                 rust_name: "configenv::LogSink",
@@ -826,7 +939,7 @@ DeserializeShapeGraph {
         },
         DeserializeDefinitionShape {
             id: ShapeId(
-                10,
+                11,
             ),
             type_name: DeserializeTypeName {
                 rust_name: "configenv::TracesConfig",
@@ -861,7 +974,7 @@ DeserializeShapeGraph {
                                 Option(
                                     Definition(
                                         ShapeId(
-                                            11,
+                                            12,
                                         ),
                                     ),
                                 ),
@@ -883,7 +996,7 @@ DeserializeShapeGraph {
         },
         DeserializeDefinitionShape {
             id: ShapeId(
-                11,
+                12,
             ),
             type_name: DeserializeTypeName {
                 rust_name: "configenv::OpentelemetryTracesConfig",
@@ -921,7 +1034,7 @@ DeserializeShapeGraph {
         },
         DeserializeDefinitionShape {
             id: ShapeId(
-                12,
+                13,
             ),
             type_name: DeserializeTypeName {
                 rust_name: "configenv::MetricsConfig",
@@ -943,7 +1056,7 @@ DeserializeShapeGraph {
                                 Option(
                                     Definition(
                                         ShapeId(
-                                            13,
+                                            14,
                                         ),
                                     ),
                                 ),
@@ -965,7 +1078,7 @@ DeserializeShapeGraph {
         },
         DeserializeDefinitionShape {
             id: ShapeId(
-                13,
+                14,
             ),
             type_name: DeserializeTypeName {
                 rust_name: "configenv::OpentelemetryMetricsConfig",

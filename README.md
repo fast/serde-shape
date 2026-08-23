@@ -105,6 +105,22 @@ See the [crate documentation][docs-url] for the full shape graph model, derive b
 - `derive`: enables `#[derive(SerializeShape)]` and `#[derive(DeserializeShape)]`.
 - `std`: enables shape implementations for standard-library-only types.
 
+## Built-in shapes
+
+The built-in implementations follow Serde's own data-model calls in each direction.
+
+| Group | Supported types |
+| --- | --- |
+| Scalars | Rust primitives, `String`, `str`, non-zero integers, and atomics available on the target |
+| Containers | `Option`, `Result`, arrays, slices for serialization, tuples through arity 16, `Vec`, `VecDeque`, `LinkedList`, `BinaryHeap`, `BTreeSet`, and `BTreeMap` |
+| Wrappers | References, `Box`, `Cow`, `Cell`, `RefCell`, `Wrapping`, `Reverse`, and `PhantomData` |
+| Time | `core::time::Duration` |
+| `std` feature | `HashMap`, `HashSet`, `Path`, `PathBuf`, IP and socket address types, `Mutex`, and `RwLock` |
+
+Network address shapes are unions of their human-readable string representation and their compact Serde representation. A serialized byte slice is a sequence, while borrowed byte deserialization uses `ShapeRef::Bytes`.
+
+For an unsupported foreign type, use a local newtype and implement `SerializeShape` or `DeserializeShape` manually. Custom Serde functions remain visible as opaque boundaries because their wire behavior cannot be inferred.
+
 ## `no_std` support
 
 `serde-shape` is `no_std` by default and requires `alloc`.

@@ -13,6 +13,10 @@
 // limitations under the License.
 
 mod container;
+#[cfg(feature = "std")]
+mod net;
 mod primitive;
+mod result;
+mod time;
 mod tuple;
 mod wrapper;
