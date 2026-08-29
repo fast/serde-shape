@@ -65,7 +65,9 @@ use serde_shape::{
 
 #[derive(DeserializeShape)]
 #[serde(rename_all = "kebab-case", deny_unknown_fields)]
+/// Application configuration.
 struct Config {
+    /// Port used by the HTTP server.
     http_port: u16,
     peers: Vec<String>,
     tls: Option<TlsConfig>,
@@ -89,14 +91,18 @@ let DeserializeDefinitionKind::Struct(shape) = &definition.kind else {
 };
 
 assert_eq!(definition.type_name.name, "Config");
+assert_eq!(definition.description, Some("Application configuration."));
 assert_eq!(shape.style, FieldsStyle::Struct);
 assert!(shape.attributes.deny_unknown_fields);
 assert_eq!(shape.fields[0].name, "http-port");
+assert_eq!(shape.fields[0].description, Some("Port used by the HTTP server."));
 assert_eq!(shape.fields[1].name, "peers");
 assert_eq!(shape.fields[2].name, "tls");
 ```
 
 See the [crate documentation][docs-url] for the full shape graph model, derive behavior, and manual implementation examples.
+
+Rust doc comments on derived containers, variants, and fields are preserved as descriptions. Consumers can use the same comments for generated configuration references, CLI help, or diagnostics.
 
 ## Custom representations
 
@@ -120,6 +126,12 @@ struct Config {
 ```
 
 The replacement type must implement the corresponding shape trait. An override is an assertion about the custom Serde behavior; `serde-shape` cannot verify that the declared type matches the serializer or deserializer implementation.
+
+## Model boundaries
+
+Shape graphs are an inspection API, not a stable interchange format. `ShapeId` values are local to one graph, and definition ordering and `Debug` output are not persistence contracts.
+
+Types that branch on `Serializer::is_human_readable()` or `Deserializer::is_human_readable()` may expose a union of their known representations. The graph describes the possible Serde calls across formats; it is not specialized for one serializer format.
 
 ## Feature flags
 

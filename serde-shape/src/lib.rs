@@ -143,7 +143,12 @@
 //! stored as named definitions and referenced by [`ShapeId`].
 //!
 //! Definition IDs are local to one graph. Use [`SerializeShapeGraph::definition`] or
-//! [`DeserializeShapeGraph::definition`] to resolve them.
+//! [`DeserializeShapeGraph::definition`] to resolve them. Definition ordering and debug output
+//! are not stable persistence formats.
+//!
+//! Types that branch on Serde's human-readable mode may expose a union of their known
+//! representations. Shape graphs describe possible Serde data-model calls across formats rather
+//! than specializing themselves for one serializer.
 //!
 //! # Derive behavior
 //!
@@ -160,6 +165,9 @@
 //! Use `#[serde_shape(with = "Type")]` to declare the representation of a container or field that
 //! cannot be inferred. `serialize_as` and `deserialize_as` provide direction-specific overrides.
 //! The replacement type must implement the corresponding shape trait.
+//!
+//! Rust doc comments on derived containers, variants, and fields are preserved in their
+//! `description` fields for documentation and diagnostic consumers.
 //!
 //! # Manual implementations
 //!
