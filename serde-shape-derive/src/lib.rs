@@ -153,7 +153,7 @@ fn validate_shape_attrs(container: &ast::Container<'_>) -> syn::Result<()> {
                 if !attrs.is_empty() {
                     return Err(syn::Error::new_spanned(
                         variant.original,
-                        "serde_shape type overrides are supported on containers and fields, not variants",
+                        "serde_shape custom functions are supported on containers and fields, not variants",
                     ));
                 }
                 for field in &variant.fields {
@@ -179,13 +179,7 @@ fn add_serialize_shape_bounds(
         .type_params()
         .map(|param| param.ident.to_string())
         .collect();
-    if let Some(ty) = shape_attrs.serialize_as() {
-        if type_uses_params(ty, &type_params) {
-            generics
-                .make_where_clause()
-                .predicates
-                .push(parse_quote!(#ty: __serde_shape::SerializeShape));
-        }
+    if shape_attrs.serialize_with().is_some() {
         return Ok(());
     }
     if container.attrs.remote().is_some() {
@@ -239,13 +233,7 @@ fn add_deserialize_shape_bounds(
         .type_params()
         .map(|param| param.ident.to_string())
         .collect();
-    if let Some(ty) = shape_attrs.deserialize_as() {
-        if type_uses_params(ty, &type_params) {
-            generics
-                .make_where_clause()
-                .predicates
-                .push(parse_quote!(#ty: __serde_shape::DeserializeShape));
-        }
+    if shape_attrs.deserialize_with().is_some() {
         return Ok(());
     }
     if container.attrs.remote().is_some() {
@@ -305,11 +293,7 @@ fn collect_serialize_field_bound_types(
         if field.attrs.skip_serializing() {
             continue;
         }
-        if let Some(ty) = shape_attrs.serialize_as() {
-            if type_uses_params(ty, type_params) {
-                push_bound_type(field_bound_types, ty.clone());
-            }
-        } else if field.attrs.serialize_with().is_none() {
+        if shape_attrs.serialize_with().is_none() && field.attrs.serialize_with().is_none() {
             collect_shape_bound_types(field.ty, type_params, field_bound_types);
         }
     }
@@ -326,11 +310,7 @@ fn collect_deserialize_field_bound_types(
         if field.attrs.skip_deserializing() {
             continue;
         }
-        if let Some(ty) = shape_attrs.deserialize_as() {
-            if type_uses_params(ty, type_params) {
-                push_bound_type(field_bound_types, ty.clone());
-            }
-        } else if field.attrs.deserialize_with().is_none() {
+        if shape_attrs.deserialize_with().is_none() && field.attrs.deserialize_with().is_none() {
             collect_shape_bound_types(field.ty, type_params, field_bound_types);
         }
     }
@@ -502,8 +482,8 @@ fn serialize_shape_body(
     container: &ast::Container<'_>,
     shape_attrs: &ShapeAttrs,
 ) -> syn::Result<TokenStream2> {
-    if let Some(ty) = shape_attrs.serialize_as() {
-        return Ok(quote!(<#ty as __serde_shape::SerializeShape>::serialize_shape_in(context)));
+    if let Some(function) = shape_attrs.serialize_with() {
+        return Ok(quote!(#function(context)));
     }
     if let Some(ty) = container.attrs.type_into() {
         return Ok(quote!(<#ty as __serde_shape::SerializeShape>::serialize_shape_in(context)));
@@ -532,8 +512,8 @@ fn deserialize_shape_body(
     container: &ast::Container<'_>,
     shape_attrs: &ShapeAttrs,
 ) -> syn::Result<TokenStream2> {
-    if let Some(ty) = shape_attrs.deserialize_as() {
-        return Ok(quote!(<#ty as __serde_shape::DeserializeShape>::deserialize_shape_in(context)));
+    if let Some(function) = shape_attrs.deserialize_with() {
+        return Ok(quote!(#function(context)));
     }
     if let Some(ty) = container
         .attrs
@@ -799,8 +779,8 @@ fn serialize_field_shape(field: &ast::Field<'_>) -> syn::Result<TokenStream2> {
     let wire_shape = if skip {
         quote!(__serde_shape::FieldWireShape::Omitted)
     } else {
-        let value_shape = if let Some(ty) = shape_attrs.serialize_as() {
-            quote!(<#ty as __serde_shape::SerializeShape>::serialize_shape_in(context))
+        let value_shape = if let Some(function) = shape_attrs.serialize_with() {
+            quote!(#function(context))
         } else if let Some(custom_serializer) = field.attrs.serialize_with() {
             let detail = option_path(Some(custom_serializer));
             quote! {
@@ -849,8 +829,8 @@ fn deserialize_field_shape(field: &ast::Field<'_>) -> syn::Result<TokenStream2> 
     let wire_shape = if skip {
         quote!(__serde_shape::FieldWireShape::Omitted)
     } else {
-        let value_shape = if let Some(ty) = shape_attrs.deserialize_as() {
-            quote!(<#ty as __serde_shape::DeserializeShape>::deserialize_shape_in(context))
+        let value_shape = if let Some(function) = shape_attrs.deserialize_with() {
+            quote!(#function(context))
         } else if let Some(custom_deserializer) = field.attrs.deserialize_with() {
             let detail = option_path(Some(custom_deserializer));
             quote! {

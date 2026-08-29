@@ -13,7 +13,7 @@ All notable changes to this project will be documented in this file.
 
 ### New features
 
-* Add `#[serde_shape(with = "Type")]`, `serialize_as`, and `deserialize_as` overrides for custom Serde functions and foreign representations.
+* Add `#[serde_shape(serialize_with = "path", deserialize_with = "path")]` hooks for custom Serde functions and foreign representations.
 * Preserve Rust doc comments on derived containers, variants, and fields as user-facing descriptions.
 
 ### Bug fixes

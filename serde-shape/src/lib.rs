@@ -162,9 +162,10 @@
 //! transparent fields, and omitted fields. Custom serializer/deserializer boundaries use
 //! [`ShapeRef::Opaque`] and remain composable with those field positions.
 //!
-//! Use `#[serde_shape(with = "Type")]` to declare the representation of a container or field that
-//! cannot be inferred. `serialize_as` and `deserialize_as` provide direction-specific overrides.
-//! The replacement type must implement the corresponding shape trait.
+//! Use `#[serde_shape(serialize_with = "path")]` or
+//! `#[serde_shape(deserialize_with = "path")]` to declare the representation of a container or
+//! field that cannot be inferred. Each function receives the current graph context and returns a
+//! [`ShapeRef`], so it can delegate to another type or build a custom shape directly.
 //!
 //! Rust doc comments on derived containers, variants, and fields are preserved in their
 //! `description` fields for documentation and diagnostic consumers.
@@ -228,8 +229,9 @@ pub mod __private {
 /// metadata that Serde uses for deserialization. The generated implementation records the
 /// deserialization-side names, shape graph, and Serde field/container metadata.
 ///
-/// Use `#[serde_shape(deserialize_as = "Type")]` on a container or field to override an opaque
-/// or foreign representation. `#[serde_shape(with = "Type")]` applies to both directions.
+/// Use `#[serde_shape(deserialize_with = "path")]` on a container or field to override an
+/// opaque or foreign representation. The function must accept `&mut DeserializeShapeContext`
+/// and return a [`ShapeRef`].
 ///
 /// # Example
 ///
@@ -270,8 +272,9 @@ pub use serde_shape_derive::DeserializeShape;
 /// metadata that Serde uses for serialization. The generated implementation records the
 /// serialization-side names, shape graph, and Serde field/container metadata.
 ///
-/// Use `#[serde_shape(serialize_as = "Type")]` on a container or field to override an opaque
-/// or foreign representation. `#[serde_shape(with = "Type")]` applies to both directions.
+/// Use `#[serde_shape(serialize_with = "path")]` on a container or field to override an opaque
+/// or foreign representation. The function must accept `&mut SerializeShapeContext` and return
+/// a [`ShapeRef`].
 ///
 /// # Example
 ///

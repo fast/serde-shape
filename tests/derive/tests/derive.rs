@@ -21,12 +21,14 @@ use common::serialize_root_definition;
 use renamed_shape::DefaultShape;
 use renamed_shape::DeserializeDefinitionKind;
 use renamed_shape::DeserializeShape;
+use renamed_shape::DeserializeShapeContext;
 use renamed_shape::DeserializeVariantContent;
 use renamed_shape::FieldMember;
 use renamed_shape::FieldWireShape;
 use renamed_shape::OpaqueReason;
 use renamed_shape::SerializeDefinitionKind;
 use renamed_shape::SerializeShape;
+use renamed_shape::SerializeShapeContext;
 use renamed_shape::SerializeVariantContent;
 use renamed_shape::ShapeRef;
 use renamed_shape::Tagging;
@@ -92,15 +94,24 @@ struct IntoString(String);
 struct FromGeneric<T>(T);
 
 #[derive(SerializeShape, DeserializeShape)]
-#[serde_shape(serialize_as = "u16", deserialize_as = "String")]
+#[serde_shape(
+    serialize_with = "serialize_number_or_string_shape",
+    deserialize_with = "deserialize_string_shape"
+)]
 struct ContainerShapeOverride(NotShape);
 
 #[derive(SerializeShape, DeserializeShape)]
 struct FieldShapeOverrides {
     #[serde(with = "custom_representation")]
-    #[serde_shape(with = "String")]
+    #[serde_shape(
+        serialize_with = "serialize_string_shape",
+        deserialize_with = "deserialize_string_shape"
+    )]
     custom: NotShape,
-    #[serde_shape(serialize_as = "u8", deserialize_as = "bool")]
+    #[serde_shape(
+        serialize_with = "serialize_u8_shape",
+        deserialize_with = "deserialize_bool_shape"
+    )]
     directional: NotShape,
 }
 
@@ -211,6 +222,26 @@ struct DeserializeOnly<T> {
 
 struct NotShape;
 
+fn serialize_number_or_string_shape(_context: &mut SerializeShapeContext) -> ShapeRef {
+    ShapeRef::union([ShapeRef::U16, ShapeRef::String])
+}
+
+fn serialize_string_shape(context: &mut SerializeShapeContext) -> ShapeRef {
+    String::serialize_shape_in(context)
+}
+
+fn deserialize_string_shape(context: &mut DeserializeShapeContext) -> ShapeRef {
+    String::deserialize_shape_in(context)
+}
+
+fn serialize_u8_shape(_context: &mut SerializeShapeContext) -> ShapeRef {
+    ShapeRef::U8
+}
+
+fn deserialize_bool_shape(_context: &mut DeserializeShapeContext) -> ShapeRef {
+    ShapeRef::Bool
+}
+
 fn default_retries() -> u8 {
     3
 }
@@ -275,10 +306,10 @@ fn follows_serde_conversion_shapes() {
 }
 
 #[test]
-fn applies_container_and_field_shape_overrides() {
+fn applies_container_and_field_custom_shape_functions() {
     assert_eq!(
         ContainerShapeOverride::serialize_shape().root(),
-        &ShapeRef::U16
+        &ShapeRef::union([ShapeRef::U16, ShapeRef::String])
     );
     assert_eq!(
         ContainerShapeOverride::deserialize_shape().root(),

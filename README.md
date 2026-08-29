@@ -106,26 +106,35 @@ Rust doc comments on derived containers, variants, and fields are preserved as d
 
 ## Custom representations
 
-Custom Serde functions and foreign types do not expose enough information for `serde-shape` to infer their wire representation. Declare the representation explicitly with `#[serde_shape(with = "Type")]`, or use `serialize_as` and `deserialize_as` when the two directions differ:
+Custom Serde functions and foreign types do not expose enough information for `serde-shape` to infer their wire representation. Provide functions that build the serialization and deserialization shapes explicitly:
 
 ```rust
-use serde_shape::{DeserializeShape, SerializeShape};
+use serde_shape::{
+    DeserializeShape, DeserializeShapeContext, SerializeShape, SerializeShapeContext, ShapeRef,
+};
 
 struct ForeignDuration;
-struct ForeignUrl;
+
+fn serialize_duration(context: &mut SerializeShapeContext) -> ShapeRef {
+    String::serialize_shape_in(context)
+}
+
+fn deserialize_duration(_context: &mut DeserializeShapeContext) -> ShapeRef {
+    ShapeRef::union([ShapeRef::String, ShapeRef::U64])
+}
 
 #[derive(SerializeShape, DeserializeShape)]
 struct Config {
     #[serde(with = "duration_format")]
-    #[serde_shape(with = "String")]
+    #[serde_shape(
+        serialize_with = "serialize_duration",
+        deserialize_with = "deserialize_duration"
+    )]
     timeout: ForeignDuration,
-
-    #[serde_shape(serialize_as = "String", deserialize_as = "String")]
-    endpoint: ForeignUrl,
 }
 ```
 
-The replacement type must implement the corresponding shape trait. An override is an assertion about the custom Serde behavior; `serde-shape` cannot verify that the declared type matches the serializer or deserializer implementation.
+Each function receives the current graph context and returns a `ShapeRef`. It may delegate to another type's shape implementation or construct a custom shape directly. A custom shape function is an assertion about the Serde behavior; `serde-shape` cannot verify that the declared shape matches the serializer or deserializer implementation.
 
 ## Model boundaries
 

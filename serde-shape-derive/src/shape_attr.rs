@@ -15,17 +15,16 @@
 use proc_macro2::Span;
 use syn::Attribute;
 use syn::Expr;
+use syn::ExprPath;
 use syn::Lit;
 use syn::LitStr;
-use syn::Type;
 use syn::meta::ParseNestedMeta;
 use syn::spanned::Spanned;
 
 #[derive(Default)]
 pub struct ShapeAttrs {
-    serialize_as: Option<(Type, Span)>,
-    deserialize_as: Option<(Type, Span)>,
-    with: Option<(Type, Span)>,
+    serialize_with: Option<(ExprPath, Span)>,
+    deserialize_with: Option<(ExprPath, Span)>,
 }
 
 impl ShapeAttrs {
@@ -38,56 +37,39 @@ impl ShapeAttrs {
             }
 
             attr.parse_nested_meta(|meta| {
-                if meta.path.is_ident("with") {
-                    set_once(&mut parsed.with, parse_type(&meta)?, meta.path.span())
-                } else if meta.path.is_ident("serialize_as") {
+                if meta.path.is_ident("serialize_with") {
                     set_once(
-                        &mut parsed.serialize_as,
-                        parse_type(&meta)?,
+                        &mut parsed.serialize_with,
+                        parse_path(&meta)?,
                         meta.path.span(),
                     )
-                } else if meta.path.is_ident("deserialize_as") {
+                } else if meta.path.is_ident("deserialize_with") {
                     set_once(
-                        &mut parsed.deserialize_as,
-                        parse_type(&meta)?,
+                        &mut parsed.deserialize_with,
+                        parse_path(&meta)?,
                         meta.path.span(),
                     )
                 } else {
                     Err(meta.error(
-                        "unknown serde_shape attribute; expected `with`, `serialize_as`, or `deserialize_as`",
+                        "unknown serde_shape attribute; expected `serialize_with` or `deserialize_with`",
                     ))
                 }
             })?;
         }
 
-        if let Some((_, span)) = &parsed.with {
-            if parsed.serialize_as.is_some() || parsed.deserialize_as.is_some() {
-                return Err(syn::Error::new(
-                    *span,
-                    "`with` cannot be combined with `serialize_as` or `deserialize_as`",
-                ));
-            }
-        }
-
         Ok(parsed)
     }
 
-    pub fn serialize_as(&self) -> Option<&Type> {
-        self.serialize_as
-            .as_ref()
-            .or(self.with.as_ref())
-            .map(|(ty, _)| ty)
+    pub fn serialize_with(&self) -> Option<&ExprPath> {
+        self.serialize_with.as_ref().map(|(path, _)| path)
     }
 
-    pub fn deserialize_as(&self) -> Option<&Type> {
-        self.deserialize_as
-            .as_ref()
-            .or(self.with.as_ref())
-            .map(|(ty, _)| ty)
+    pub fn deserialize_with(&self) -> Option<&ExprPath> {
+        self.deserialize_with.as_ref().map(|(path, _)| path)
     }
 
     pub fn is_empty(&self) -> bool {
-        self.serialize_as.is_none() && self.deserialize_as.is_none() && self.with.is_none()
+        self.serialize_with.is_none() && self.deserialize_with.is_none()
     }
 }
 
@@ -125,16 +107,16 @@ pub fn description(attrs: &[Attribute]) -> Option<String> {
     (!lines.is_empty()).then(|| lines.join("\n"))
 }
 
-fn parse_type(meta: &ParseNestedMeta<'_>) -> syn::Result<Type> {
+fn parse_path(meta: &ParseNestedMeta<'_>) -> syn::Result<ExprPath> {
     let value = meta.value()?;
     let value: LitStr = value.parse()?;
     value.parse()
 }
 
-fn set_once(slot: &mut Option<(Type, Span)>, ty: Type, span: Span) -> syn::Result<()> {
+fn set_once<T>(slot: &mut Option<(T, Span)>, value: T, span: Span) -> syn::Result<()> {
     if slot.is_some() {
         return Err(syn::Error::new(span, "duplicate serde_shape attribute"));
     }
-    *slot = Some((ty, span));
+    *slot = Some((value, span));
     Ok(())
 }
