@@ -12,7 +12,7 @@
 [docs-url]: https://docs.rs/serde-shape
 [msrv-badge]: https://img.shields.io/badge/MSRV-1.85-green?logo=rust
 [license-badge]: https://img.shields.io/crates/l/serde-shape
-[license-url]: LICENSE
+[license-url]: https://github.com/fast/serde-shape/blob/main/LICENSE
 [actions-badge]: https://github.com/fast/serde-shape/workflows/CI/badge.svg
 [actions-url]: https://github.com/fast/serde-shape/actions?query=workflow%3ACI
 
@@ -170,8 +170,8 @@ The current policy is that the minimum Rust version required to use this crate c
 
 ## Contributing
 
-See [CONTRIBUTING.md](CONTRIBUTING.md) for the development workflow and test conventions.
+See the [contributor guide](https://github.com/fast/serde-shape/blob/main/CONTRIBUTING.md) for the development workflow and test conventions.
 
 ## License
 
-This project is licensed under [Apache License, Version 2.0](LICENSE).
+This project is licensed under the [Apache License, Version 2.0](https://github.com/fast/serde-shape/blob/main/LICENSE).
