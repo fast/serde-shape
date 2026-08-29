@@ -131,6 +131,8 @@ struct Config {
 
 Each function receives the current graph context and returns a `ShapeRef`. It may delegate to another type's shape implementation or construct a custom shape directly. A custom shape function is an assertion about the Serde behavior; `serde-shape` cannot verify that the declared shape matches the serializer or deserializer implementation.
 
+The same `serde_shape` hooks can be placed on enum variants whose content is controlled by a variant-level Serde custom function. A variant hook describes the content inside the enum's tagging representation; the enum's `repr` still describes the tag. Without an explicit hook, custom variant content remains opaque.
+
 For a generic custom hook, container-level `#[serde_shape(bound(serialize = "...", deserialize = "..."))]` replaces the automatically inferred bounds in the corresponding direction, following Serde's bound-override convention.
 
 ## Model boundaries
@@ -156,12 +158,16 @@ The built-in implementations follow Serde's own data-model calls in each directi
 | --- | --- |
 | Scalars | Rust primitives, `String`, `str`, non-zero integers, and atomics available on the target |
 | Containers | `Option`, `Result`, arrays, slices for serialization, tuples through arity 16, `Vec`, `VecDeque`, `LinkedList`, `BinaryHeap`, `BTreeSet`, and `BTreeMap` |
-| Wrappers | References, `Box`, `Cow`, `Cell`, `RefCell`, `Wrapping`, `Reverse`, and `PhantomData` |
-| Time | `core::time::Duration` |
+| Wrappers | References, `Box`, `Rc`, `Arc`, their weak pointers, `Cow`, `Cell`, `RefCell`, `Wrapping`, `Saturating`, `Reverse`, and `PhantomData` |
+| FFI | `CStr` and `CString` byte representations, including owned `Box<CStr>` input |
+| Ranges | `Range`, `RangeFrom`, `RangeInclusive`, `RangeTo`, and `Bound` |
+| Time | `core::time::Duration` and, with `std`, `SystemTime` |
 | Network | `core::net` IP and socket address types |
 | `std` feature | `HashMap`, `HashSet`, `Path`, `PathBuf`, `Mutex`, and `RwLock` |
 
-Network address shapes are unions of their human-readable string representation and their compact Serde representation. A serialized byte slice is a sequence, while borrowed byte deserialization uses `ShapeRef::Bytes`.
+Network address shapes are unions of their human-readable string representation and their compact Serde representation. A serialized byte slice and an owned `Box<[u8]>` input are sequences, while borrowed byte deserialization uses `ShapeRef::Bytes`.
+
+Serde's `rc` feature is still required to serialize or deserialize `Rc`, `Arc`, and their weak pointers; the shape implementations do not enable Serde features.
 
 For an unsupported foreign type, use a local newtype and implement `SerializeShape` or `DeserializeShape` manually. Custom Serde functions remain opaque by default because their wire behavior cannot be inferred; use a `serde_shape` custom hook when the representation is known.
 

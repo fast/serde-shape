@@ -14,6 +14,7 @@
 
 use alloc::vec;
 use core::any::type_name;
+use core::ops::Bound;
 
 use crate::DefaultShape;
 use crate::DeserializeContainerAttributes;
@@ -40,23 +41,23 @@ use crate::SerializeVariantShape;
 use crate::ShapeRef;
 use crate::Tagging;
 
-impl<T, E> SerializeShape for Result<T, E>
+impl<T> SerializeShape for Bound<T>
 where
     T: SerializeShape,
-    E: SerializeShape,
 {
     fn serialize_shape_in(context: &mut SerializeShapeContext) -> ShapeRef {
         context.define_named_type(
             SerializeTypeName {
                 rust_name: type_name::<Self>(),
-                name: "Result",
+                name: "Bound",
             },
             |context| {
                 SerializeDefinitionKind::Enum(SerializeEnumShape {
                     repr: Tagging::External,
                     variants: vec![
-                        serialize_result_variant("Ok", T::serialize_shape_in(context)),
-                        serialize_result_variant("Err", E::serialize_shape_in(context)),
+                        serialize_bound_variant("Unbounded", None),
+                        serialize_bound_variant("Included", Some(T::serialize_shape_in(context))),
+                        serialize_bound_variant("Excluded", Some(T::serialize_shape_in(context))),
                     ],
                     attributes: SerializeContainerAttributes::default(),
                 })
@@ -65,23 +66,29 @@ where
     }
 }
 
-impl<T, E> DeserializeShape for Result<T, E>
+impl<T> DeserializeShape for Bound<T>
 where
     T: DeserializeShape,
-    E: DeserializeShape,
 {
     fn deserialize_shape_in(context: &mut DeserializeShapeContext) -> ShapeRef {
         context.define_named_type(
             DeserializeTypeName {
                 rust_name: type_name::<Self>(),
-                name: "Result",
+                name: "Bound",
             },
             |context| {
                 DeserializeDefinitionKind::Enum(DeserializeEnumShape {
                     repr: Tagging::External,
                     variants: vec![
-                        deserialize_result_variant("Ok", T::deserialize_shape_in(context)),
-                        deserialize_result_variant("Err", E::deserialize_shape_in(context)),
+                        deserialize_bound_variant("Unbounded", None),
+                        deserialize_bound_variant(
+                            "Included",
+                            Some(T::deserialize_shape_in(context)),
+                        ),
+                        deserialize_bound_variant(
+                            "Excluded",
+                            Some(T::deserialize_shape_in(context)),
+                        ),
                     ],
                     attributes: DeserializeContainerAttributes::default(),
                 })
@@ -90,38 +97,60 @@ where
     }
 }
 
-fn serialize_result_variant(name: &'static str, shape: ShapeRef) -> SerializeVariantShape {
+fn serialize_bound_variant(
+    name: &'static str,
+    value_shape: Option<ShapeRef>,
+) -> SerializeVariantShape {
+    let (style, fields) = match value_shape {
+        Some(value_shape) => (
+            FieldsStyle::Newtype,
+            vec![SerializeFieldShape {
+                member: FieldMember::Unnamed(0),
+                name: "0",
+                description: None,
+                wire_shape: FieldWireShape::Value(value_shape),
+                skip_if: None,
+            }],
+        ),
+        None => (FieldsStyle::Unit, vec![]),
+    };
+
     SerializeVariantShape {
         rust_name: name,
         name,
         description: None,
-        style: FieldsStyle::Newtype,
-        content: SerializeVariantContent::Fields(vec![SerializeFieldShape {
-            member: FieldMember::Unnamed(0),
-            name: "0",
-            description: None,
-            wire_shape: FieldWireShape::Value(shape),
-            skip_if: None,
-        }]),
+        style,
+        content: SerializeVariantContent::Fields(fields),
         untagged: false,
     }
 }
 
-fn deserialize_result_variant(name: &'static str, shape: ShapeRef) -> DeserializeVariantShape {
+fn deserialize_bound_variant(
+    name: &'static str,
+    value_shape: Option<ShapeRef>,
+) -> DeserializeVariantShape {
+    let (style, fields) = match value_shape {
+        Some(value_shape) => (
+            FieldsStyle::Newtype,
+            vec![DeserializeFieldShape {
+                member: FieldMember::Unnamed(0),
+                name: "0",
+                aliases: vec!["0"],
+                description: None,
+                wire_shape: FieldWireShape::Value(value_shape),
+                default: DefaultShape::None,
+            }],
+        ),
+        None => (FieldsStyle::Unit, vec![]),
+    };
+
     DeserializeVariantShape {
         rust_name: name,
         name,
         aliases: vec![name],
         description: None,
-        style: FieldsStyle::Newtype,
-        content: DeserializeVariantContent::Fields(vec![DeserializeFieldShape {
-            member: FieldMember::Unnamed(0),
-            name: "0",
-            aliases: vec!["0"],
-            description: None,
-            wire_shape: FieldWireShape::Value(shape),
-            default: DefaultShape::None,
-        }]),
+        style,
+        content: DeserializeVariantContent::Fields(fields),
         other: false,
         untagged: false,
     }

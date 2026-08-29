@@ -34,6 +34,7 @@ impl Command {
         match self.sub {
             SubCommand::Build(cmd) => cmd.run(),
             SubCommand::Lint(cmd) => cmd.run(),
+            SubCommand::Package(cmd) => cmd.run(),
             SubCommand::Test(cmd) => cmd.run(),
         }
     }
@@ -45,6 +46,8 @@ enum SubCommand {
     Build(CommandBuild),
     #[clap(about = "Run workspace quality checks.")]
     Lint(CommandLint),
+    #[clap(about = "Build the publishable crate archives.")]
+    Package(CommandPackage),
     #[clap(about = "Run workspace unit tests.")]
     Test(CommandTest),
 }
@@ -58,6 +61,18 @@ struct CommandBuild {
 impl CommandBuild {
     fn run(self) {
         run_command(make_build_cmd(self.locked));
+    }
+}
+
+#[derive(Parser)]
+struct CommandPackage {
+    #[arg(long, help = "Assert that `Cargo.lock` will remain unchanged.")]
+    locked: bool,
+}
+
+impl CommandPackage {
+    fn run(self) {
+        run_command(make_package_cmd(self.locked));
     }
 }
 
@@ -150,6 +165,22 @@ fn make_build_cmd(locked: bool) -> StdCommand {
         "--examples",
         "--benches",
         "--bins",
+    ]);
+    if locked {
+        cmd.arg("--locked");
+    }
+    cmd
+}
+
+fn make_package_cmd(locked: bool) -> StdCommand {
+    let mut cmd = find_command("cargo");
+    cmd.args([
+        "package",
+        "--package",
+        "serde-shape-derive",
+        "--package",
+        "serde-shape",
+        "--all-features",
     ]);
     if locked {
         cmd.arg("--locked");

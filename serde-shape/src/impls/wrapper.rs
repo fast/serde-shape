@@ -15,10 +15,17 @@
 use alloc::borrow::Cow;
 use alloc::borrow::ToOwned;
 use alloc::boxed::Box;
+use alloc::rc::Rc;
+use alloc::rc::Weak as RcWeak;
+#[cfg(target_has_atomic = "ptr")]
+use alloc::sync::Arc;
+#[cfg(target_has_atomic = "ptr")]
+use alloc::sync::Weak as ArcWeak;
 use core::cell::Cell;
 use core::cell::RefCell;
 use core::cmp::Reverse;
 use core::marker::PhantomData;
+use core::num::Saturating;
 use core::num::Wrapping;
 
 use crate::DeserializeShape;
@@ -75,7 +82,7 @@ transparent_shape! {
     (T) Box<T>
     where
         serialize { T: SerializeShape + ?Sized }
-        deserialize { T: DeserializeShape + ?Sized }
+        deserialize { T: DeserializeShape }
     => T;
 
     (T) Cell<T>
@@ -86,7 +93,7 @@ transparent_shape! {
 
     (T) RefCell<T>
     where
-        serialize { T: SerializeShape }
+        serialize { T: SerializeShape + ?Sized }
         deserialize { T: DeserializeShape }
     => T;
 
@@ -103,17 +110,110 @@ transparent_shape! {
     => T;
 }
 
+impl<T> SerializeShape for Saturating<T>
+where
+    T: SerializeShape,
+{
+    fn serialize_shape_in(context: &mut SerializeShapeContext) -> ShapeRef {
+        T::serialize_shape_in(context)
+    }
+}
+
+macro_rules! saturating_deserialize_shape {
+    ($($ty:ty),+ $(,)?) => {
+        $(
+            impl DeserializeShape for Saturating<$ty> {
+                fn deserialize_shape_in(context: &mut DeserializeShapeContext) -> ShapeRef {
+                    <$ty as DeserializeShape>::deserialize_shape_in(context)
+                }
+            }
+        )+
+    };
+}
+
+saturating_deserialize_shape!(
+    i8, i16, i32, i64, i128, isize, u8, u16, u32, u64, u128, usize,
+);
+
+impl<T> DeserializeShape for Box<[T]>
+where
+    T: DeserializeShape,
+{
+    fn deserialize_shape_in(context: &mut DeserializeShapeContext) -> ShapeRef {
+        ShapeRef::Seq(Box::new(T::deserialize_shape_in(context)))
+    }
+}
+
+impl DeserializeShape for Box<str> {
+    fn deserialize_shape_in(_context: &mut DeserializeShapeContext) -> ShapeRef {
+        ShapeRef::String
+    }
+}
+
+macro_rules! shared_pointer_shape {
+    ($strong:ident, $weak:ident) => {
+        impl<T> SerializeShape for $strong<T>
+        where
+            T: SerializeShape + ?Sized,
+        {
+            fn serialize_shape_in(context: &mut SerializeShapeContext) -> ShapeRef {
+                T::serialize_shape_in(context)
+            }
+        }
+
+        impl<T> DeserializeShape for $strong<T>
+        where
+            T: ?Sized,
+            Box<T>: DeserializeShape,
+        {
+            fn deserialize_shape_in(context: &mut DeserializeShapeContext) -> ShapeRef {
+                <Box<T> as DeserializeShape>::deserialize_shape_in(context)
+            }
+        }
+
+        impl<T> SerializeShape for $weak<T>
+        where
+            T: SerializeShape + ?Sized,
+        {
+            fn serialize_shape_in(context: &mut SerializeShapeContext) -> ShapeRef {
+                ShapeRef::Option(Box::new(T::serialize_shape_in(context)))
+            }
+        }
+
+        impl<T> DeserializeShape for $weak<T>
+        where
+            T: DeserializeShape,
+        {
+            fn deserialize_shape_in(context: &mut DeserializeShapeContext) -> ShapeRef {
+                ShapeRef::Option(Box::new(T::deserialize_shape_in(context)))
+            }
+        }
+    };
+}
+
+shared_pointer_shape!(Rc, RcWeak);
+
+#[cfg(target_has_atomic = "ptr")]
+shared_pointer_shape!(Arc, ArcWeak);
+
+#[cfg(feature = "std")]
+impl DeserializeShape for Box<std::path::Path> {
+    fn deserialize_shape_in(_context: &mut DeserializeShapeContext) -> ShapeRef {
+        ShapeRef::String
+    }
+}
+
 #[cfg(feature = "std")]
 transparent_shape! {
     (T) std::sync::Mutex<T>
     where
-        serialize { T: SerializeShape }
+        serialize { T: SerializeShape + ?Sized }
         deserialize { T: DeserializeShape }
     => T;
 
     (T) std::sync::RwLock<T>
     where
-        serialize { T: SerializeShape }
+        serialize { T: SerializeShape + ?Sized }
         deserialize { T: DeserializeShape }
     => T;
 }

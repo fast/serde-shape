@@ -152,9 +152,9 @@
 //! [`ShapeRef::Opaque`] and remain composable with those field positions.
 //!
 //! Use `#[serde_shape(serialize_with = "path")]` or
-//! `#[serde_shape(deserialize_with = "path")]` to declare the representation of a container or
-//! field that cannot be inferred. Each function receives the current graph context and returns a
-//! [`ShapeRef`], so it can delegate to another type or build a custom shape directly.
+//! `#[serde_shape(deserialize_with = "path")]` to declare the representation of a container,
+//! variant, or field that cannot be inferred. Each function receives the current graph context and
+//! returns a [`ShapeRef`], so it can delegate to another type or build a custom shape directly.
 //!
 //! Rust doc comments on derived containers, variants, and fields are preserved in their
 //! `description` fields for documentation and diagnostic consumers.
@@ -218,10 +218,10 @@ pub mod __private {
 /// metadata that Serde uses for deserialization. The generated implementation records the
 /// deserialization-side names, shape graph, and Serde field/container metadata.
 ///
-/// Use `#[serde_shape(deserialize_with = "path")]` on a container or field to override an
-/// opaque or foreign representation. The function must accept `&mut DeserializeShapeContext`
-/// and return a [`ShapeRef`]. Generic hooks can replace inferred bounds with
-/// `#[serde_shape(bound(deserialize = "T: DeserializeShape"))]` on the container.
+/// Use `#[serde_shape(deserialize_with = "path")]` on a container, variant, or field to
+/// override an opaque or foreign representation. The function must accept `&mut
+/// DeserializeShapeContext` and return a [`ShapeRef`]. Generic hooks can replace inferred
+/// bounds with `#[serde_shape(bound(deserialize = "T: DeserializeShape"))]` on the container.
 ///
 /// # Example
 ///
@@ -258,9 +258,9 @@ pub use serde_shape_derive::DeserializeShape;
 /// metadata that Serde uses for serialization. The generated implementation records the
 /// serialization-side names, shape graph, and Serde field/container metadata.
 ///
-/// Use `#[serde_shape(serialize_with = "path")]` on a container or field to override an opaque
-/// or foreign representation. The function must accept `&mut SerializeShapeContext` and return
-/// a [`ShapeRef`]. Generic hooks can replace inferred bounds with
+/// Use `#[serde_shape(serialize_with = "path")]` on a container, variant, or field to override
+/// an opaque or foreign representation. The function must accept `&mut SerializeShapeContext`
+/// and return a [`ShapeRef`]. Generic hooks can replace inferred bounds with
 /// `#[serde_shape(bound(serialize = "T: SerializeShape"))]` on the container.
 ///
 /// # Example
@@ -598,7 +598,7 @@ pub enum ShapeRef {
     F64,
     /// UTF-8 string shape.
     String,
-    /// Byte buffer shape.
+    /// Serde byte-buffer data-model shape.
     Bytes,
     /// Optional value shape.
     Option(Box<ShapeRef>),
@@ -790,7 +790,10 @@ pub enum DeserializeDefinitionKind {
 }
 
 /// Serde attributes that apply to a whole serialized container.
-#[derive(Clone, Debug, Eq, PartialEq)]
+///
+/// [`Default`] represents an ordinary externally tagged container with every optional behavior
+/// disabled.
+#[derive(Clone, Debug, Default, Eq, PartialEq)]
 pub struct SerializeContainerAttributes {
     /// The container tagging representation.
     pub tagging: Tagging,
@@ -803,7 +806,10 @@ pub struct SerializeContainerAttributes {
 }
 
 /// Serde attributes that apply to a whole deserialized container.
-#[derive(Clone, Debug, Eq, PartialEq)]
+///
+/// [`Default`] represents an ordinary externally tagged container with no default, expectation, or
+/// optional behavior configured.
+#[derive(Clone, Debug, Default, Eq, PartialEq)]
 pub struct DeserializeContainerAttributes {
     /// The container tagging representation.
     pub tagging: Tagging,
@@ -822,9 +828,12 @@ pub struct DeserializeContainerAttributes {
 }
 
 /// Serde container or enum tagging representation.
-#[derive(Clone, Debug, Eq, PartialEq)]
+///
+/// [`Default`] is [`Tagging::External`].
+#[derive(Clone, Debug, Default, Eq, PartialEq)]
 pub enum Tagging {
     /// The default externally tagged representation.
+    #[default]
     External,
     /// `#[serde(tag = "...")]`.
     Internal {
@@ -979,6 +988,8 @@ pub enum SerializeVariantContent {
     Omitted,
     /// Serde derives the variant content from these fields.
     Fields(Vec<SerializeFieldShape>),
+    /// A `serde_shape` hook supplies the content shape inside the enum's tagging representation.
+    Shape(ShapeRef),
     /// A custom serializer controls the variant content.
     Custom(OpaqueShape),
 }
@@ -1012,14 +1023,19 @@ pub enum DeserializeVariantContent {
     Omitted,
     /// Serde derives the variant content from these fields.
     Fields(Vec<DeserializeFieldShape>),
+    /// A `serde_shape` hook supplies the content shape inside the enum's tagging representation.
+    Shape(ShapeRef),
     /// A custom deserializer controls the variant content.
     Custom(OpaqueShape),
 }
 
 /// A Serde default marker.
-#[derive(Clone, Debug, Eq, PartialEq)]
+///
+/// [`Default`] is [`DefaultShape::None`].
+#[derive(Clone, Debug, Default, Eq, PartialEq)]
 pub enum DefaultShape {
     /// No default is configured.
+    #[default]
     None,
     /// `Default::default()` is used.
     Default,

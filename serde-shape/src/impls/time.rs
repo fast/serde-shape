@@ -13,8 +13,11 @@
 // limitations under the License.
 
 use alloc::vec;
+use alloc::vec::Vec;
 use core::any::type_name;
 use core::time::Duration;
+#[cfg(feature = "std")]
+use std::time::SystemTime;
 
 use crate::DefaultShape;
 use crate::DeserializeContainerAttributes;
@@ -35,85 +38,93 @@ use crate::SerializeShapeContext;
 use crate::SerializeStructShape;
 use crate::SerializeTypeName;
 use crate::ShapeRef;
-use crate::Tagging;
 
-impl SerializeShape for Duration {
-    fn serialize_shape_in(context: &mut SerializeShapeContext) -> ShapeRef {
-        context.define_named_type(
-            SerializeTypeName {
-                rust_name: type_name::<Self>(),
-                name: "Duration",
-            },
-            |_| {
-                SerializeDefinitionKind::Struct(SerializeStructShape {
-                    style: FieldsStyle::Struct,
-                    fields: vec![
-                        SerializeFieldShape {
-                            member: FieldMember::Named("secs"),
-                            name: "secs",
-                            description: None,
-                            wire_shape: FieldWireShape::Value(ShapeRef::U64),
-                            skip_if: None,
-                        },
-                        SerializeFieldShape {
-                            member: FieldMember::Named("nanos"),
-                            name: "nanos",
-                            description: None,
-                            wire_shape: FieldWireShape::Value(ShapeRef::U32),
-                            skip_if: None,
-                        },
-                    ],
-                    attributes: SerializeContainerAttributes {
-                        tagging: Tagging::External,
-                        has_flatten: false,
-                        transparent: false,
-                        non_exhaustive: false,
-                    },
-                })
-            },
-        )
-    }
+macro_rules! time_shape {
+    ($ty:ty, $name:literal, $($field:literal => $shape:expr),+ $(,)?) => {
+        impl SerializeShape for $ty {
+            fn serialize_shape_in(context: &mut SerializeShapeContext) -> ShapeRef {
+                serialize_time_shape(
+                    context,
+                    type_name::<Self>(),
+                    $name,
+                    [$(($field, $shape)),+],
+                )
+            }
+        }
+
+        impl DeserializeShape for $ty {
+            fn deserialize_shape_in(context: &mut DeserializeShapeContext) -> ShapeRef {
+                deserialize_time_shape(
+                    context,
+                    type_name::<Self>(),
+                    $name,
+                    [$(($field, $shape)),+],
+                )
+            }
+        }
+    };
 }
 
-impl DeserializeShape for Duration {
-    fn deserialize_shape_in(context: &mut DeserializeShapeContext) -> ShapeRef {
-        context.define_named_type(
-            DeserializeTypeName {
-                rust_name: type_name::<Self>(),
-                name: "Duration",
+time_shape!(Duration, "Duration", "secs" => ShapeRef::U64, "nanos" => ShapeRef::U32);
+
+#[cfg(feature = "std")]
+time_shape!(
+    SystemTime,
+    "SystemTime",
+    "secs_since_epoch" => ShapeRef::U64,
+    "nanos_since_epoch" => ShapeRef::U32,
+);
+
+fn serialize_time_shape<const N: usize>(
+    context: &mut SerializeShapeContext,
+    rust_name: &'static str,
+    name: &'static str,
+    fields: [(&'static str, ShapeRef); N],
+) -> ShapeRef {
+    let fields: Vec<_> = fields
+        .into_iter()
+        .map(|(name, shape)| SerializeFieldShape {
+            member: FieldMember::Named(name),
+            name,
+            description: None,
+            wire_shape: FieldWireShape::Value(shape),
+            skip_if: None,
+        })
+        .collect();
+    context.define_named_type(SerializeTypeName { rust_name, name }, move |_| {
+        SerializeDefinitionKind::Struct(SerializeStructShape {
+            style: FieldsStyle::Struct,
+            fields,
+            attributes: SerializeContainerAttributes::default(),
+        })
+    })
+}
+
+fn deserialize_time_shape<const N: usize>(
+    context: &mut DeserializeShapeContext,
+    rust_name: &'static str,
+    name: &'static str,
+    fields: [(&'static str, ShapeRef); N],
+) -> ShapeRef {
+    let fields: Vec<_> = fields
+        .into_iter()
+        .map(|(name, shape)| DeserializeFieldShape {
+            member: FieldMember::Named(name),
+            name,
+            aliases: vec![name],
+            description: None,
+            wire_shape: FieldWireShape::Value(shape),
+            default: DefaultShape::None,
+        })
+        .collect();
+    context.define_named_type(DeserializeTypeName { rust_name, name }, move |_| {
+        DeserializeDefinitionKind::Struct(DeserializeStructShape {
+            style: FieldsStyle::Struct,
+            fields,
+            attributes: DeserializeContainerAttributes {
+                deny_unknown_fields: true,
+                ..DeserializeContainerAttributes::default()
             },
-            |_| {
-                DeserializeDefinitionKind::Struct(DeserializeStructShape {
-                    style: FieldsStyle::Struct,
-                    fields: vec![
-                        DeserializeFieldShape {
-                            member: FieldMember::Named("secs"),
-                            name: "secs",
-                            aliases: vec!["secs"],
-                            description: None,
-                            wire_shape: FieldWireShape::Value(ShapeRef::U64),
-                            default: DefaultShape::None,
-                        },
-                        DeserializeFieldShape {
-                            member: FieldMember::Named("nanos"),
-                            name: "nanos",
-                            aliases: vec!["nanos"],
-                            description: None,
-                            wire_shape: FieldWireShape::Value(ShapeRef::U32),
-                            default: DefaultShape::None,
-                        },
-                    ],
-                    attributes: DeserializeContainerAttributes {
-                        tagging: Tagging::External,
-                        deny_unknown_fields: true,
-                        default: DefaultShape::None,
-                        has_flatten: false,
-                        transparent: false,
-                        expecting: None,
-                        non_exhaustive: false,
-                    },
-                })
-            },
-        )
-    }
+        })
+    })
 }

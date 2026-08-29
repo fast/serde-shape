@@ -19,13 +19,26 @@ use alloc::collections::BTreeMap;
 use alloc::collections::BinaryHeap;
 use alloc::collections::LinkedList;
 use alloc::collections::VecDeque;
+use alloc::ffi::CString;
+use alloc::rc::Rc;
+use alloc::rc::Weak as RcWeak;
 use alloc::string::String;
+#[cfg(target_has_atomic = "ptr")]
+use alloc::sync::Arc;
 use alloc::vec;
 use alloc::vec::Vec;
 use core::borrow::Borrow;
 use core::cell::Cell;
+use core::cell::RefCell;
 use core::cmp::Reverse;
+use core::ffi::CStr;
+use core::num::Saturating;
 use core::num::Wrapping;
+use core::ops::Bound;
+use core::ops::Range;
+use core::ops::RangeFrom;
+use core::ops::RangeInclusive;
+use core::ops::RangeTo;
 
 use crate::DeserializeDefinitionKind;
 use crate::DeserializeShape;
@@ -226,6 +239,10 @@ fn distinguishes_byte_sequences_from_borrowed_byte_input() {
         <[u8] as DeserializeShape>::deserialize_shape().root(),
         &ShapeRef::Bytes
     );
+    assert_eq!(
+        <Box<[u8]> as DeserializeShape>::deserialize_shape().root(),
+        &ShapeRef::Seq(Box::new(ShapeRef::U8))
+    );
 }
 
 #[test]
@@ -289,6 +306,74 @@ fn maps_duration_as_serde_struct_fields() {
 }
 
 #[test]
+fn maps_range_struct_shapes() {
+    assert_range_shapes::<Range<u8>>("Range", &["start", "end"]);
+    assert_range_shapes::<RangeFrom<u8>>("RangeFrom", &["start"]);
+    assert_range_shapes::<RangeInclusive<u8>>("RangeInclusive", &["start", "end"]);
+    assert_range_shapes::<RangeTo<u8>>("RangeTo", &["end"]);
+}
+
+#[test]
+fn maps_bound_as_an_externally_tagged_enum() {
+    let serialize = SerializeShapeGraph::for_type::<Bound<u8>>();
+    let SerializeDefinitionKind::Enum(shape) = &serialize.root_definition().unwrap().kind else {
+        panic!("bound serialization shape should be an enum");
+    };
+    assert_eq!(shape.repr, Tagging::External);
+    assert_eq!(shape.variants[0].name, "Unbounded");
+    assert_eq!(shape.variants[0].style, FieldsStyle::Unit);
+    assert_eq!(shape.variants[1].name, "Included");
+    assert_eq!(shape.variants[1].style, FieldsStyle::Newtype);
+
+    let deserialize = DeserializeShapeGraph::for_type::<Bound<u8>>();
+    let DeserializeDefinitionKind::Enum(shape) = &deserialize.root_definition().unwrap().kind
+    else {
+        panic!("bound deserialization shape should be an enum");
+    };
+    assert_eq!(shape.variants[2].name, "Excluded");
+    let crate::DeserializeVariantContent::Fields(fields) = &shape.variants[2].content else {
+        panic!("Excluded should contain one reflected field");
+    };
+    assert_eq!(fields[0].wire_shape, FieldWireShape::Value(ShapeRef::U8));
+}
+
+fn assert_range_shapes<T>(type_name: &str, field_names: &[&str])
+where
+    T: SerializeShape + DeserializeShape,
+{
+    let serialize = T::serialize_shape();
+    let serialize_definition = serialize.root_definition().unwrap();
+    assert_eq!(serialize_definition.type_name.name, type_name);
+    let SerializeDefinitionKind::Struct(shape) = &serialize_definition.kind else {
+        panic!("range serialization shape should be a struct");
+    };
+    assert_eq!(
+        shape
+            .fields
+            .iter()
+            .map(|field| field.name)
+            .collect::<Vec<_>>(),
+        field_names
+    );
+
+    let deserialize = T::deserialize_shape();
+    let deserialize_definition = deserialize.root_definition().unwrap();
+    assert_eq!(deserialize_definition.type_name.name, type_name);
+    let DeserializeDefinitionKind::Struct(shape) = &deserialize_definition.kind else {
+        panic!("range deserialization shape should be a struct");
+    };
+    assert!(shape.attributes.deny_unknown_fields);
+    assert_eq!(
+        shape
+            .fields
+            .iter()
+            .map(|field| field.name)
+            .collect::<Vec<_>>(),
+        field_names
+    );
+}
+
+#[test]
 fn supports_serde_tuple_arity() {
     type Tuple16 = (
         u8,
@@ -331,6 +416,14 @@ fn maps_common_core_and_alloc_shapes() {
         &ShapeRef::I16
     );
     assert_eq!(
+        SerializeShapeGraph::for_type::<Saturating<String>>().root(),
+        &ShapeRef::String
+    );
+    assert_eq!(
+        DeserializeShapeGraph::for_type::<Saturating<u16>>().root(),
+        &ShapeRef::U16
+    );
+    assert_eq!(
         SerializeShapeGraph::for_type::<Reverse<u32>>().root(),
         &ShapeRef::U32
     );
@@ -345,6 +438,51 @@ fn maps_common_core_and_alloc_shapes() {
     assert_eq!(
         DeserializeShapeGraph::for_type::<BinaryHeap<u16>>().root(),
         &ShapeRef::Seq(Box::new(ShapeRef::U16))
+    );
+    assert_eq!(
+        SerializeShapeGraph::for_type::<CString>().root(),
+        &ShapeRef::Bytes
+    );
+    assert_eq!(
+        DeserializeShapeGraph::for_type::<CString>().root(),
+        &ShapeRef::Bytes
+    );
+    assert_eq!(
+        <Box<CStr> as DeserializeShape>::deserialize_shape().root(),
+        &ShapeRef::Bytes
+    );
+}
+
+#[test]
+fn follows_shared_pointer_serde_shapes() {
+    assert_eq!(
+        <Rc<str> as SerializeShape>::serialize_shape().root(),
+        &ShapeRef::String
+    );
+    assert_eq!(
+        <Rc<[u8]> as DeserializeShape>::deserialize_shape().root(),
+        &ShapeRef::Seq(Box::new(ShapeRef::U8))
+    );
+    assert_eq!(
+        SerializeShapeGraph::for_type::<RcWeak<u16>>().root(),
+        &ShapeRef::Option(Box::new(ShapeRef::U16))
+    );
+    #[cfg(target_has_atomic = "ptr")]
+    assert_eq!(
+        <Arc<[u8]> as DeserializeShape>::deserialize_shape().root(),
+        &ShapeRef::Seq(Box::new(ShapeRef::U8))
+    );
+}
+
+#[test]
+fn accepts_serde_serializable_collection_and_wrapper_bounds() {
+    assert_eq!(
+        SerializeShapeGraph::for_type::<BinaryHeap<BorrowedShape>>().root(),
+        &ShapeRef::Seq(Box::new(ShapeRef::U8))
+    );
+    assert_eq!(
+        <RefCell<str> as SerializeShape>::serialize_shape().root(),
+        &ShapeRef::String
     );
 }
 
@@ -375,6 +513,27 @@ fn maps_common_std_shapes() {
         SerializeShapeGraph::for_type::<std::path::PathBuf>().root(),
         &ShapeRef::String
     );
+    assert_eq!(
+        <Box<std::path::Path> as DeserializeShape>::deserialize_shape().root(),
+        &ShapeRef::String
+    );
+    assert_eq!(
+        <std::sync::Mutex<str> as SerializeShape>::serialize_shape().root(),
+        &ShapeRef::String
+    );
+    assert_eq!(
+        <std::sync::RwLock<str> as SerializeShape>::serialize_shape().root(),
+        &ShapeRef::String
+    );
+
+    let system_time = DeserializeShapeGraph::for_type::<std::time::SystemTime>();
+    let DeserializeDefinitionKind::Struct(shape) = &system_time.root_definition().unwrap().kind
+    else {
+        panic!("system time shape should be a struct");
+    };
+    assert_eq!(shape.fields[0].name, "secs_since_epoch");
+    assert_eq!(shape.fields[1].name, "nanos_since_epoch");
+    assert!(shape.attributes.deny_unknown_fields);
 }
 
 #[test]
