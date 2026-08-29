@@ -179,7 +179,7 @@ The current policy is that the minimum Rust version required to use this crate c
 
 ## Contributing
 
-See the [contributor guide](https://github.com/fast/serde-shape/blob/main/CONTRIBUTING.md) for the development workflow and test conventions.
+See the [contributor guide](CONTRIBUTING.md) for the development workflow and test conventions.
 
 ## License
 
