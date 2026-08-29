@@ -55,8 +55,6 @@ unused_must_use = "deny"
 
 [workspace.lints.clippy]
 dbg_macro = "deny"
-too_many_arguments = "allow"
-type_complexity = "allow"
 
 [workspace.metadata.release]
 pre-release-commit-message = "chore: release v{{version}}"

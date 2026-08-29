@@ -53,7 +53,9 @@ struct TcpTransport {
 #[test]
 fn exposes_the_structure_needed_by_config_consumers() {
     let graph = ClientConfig::deserialize_shape();
-    let root = graph.root_definition().expect("config definition should exist");
+    let root = graph
+        .root_definition()
+        .expect("config definition should exist");
     let DeserializeDefinitionKind::Struct(config) = &root.kind else {
         panic!("config should be a struct");
     };
