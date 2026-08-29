@@ -525,6 +525,15 @@ fn maps_common_std_shapes() {
         <std::sync::RwLock<str> as SerializeShape>::serialize_shape().root(),
         &ShapeRef::String
     );
+
+    let system_time = DeserializeShapeGraph::for_type::<std::time::SystemTime>();
+    let DeserializeDefinitionKind::Struct(shape) = &system_time.root_definition().unwrap().kind
+    else {
+        panic!("system time shape should be a struct");
+    };
+    assert_eq!(shape.fields[0].name, "secs_since_epoch");
+    assert_eq!(shape.fields[1].name, "nanos_since_epoch");
+    assert!(shape.attributes.deny_unknown_fields);
 }
 
 #[test]

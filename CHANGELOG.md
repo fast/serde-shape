@@ -20,6 +20,7 @@ All notable changes to this project will be documented in this file.
 * Reflect `Saturating<T>` with Serde's generic serialization and primitive-only deserialization support.
 * Add named struct shapes for Serde's `Range`, `RangeFrom`, `RangeInclusive`, and `RangeTo` representations.
 * Reflect `Bound<T>` as Serde's externally tagged `Unbounded`, `Included`, and `Excluded` enum.
+* Add the `std`-only `SystemTime` struct shape with Serde's epoch field names.
 * Add directional `#[serde_shape(bound(...))]` overrides for generic custom shape hooks.
 * Add `SerializeShapeGraph::root_definition` and `DeserializeShapeGraph::root_definition` for directly inspecting named root types.
 * Preserve Rust doc comments on derived containers, variants, and fields as user-facing descriptions.

@@ -161,7 +161,7 @@ The built-in implementations follow Serde's own data-model calls in each directi
 | Wrappers | References, `Box`, `Rc`, `Arc`, their weak pointers, `Cow`, `Cell`, `RefCell`, `Wrapping`, `Saturating`, `Reverse`, and `PhantomData` |
 | FFI | `CStr` and `CString` byte representations, including owned `Box<CStr>` input |
 | Ranges | `Range`, `RangeFrom`, `RangeInclusive`, `RangeTo`, and `Bound` |
-| Time | `core::time::Duration` |
+| Time | `core::time::Duration` and, with `std`, `SystemTime` |
 | Network | `core::net` IP and socket address types |
 | `std` feature | `HashMap`, `HashSet`, `Path`, `PathBuf`, `Mutex`, and `RwLock` |
 
