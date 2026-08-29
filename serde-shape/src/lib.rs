@@ -800,8 +800,6 @@ pub enum DeserializeDefinitionKind {
 /// [`FieldWireShape::Flatten`].
 #[derive(Clone, Debug, Default, Eq, PartialEq)]
 pub struct SerializeContainerAttributes {
-    /// Whether the container uses `#[serde(transparent)]`.
-    pub transparent: bool,
     /// Whether the Rust item is marked `#[non_exhaustive]`.
     pub non_exhaustive: bool,
 }
@@ -817,8 +815,6 @@ pub struct DeserializeContainerAttributes {
     pub deny_unknown_fields: bool,
     /// The default used for missing fields.
     pub default: DefaultShape,
-    /// Whether the container uses `#[serde(transparent)]`.
-    pub transparent: bool,
     /// Custom Serde expectation text, if present.
     pub expecting: Option<&'static str>,
     /// Whether the Rust item is marked `#[non_exhaustive]`.

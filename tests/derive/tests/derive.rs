@@ -323,7 +323,6 @@ fn exposes_transparent_shape() {
     let DeserializeDefinitionKind::Struct(shape) = &definition.kind else {
         panic!("transparent definition should be a struct");
     };
-    assert!(shape.attributes.transparent);
     assert_eq!(
         shape.fields[0].wire_shape,
         FieldWireShape::Inline(ShapeRef::U64)

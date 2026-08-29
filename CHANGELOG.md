@@ -6,6 +6,7 @@ All notable changes to this project will be documented in this file.
 
 ### Breaking changes
 
+* Remove the redundant `transparent` field from container attributes. Transparent containers remain observable through their field's `FieldWireShape::Inline` position.
 * Remove the blanket `DeserializeShape` implementations for `&T` and `&mut T`, which claimed support that Serde does not provide. Borrowed `&str`, `&[u8]`, and `&Path` inputs retain explicit implementations; custom borrowed types can now provide their own local implementation.
 * Remove the redundant `tagging` and `has_flatten` fields from container attributes. Read enum tagging from `SerializeEnumShape::repr` or `DeserializeEnumShape::repr`, and identify flattened fields through `FieldWireShape::Flatten`.
 * Make shape graph roots and definition lists read-only. Use `root()`, `definitions()`, and `definition(id)` instead of accessing fields directly.

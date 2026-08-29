@@ -675,12 +675,10 @@ where
 }
 
 fn serialize_container_attributes(attrs: &attr::Container) -> TokenStream2 {
-    let transparent = attrs.transparent();
     let non_exhaustive = attrs.non_exhaustive();
 
     quote! {
         __serde_shape::SerializeContainerAttributes {
-            transparent: #transparent,
             non_exhaustive: #non_exhaustive,
         }
     }
@@ -689,7 +687,6 @@ fn serialize_container_attributes(attrs: &attr::Container) -> TokenStream2 {
 fn deserialize_container_attributes(attrs: &attr::Container) -> TokenStream2 {
     let deny_unknown_fields = attrs.deny_unknown_fields();
     let default = default_shape(attrs.default());
-    let transparent = attrs.transparent();
     let expecting = option_lit(attrs.expecting());
     let non_exhaustive = attrs.non_exhaustive();
 
@@ -697,7 +694,6 @@ fn deserialize_container_attributes(attrs: &attr::Container) -> TokenStream2 {
         __serde_shape::DeserializeContainerAttributes {
             deny_unknown_fields: #deny_unknown_fields,
             default: #default,
-            transparent: #transparent,
             expecting: #expecting,
             non_exhaustive: #non_exhaustive,
         }
