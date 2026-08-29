@@ -158,7 +158,7 @@ The built-in implementations follow Serde's own data-model calls in each directi
 | --- | --- |
 | Scalars | Rust primitives, `String`, `str`, non-zero integers, and atomics available on the target |
 | Containers | `Option`, `Result`, arrays, slices for serialization, tuples through arity 16, `Vec`, `VecDeque`, `LinkedList`, `BinaryHeap`, `BTreeSet`, and `BTreeMap` |
-| Wrappers | References, `Box`, `Rc`, `Arc`, their weak pointers, `Cow`, `Cell`, `RefCell`, `Wrapping`, `Reverse`, and `PhantomData` |
+| Wrappers | References, `Box`, `Rc`, `Arc`, their weak pointers, `Cow`, `Cell`, `RefCell`, `Wrapping`, `Saturating`, `Reverse`, and `PhantomData` |
 | FFI | `CStr` and `CString` byte representations, including owned `Box<CStr>` input |
 | Time | `core::time::Duration` |
 | Network | `core::net` IP and socket address types |

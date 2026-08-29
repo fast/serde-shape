@@ -32,6 +32,7 @@ use core::cell::Cell;
 use core::cell::RefCell;
 use core::cmp::Reverse;
 use core::ffi::CStr;
+use core::num::Saturating;
 use core::num::Wrapping;
 
 use crate::DeserializeDefinitionKind;
@@ -340,6 +341,14 @@ fn maps_common_core_and_alloc_shapes() {
     assert_eq!(
         DeserializeShapeGraph::for_type::<Wrapping<i16>>().root(),
         &ShapeRef::I16
+    );
+    assert_eq!(
+        SerializeShapeGraph::for_type::<Saturating<String>>().root(),
+        &ShapeRef::String
+    );
+    assert_eq!(
+        DeserializeShapeGraph::for_type::<Saturating<u16>>().root(),
+        &ShapeRef::U16
     );
     assert_eq!(
         SerializeShapeGraph::for_type::<Reverse<u32>>().root(),

@@ -25,6 +25,7 @@ use core::cell::Cell;
 use core::cell::RefCell;
 use core::cmp::Reverse;
 use core::marker::PhantomData;
+use core::num::Saturating;
 use core::num::Wrapping;
 
 use crate::DeserializeShape;
@@ -108,6 +109,31 @@ transparent_shape! {
         deserialize { T: DeserializeShape }
     => T;
 }
+
+impl<T> SerializeShape for Saturating<T>
+where
+    T: SerializeShape,
+{
+    fn serialize_shape_in(context: &mut SerializeShapeContext) -> ShapeRef {
+        T::serialize_shape_in(context)
+    }
+}
+
+macro_rules! saturating_deserialize_shape {
+    ($($ty:ty),+ $(,)?) => {
+        $(
+            impl DeserializeShape for Saturating<$ty> {
+                fn deserialize_shape_in(context: &mut DeserializeShapeContext) -> ShapeRef {
+                    <$ty as DeserializeShape>::deserialize_shape_in(context)
+                }
+            }
+        )+
+    };
+}
+
+saturating_deserialize_shape!(
+    i8, i16, i32, i64, i128, isize, u8, u16, u32, u64, u128, usize,
+);
 
 impl<T> DeserializeShape for Box<[T]>
 where
