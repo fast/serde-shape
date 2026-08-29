@@ -790,6 +790,9 @@ pub enum DeserializeDefinitionKind {
 }
 
 /// Serde attributes that apply to a whole serialized container.
+///
+/// [`Default`] represents an ordinary externally tagged container with every optional behavior
+/// disabled.
 #[derive(Clone, Debug, Default, Eq, PartialEq)]
 pub struct SerializeContainerAttributes {
     /// The container tagging representation.
@@ -803,6 +806,9 @@ pub struct SerializeContainerAttributes {
 }
 
 /// Serde attributes that apply to a whole deserialized container.
+///
+/// [`Default`] represents an ordinary externally tagged container with no default, expectation, or
+/// optional behavior configured.
 #[derive(Clone, Debug, Default, Eq, PartialEq)]
 pub struct DeserializeContainerAttributes {
     /// The container tagging representation.
@@ -822,6 +828,8 @@ pub struct DeserializeContainerAttributes {
 }
 
 /// Serde container or enum tagging representation.
+///
+/// [`Default`] is [`Tagging::External`].
 #[derive(Clone, Debug, Default, Eq, PartialEq)]
 pub enum Tagging {
     /// The default externally tagged representation.
@@ -980,7 +988,7 @@ pub enum SerializeVariantContent {
     Omitted,
     /// Serde derives the variant content from these fields.
     Fields(Vec<SerializeFieldShape>),
-    /// A `serde_shape` hook supplies the variant content shape.
+    /// A `serde_shape` hook supplies the content shape inside the enum's tagging representation.
     Shape(ShapeRef),
     /// A custom serializer controls the variant content.
     Custom(OpaqueShape),
@@ -1015,13 +1023,15 @@ pub enum DeserializeVariantContent {
     Omitted,
     /// Serde derives the variant content from these fields.
     Fields(Vec<DeserializeFieldShape>),
-    /// A `serde_shape` hook supplies the variant content shape.
+    /// A `serde_shape` hook supplies the content shape inside the enum's tagging representation.
     Shape(ShapeRef),
     /// A custom deserializer controls the variant content.
     Custom(OpaqueShape),
 }
 
 /// A Serde default marker.
+///
+/// [`Default`] is [`DefaultShape::None`].
 #[derive(Clone, Debug, Default, Eq, PartialEq)]
 pub enum DefaultShape {
     /// No default is configured.

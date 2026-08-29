@@ -131,7 +131,7 @@ struct Config {
 
 Each function receives the current graph context and returns a `ShapeRef`. It may delegate to another type's shape implementation or construct a custom shape directly. A custom shape function is an assertion about the Serde behavior; `serde-shape` cannot verify that the declared shape matches the serializer or deserializer implementation.
 
-The same `serde_shape` hooks can be placed on enum variants whose content is controlled by a variant-level Serde custom function. Without an explicit hook, custom variant content remains opaque.
+The same `serde_shape` hooks can be placed on enum variants whose content is controlled by a variant-level Serde custom function. A variant hook describes the content inside the enum's tagging representation; the enum's `repr` still describes the tag. Without an explicit hook, custom variant content remains opaque.
 
 For a generic custom hook, container-level `#[serde_shape(bound(serialize = "...", deserialize = "..."))]` replaces the automatically inferred bounds in the corresponding direction, following Serde's bound-override convention.
 
