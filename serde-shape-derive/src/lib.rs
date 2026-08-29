@@ -980,10 +980,14 @@ fn serde_borrowed_cow_shape(path: &syn::ExprPath) -> Option<TokenStream2> {
 
     let mut segments = path.path.segments.iter();
     let serde = segments.next()?;
-    let _private = segments.next()?;
+    let private = segments.next()?;
     let de = segments.next()?;
     let helper = segments.next()?;
-    if segments.next().is_some() || serde.ident != "_serde" || de.ident != "de" {
+    if segments.next().is_some()
+        || serde.ident != "_serde"
+        || private.ident != "__private"
+        || de.ident != "de"
+    {
         return None;
     }
 

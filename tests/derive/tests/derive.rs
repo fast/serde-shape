@@ -181,6 +181,12 @@ struct BorrowedCow<'a> {
 }
 
 #[derive(DeserializeShape)]
+struct CustomCowNamedHelper {
+    #[serde(deserialize_with = "_serde::custom::de::borrow_cow_str")]
+    value: NotShape,
+}
+
+#[derive(DeserializeShape)]
 struct Recursive {
     child: Option<Box<Recursive>>,
 }
@@ -565,6 +571,20 @@ fn preserves_serde_borrowed_cow_shapes() {
 
     assert_eq!(text.wire_shape, FieldWireShape::Value(ShapeRef::String));
     assert_eq!(bytes.wire_shape, FieldWireShape::Value(ShapeRef::Bytes));
+}
+
+#[test]
+fn keeps_custom_cow_named_helpers_opaque() {
+    let definition = deserialize_root_definition::<CustomCowNamedHelper>();
+    let DeserializeDefinitionKind::Struct(shape) = &definition.kind else {
+        panic!("definition should be a struct");
+    };
+    let FieldWireShape::Value(ShapeRef::Opaque(opaque)) = &shape.fields[0].wire_shape else {
+        panic!("custom helper should remain opaque");
+    };
+
+    assert_eq!(opaque.reason, OpaqueReason::CustomDeserializer);
+    assert_eq!(opaque.detail, Some("_serde::custom::de::borrow_cow_str"));
 }
 
 #[test]
