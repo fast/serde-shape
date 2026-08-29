@@ -67,18 +67,6 @@ macro_rules! transparent_shape {
 }
 
 transparent_shape! {
-    (T) &T
-    where
-        serialize { T: SerializeShape + ?Sized }
-        deserialize { T: DeserializeShape + ?Sized }
-    => T;
-
-    (T) &mut T
-    where
-        serialize { T: SerializeShape + ?Sized }
-        deserialize { T: DeserializeShape + ?Sized }
-    => T;
-
     (T) Box<T>
     where
         serialize { T: SerializeShape + ?Sized }
@@ -108,6 +96,36 @@ transparent_shape! {
         serialize { T: SerializeShape }
         deserialize { T: DeserializeShape }
     => T;
+}
+
+impl<T> SerializeShape for &T
+where
+    T: SerializeShape + ?Sized,
+{
+    fn serialize_shape_in(context: &mut SerializeShapeContext) -> ShapeRef {
+        T::serialize_shape_in(context)
+    }
+}
+
+impl<T> SerializeShape for &mut T
+where
+    T: SerializeShape + ?Sized,
+{
+    fn serialize_shape_in(context: &mut SerializeShapeContext) -> ShapeRef {
+        T::serialize_shape_in(context)
+    }
+}
+
+impl DeserializeShape for &str {
+    fn deserialize_shape_in(context: &mut DeserializeShapeContext) -> ShapeRef {
+        str::deserialize_shape_in(context)
+    }
+}
+
+impl DeserializeShape for &[u8] {
+    fn deserialize_shape_in(context: &mut DeserializeShapeContext) -> ShapeRef {
+        <[u8]>::deserialize_shape_in(context)
+    }
 }
 
 impl<T> SerializeShape for Saturating<T>
@@ -200,6 +218,13 @@ shared_pointer_shape!(Arc, ArcWeak);
 impl DeserializeShape for Box<std::path::Path> {
     fn deserialize_shape_in(_context: &mut DeserializeShapeContext) -> ShapeRef {
         ShapeRef::String
+    }
+}
+
+#[cfg(feature = "std")]
+impl DeserializeShape for &std::path::Path {
+    fn deserialize_shape_in(context: &mut DeserializeShapeContext) -> ShapeRef {
+        std::path::Path::deserialize_shape_in(context)
     }
 }
 

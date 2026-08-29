@@ -16,6 +16,8 @@
 
 mod common;
 
+use std::borrow::Cow;
+
 use common::deserialize_root_definition;
 use common::serialize_root_definition;
 use renamed_shape::DefaultShape;
@@ -150,6 +152,14 @@ struct SkipsGeneric<T> {
 #[derive(DeserializeShape)]
 struct Marker<T> {
     marker: core::marker::PhantomData<T>,
+}
+
+#[derive(DeserializeShape)]
+struct BorrowedCow<'a> {
+    #[serde(borrow)]
+    text: Cow<'a, str>,
+    #[serde(borrow)]
+    bytes: Cow<'a, [u8]>,
 }
 
 #[derive(DeserializeShape)]
@@ -313,7 +323,6 @@ fn exposes_transparent_shape() {
     let DeserializeDefinitionKind::Struct(shape) = &definition.kind else {
         panic!("transparent definition should be a struct");
     };
-    assert!(shape.attributes.transparent);
     assert_eq!(
         shape.fields[0].wire_shape,
         FieldWireShape::Inline(ShapeRef::U64)
@@ -505,6 +514,20 @@ fn exposes_deserialize_field_metadata() {
 
     assert_eq!(output_only.name, "only-in");
     assert_eq!(output_only.wire_shape, FieldWireShape::Omitted);
+}
+
+#[test]
+fn preserves_serde_borrowed_cow_shapes() {
+    let definition = deserialize_root_definition::<BorrowedCow<'static>>();
+    let DeserializeDefinitionKind::Struct(shape) = &definition.kind else {
+        panic!("definition should be a struct");
+    };
+    let [text, bytes] = shape.fields.as_slice() else {
+        panic!("borrowed Cow fields should be reflected");
+    };
+
+    assert_eq!(text.wire_shape, FieldWireShape::Value(ShapeRef::String));
+    assert_eq!(bytes.wire_shape, FieldWireShape::Value(ShapeRef::Bytes));
 }
 
 #[test]

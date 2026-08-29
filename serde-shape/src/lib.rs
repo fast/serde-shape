@@ -136,8 +136,12 @@
 //! following definition references.
 //!
 //! Types that branch on Serde's human-readable mode may expose a union of their known
-//! representations. Shape graphs describe possible Serde data-model calls across formats rather
-//! than specializing themselves for one serializer.
+//! representations. Shape graphs describe possible semantic shapes across formats rather than
+//! specializing themselves for one serializer.
+//!
+//! [`ShapeRef`] is not a trace of exact serializer or deserializer method calls. It deliberately
+//! preserves useful Rust distinctions such as fixed arrays and pointer-width integers even when
+//! Serde dispatches them through tuple or fixed-width integer methods.
 //!
 //! # Derive behavior
 //!
@@ -791,36 +795,26 @@ pub enum DeserializeDefinitionKind {
 
 /// Serde attributes that apply to a whole serialized container.
 ///
-/// [`Default`] represents an ordinary externally tagged container with every optional behavior
-/// disabled.
+/// [`Default`] represents a container with every optional behavior disabled. Enum tagging is
+/// recorded once in [`SerializeEnumShape::repr`], and flattened fields are identified by
+/// [`FieldWireShape::Flatten`].
 #[derive(Clone, Debug, Default, Eq, PartialEq)]
 pub struct SerializeContainerAttributes {
-    /// The container tagging representation.
-    pub tagging: Tagging,
-    /// Whether any field is flattened.
-    pub has_flatten: bool,
-    /// Whether the container uses `#[serde(transparent)]`.
-    pub transparent: bool,
     /// Whether the Rust item is marked `#[non_exhaustive]`.
     pub non_exhaustive: bool,
 }
 
 /// Serde attributes that apply to a whole deserialized container.
 ///
-/// [`Default`] represents an ordinary externally tagged container with no default, expectation, or
-/// optional behavior configured.
+/// [`Default`] represents a container with no default, expectation, or optional behavior
+/// configured. Enum tagging is recorded once in [`DeserializeEnumShape::repr`], and flattened
+/// fields are identified by [`FieldWireShape::Flatten`].
 #[derive(Clone, Debug, Default, Eq, PartialEq)]
 pub struct DeserializeContainerAttributes {
-    /// The container tagging representation.
-    pub tagging: Tagging,
     /// Whether unknown fields are rejected.
     pub deny_unknown_fields: bool,
     /// The default used for missing fields.
     pub default: DefaultShape,
-    /// Whether any field is flattened.
-    pub has_flatten: bool,
-    /// Whether the container uses `#[serde(transparent)]`.
-    pub transparent: bool,
     /// Custom Serde expectation text, if present.
     pub expecting: Option<&'static str>,
     /// Whether the Rust item is marked `#[non_exhaustive]`.
@@ -961,6 +955,19 @@ pub enum FieldWireShape {
     Flatten(ShapeRef),
     /// The field is serialized or deserialized directly at the containing type's position.
     Inline(ShapeRef),
+}
+
+impl FieldWireShape {
+    /// Return the contributed value shape, or `None` when the field is omitted.
+    ///
+    /// This intentionally ignores whether the value is regular, flattened, or inline. Match on
+    /// the enum directly when the field's wire position matters.
+    pub fn shape(&self) -> Option<&ShapeRef> {
+        match self {
+            Self::Value(shape) | Self::Flatten(shape) | Self::Inline(shape) => Some(shape),
+            Self::Omitted => None,
+        }
+    }
 }
 
 /// Variant-level serialization metadata.

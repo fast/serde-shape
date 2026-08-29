@@ -19,6 +19,10 @@ use alloc::collections::BinaryHeap;
 use alloc::collections::LinkedList;
 use alloc::collections::VecDeque;
 use alloc::vec::Vec;
+#[cfg(feature = "std")]
+use core::hash::BuildHasher;
+#[cfg(feature = "std")]
+use core::hash::Hash;
 
 use crate::DeserializeShape;
 use crate::DeserializeShapeContext;
@@ -104,7 +108,7 @@ seq_shape! {
     (T) BTreeSet<T>
     where
         serialize { T: SerializeShape }
-        deserialize { T: DeserializeShape }
+        deserialize { T: DeserializeShape + Ord }
     => T;
 
 }
@@ -123,7 +127,10 @@ seq_shape! {
     (T, S) std::collections::HashSet<T, S>
     where
         serialize { T: SerializeShape }
-        deserialize { T: DeserializeShape }
+        deserialize {
+            T: DeserializeShape + Eq + Hash,
+            S: BuildHasher + Default
+        }
     => T;
 }
 
@@ -197,7 +204,7 @@ map_shape! {
             V: SerializeShape
         }
         deserialize {
-            K: DeserializeShape,
+            K: DeserializeShape + Ord,
             V: DeserializeShape
         }
     => (K, V);
@@ -213,8 +220,9 @@ map_shape! {
             V: SerializeShape
         }
         deserialize {
-            K: DeserializeShape,
-            V: DeserializeShape
+            K: DeserializeShape + Eq + Hash,
+            V: DeserializeShape,
+            S: BuildHasher + Default
         }
     => (K, V);
 }

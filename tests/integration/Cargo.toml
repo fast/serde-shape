@@ -26,9 +26,7 @@ release = false
 serde-shape = { workspace = true, features = ["derive", "std"] }
 
 [dev-dependencies]
-serde = { workspace = true }
 serde_test = { workspace = true }
-toml_edit = { workspace = true }
 
 [lints]
 workspace = true

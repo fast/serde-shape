@@ -28,6 +28,7 @@ use serde_derive_internals::Ctxt;
 use serde_derive_internals::Derive;
 use serde_derive_internals::ast;
 use serde_derive_internals::attr;
+use serde_derive_internals::name::Name;
 use syn::DeriveInput;
 use syn::GenericArgument;
 use syn::LitStr;
@@ -134,7 +135,8 @@ fn serde_shape_crate() -> syn::Result<TokenStream2> {
 
 fn parse_container<'a>(input: &'a DeriveInput, derive: Derive) -> syn::Result<ast::Container<'a>> {
     let cx = Ctxt::new();
-    let Some(container) = ast::Container::from_ast(&cx, input, derive) else {
+    let private = Ident::new("__private", Span::call_site());
+    let Some(container) = ast::Container::from_ast(&cx, input, derive, &private) else {
         cx.check()?;
         return Err(syn::Error::new_spanned(
             input,
@@ -361,7 +363,7 @@ fn collect_shape_bound_types(
 ) {
     match ty {
         Type::Array(ty) => collect_shape_bound_types(&ty.elem, type_params, field_bound_types),
-        Type::BareFn(ty) => {
+        Type::FnPtr(ty) => {
             for input in &ty.inputs {
                 collect_shape_bound_types(&input.ty, type_params, field_bound_types);
             }
@@ -474,7 +476,7 @@ fn collect_path_arguments(
         }
         PathArguments::Parenthesized(arguments) => {
             for input in &arguments.inputs {
-                collect_shape_bound_types(input, type_params, field_bound_types);
+                collect_shape_bound_types(&input.ty, type_params, field_bound_types);
             }
             collect_return_type_params(&arguments.output, type_params, field_bound_types);
         }
@@ -526,7 +528,7 @@ fn serialize_shape_body(
         return Ok(quote!(<#ty as __serde_shape::SerializeShape>::serialize_shape_in(context)));
     }
 
-    let name = lit(container.attrs.name().serialize_name());
+    let name = lit_name(container.attrs.name().serialize_name());
     let description = description(&container.original.attrs);
     let description = option_lit(description.as_deref());
     let kind = serialize_definition_kind(container)?;
@@ -560,7 +562,7 @@ fn deserialize_shape_body(
         return Ok(quote!(<#ty as __serde_shape::DeserializeShape>::deserialize_shape_in(context)));
     }
 
-    let name = lit(container.attrs.name().deserialize_name());
+    let name = lit_name(container.attrs.name().deserialize_name());
     let description = description(&container.original.attrs);
     let description = option_lit(description.as_deref());
     let kind = deserialize_definition_kind(container)?;
@@ -673,37 +675,25 @@ where
 }
 
 fn serialize_container_attributes(attrs: &attr::Container) -> TokenStream2 {
-    let tagging = tagging(attrs.tag());
-    let has_flatten = attrs.has_flatten();
-    let transparent = attrs.transparent();
     let non_exhaustive = attrs.non_exhaustive();
 
     quote! {
         __serde_shape::SerializeContainerAttributes {
-            tagging: #tagging,
-            has_flatten: #has_flatten,
-            transparent: #transparent,
             non_exhaustive: #non_exhaustive,
         }
     }
 }
 
 fn deserialize_container_attributes(attrs: &attr::Container) -> TokenStream2 {
-    let tagging = tagging(attrs.tag());
     let deny_unknown_fields = attrs.deny_unknown_fields();
     let default = default_shape(attrs.default());
-    let has_flatten = attrs.has_flatten();
-    let transparent = attrs.transparent();
     let expecting = option_lit(attrs.expecting());
     let non_exhaustive = attrs.non_exhaustive();
 
     quote! {
         __serde_shape::DeserializeContainerAttributes {
-            tagging: #tagging,
             deny_unknown_fields: #deny_unknown_fields,
             default: #default,
-            has_flatten: #has_flatten,
-            transparent: #transparent,
             expecting: #expecting,
             non_exhaustive: #non_exhaustive,
         }
@@ -713,7 +703,7 @@ fn deserialize_container_attributes(attrs: &attr::Container) -> TokenStream2 {
 fn serialize_variant_shape(variant: &ast::Variant<'_>) -> syn::Result<TokenStream2> {
     let shape_attrs = ShapeAttrs::parse(&variant.original.attrs)?;
     let rust_name = lit(variant.ident.to_string());
-    let name = lit(variant.attrs.name().serialize_name());
+    let name = lit_name(variant.attrs.name().serialize_name());
     let description = description(&variant.original.attrs);
     let description = option_lit(description.as_deref());
     let style = fields_style(variant.style);
@@ -760,7 +750,7 @@ fn serialize_variant_shape(variant: &ast::Variant<'_>) -> syn::Result<TokenStrea
 fn deserialize_variant_shape(variant: &ast::Variant<'_>) -> syn::Result<TokenStream2> {
     let shape_attrs = ShapeAttrs::parse(&variant.original.attrs)?;
     let rust_name = lit(variant.ident.to_string());
-    let name = lit(variant.attrs.name().deserialize_name());
+    let name = lit_name(variant.attrs.name().deserialize_name());
     let aliases = aliases(variant.attrs.aliases());
     let description = description(&variant.original.attrs);
     let description = option_lit(description.as_deref());
@@ -811,7 +801,7 @@ fn deserialize_variant_shape(variant: &ast::Variant<'_>) -> syn::Result<TokenStr
 fn serialize_field_shape(field: &ast::Field<'_>) -> syn::Result<TokenStream2> {
     let shape_attrs = ShapeAttrs::parse(&field.original.attrs)?;
     let member = field_member(&field.member);
-    let name = lit(field.attrs.name().serialize_name());
+    let name = lit_name(field.attrs.name().serialize_name());
     let description = description(&field.original.attrs);
     let description = option_lit(description.as_deref());
     let skip = field.attrs.skip_serializing();
@@ -860,7 +850,7 @@ fn serialize_field_shape(field: &ast::Field<'_>) -> syn::Result<TokenStream2> {
 fn deserialize_field_shape(field: &ast::Field<'_>) -> syn::Result<TokenStream2> {
     let shape_attrs = ShapeAttrs::parse(&field.original.attrs)?;
     let member = field_member(&field.member);
-    let name = lit(field.attrs.name().deserialize_name());
+    let name = lit_name(field.attrs.name().deserialize_name());
     let aliases = aliases(field.attrs.aliases());
     let description = description(&field.original.attrs);
     let description = option_lit(description.as_deref());
@@ -875,13 +865,17 @@ fn deserialize_field_shape(field: &ast::Field<'_>) -> syn::Result<TokenStream2> 
         let value_shape = if let Some(function) = shape_attrs.deserialize_with() {
             quote!(#function(context))
         } else if let Some(custom_deserializer) = field.attrs.deserialize_with() {
-            let detail = option_path(Some(custom_deserializer));
-            quote! {
-                __serde_shape::ShapeRef::Opaque(__serde_shape::OpaqueShape {
-                    type_name: ::core::any::type_name::<#ty>(),
-                    reason: __serde_shape::OpaqueReason::CustomDeserializer,
-                    detail: #detail,
-                })
+            if let Some(shape) = serde_borrowed_cow_shape(custom_deserializer) {
+                shape
+            } else {
+                let detail = option_path(Some(custom_deserializer));
+                quote! {
+                    __serde_shape::ShapeRef::Opaque(__serde_shape::OpaqueShape {
+                        type_name: ::core::any::type_name::<#ty>(),
+                        reason: __serde_shape::OpaqueReason::CustomDeserializer,
+                        detail: #detail,
+                    })
+                }
             }
         } else {
             quote!(<#ty as __serde_shape::DeserializeShape>::deserialize_shape_in(context))
@@ -960,9 +954,34 @@ fn default_shape(default: &attr::Default) -> TokenStream2 {
     }
 }
 
-fn aliases(aliases: &BTreeSet<String>) -> TokenStream2 {
-    let aliases = aliases.iter().map(lit);
+fn aliases(aliases: &BTreeSet<Name>) -> TokenStream2 {
+    let aliases = aliases.iter().map(lit_name);
     quote!(__serde_shape::__private::vec![#(#aliases),*])
+}
+
+fn serde_borrowed_cow_shape(path: &syn::ExprPath) -> Option<TokenStream2> {
+    if path.qself.is_some() || path.path.leading_colon.is_some() {
+        return None;
+    }
+
+    let mut segments = path.path.segments.iter();
+    let serde = segments.next()?;
+    let _private = segments.next()?;
+    let de = segments.next()?;
+    let helper = segments.next()?;
+    if segments.next().is_some() || serde.ident != "_serde" || de.ident != "de" {
+        return None;
+    }
+
+    match helper.ident.to_string().as_str() {
+        "borrow_cow_str" => Some(quote!(__serde_shape::ShapeRef::String)),
+        "borrow_cow_bytes" => Some(quote!(__serde_shape::ShapeRef::Bytes)),
+        _ => None,
+    }
+}
+
+fn lit_name(value: &Name) -> LitStr {
+    LitStr::new(&value.value, value.span)
 }
 
 fn option_lit(value: Option<&str>) -> TokenStream2 {

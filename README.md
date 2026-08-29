@@ -50,7 +50,7 @@ Typical use cases:
 
 `serde-shape` is intentionally not a full validation schema. It reflects the Serde data model shape and relevant Serde attributes; it does not infer value ranges, regexes, business rules, or runtime behavior hidden inside custom serializer/deserializer functions. Use `ShapeRef::union` for format-native alternatives that do not fit one Rust shape. Union alternatives may overlap; they are flattened, deduplicated, and stored in canonical order.
 
-Field shapes expose `wire_shape` as the source of truth for regular values, flattened fields, inline transparent fields, and omitted fields. Custom serializer/deserializer boundaries are represented by `ShapeRef::Opaque`, including when they are flattened or inline.
+Field shapes expose `wire_shape` as the source of truth for regular values, flattened fields, inline transparent fields, and omitted fields. Use `FieldWireShape::shape()` when a graph walker needs the contributed shape without distinguishing those wire positions. Custom serializer/deserializer boundaries are represented by `ShapeRef::Opaque`, including when they are flattened or inline.
 
 If the consumer needs JSON Schema, [`schemars`](https://docs.rs/schemars) directly targets that format. `serde-shape` instead keeps serialization and deserialization shapes separate and leaves format-specific export and validation to downstream tools.
 
@@ -141,7 +141,9 @@ Shape graphs are an inspection API, not a stable interchange format. `ShapeId` v
 
 Definitions may be recursive. A `ShapeRef::Definition` is a graph edge, so walkers must detect repeated `ShapeId` values instead of expanding definitions indefinitely.
 
-Types that branch on `Serializer::is_human_readable()` or `Deserializer::is_human_readable()` may expose a union of their known representations. The graph describes the possible Serde calls across formats; it is not specialized for one serializer format.
+Types that branch on `Serializer::is_human_readable()` or `Deserializer::is_human_readable()` may expose a union of their known representations. The graph describes the possible semantic shapes across formats; it is not specialized for one serializer format.
+
+`ShapeRef` is a normalized semantic model, not a trace of exact `Serializer` or `Deserializer` method calls. For example, it preserves fixed arrays as `ShapeRef::Array` and pointer-width integers as `Isize` or `Usize`, even though Serde formats receive those values through tuple and fixed-width integer APIs. Use a recording serializer or deserializer when exact method dispatch is the contract being tested.
 
 ## Feature flags
 
@@ -152,13 +154,13 @@ Types that branch on `Serializer::is_human_readable()` or `Deserializer::is_huma
 
 ## Built-in shapes
 
-The built-in implementations follow Serde's own data-model calls in each direction.
+The built-in implementations follow Serde's semantic representations in each direction, including known human-readable and compact alternatives.
 
 | Group | Supported types |
 | --- | --- |
 | Scalars | Rust primitives, `String`, `str`, non-zero integers, and atomics available on the target |
 | Containers | `Option`, `Result`, arrays, slices for serialization, tuples through arity 16, `Vec`, `VecDeque`, `LinkedList`, `BinaryHeap`, `BTreeSet`, and `BTreeMap` |
-| Wrappers | References, `Box`, `Rc`, `Arc`, their weak pointers, `Cow`, `Cell`, `RefCell`, `Wrapping`, `Saturating`, `Reverse`, and `PhantomData` |
+| Wrappers | Serialized references, borrowed string/byte/path inputs, `Box`, `Rc`, `Arc`, their weak pointers, `Cow`, `Cell`, `RefCell`, `Wrapping`, `Saturating`, `Reverse`, and `PhantomData` |
 | FFI | `CStr` and `CString` byte representations, including owned `Box<CStr>` input |
 | Ranges | `Range`, `RangeFrom`, `RangeInclusive`, `RangeTo`, and `Bound` |
 | Time | `core::time::Duration` and, with `std`, `SystemTime` |
@@ -168,6 +170,8 @@ The built-in implementations follow Serde's own data-model calls in each directi
 Network address shapes are unions of their human-readable string representation and their compact Serde representation. A serialized byte slice and an owned `Box<[u8]>` input are sequences, while borrowed byte deserialization uses `ShapeRef::Bytes`.
 
 Serde's `rc` feature is still required to serialize or deserialize `Rc`, `Arc`, and their weak pointers; the shape implementations do not enable Serde features.
+
+Serialization follows Serde's blanket support for `&T` and `&mut T`. Deserialization only provides reference shapes for Serde's borrowable `&str`, `&[u8]`, and `&Path` inputs; arbitrary shared and mutable references do not have a Serde deserializer.
 
 For an unsupported foreign type, use a local newtype and implement `SerializeShape` or `DeserializeShape` manually. Custom Serde functions remain opaque by default because their wire behavior cannot be inferred; use a `serde_shape` custom hook when the representation is known.
 

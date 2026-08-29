@@ -240,6 +240,14 @@ fn distinguishes_byte_sequences_from_borrowed_byte_input() {
         &ShapeRef::Bytes
     );
     assert_eq!(
+        <&[u8] as DeserializeShape>::deserialize_shape().root(),
+        &ShapeRef::Bytes
+    );
+    assert_eq!(
+        <&str as DeserializeShape>::deserialize_shape().root(),
+        &ShapeRef::String
+    );
+    assert_eq!(
         <Box<[u8]> as DeserializeShape>::deserialize_shape().root(),
         &ShapeRef::Seq(Box::new(ShapeRef::U8))
     );
@@ -515,6 +523,10 @@ fn maps_common_std_shapes() {
     );
     assert_eq!(
         <Box<std::path::Path> as DeserializeShape>::deserialize_shape().root(),
+        &ShapeRef::String
+    );
+    assert_eq!(
+        <&std::path::Path as DeserializeShape>::deserialize_shape().root(),
         &ShapeRef::String
     );
     assert_eq!(
