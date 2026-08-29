@@ -791,14 +791,11 @@ pub enum DeserializeDefinitionKind {
 
 /// Serde attributes that apply to a whole serialized container.
 ///
-/// [`Default`] represents an ordinary externally tagged container with every optional behavior
-/// disabled.
+/// [`Default`] represents a container with every optional behavior disabled. Enum tagging is
+/// recorded once in [`SerializeEnumShape::repr`], and flattened fields are identified by
+/// [`FieldWireShape::Flatten`].
 #[derive(Clone, Debug, Default, Eq, PartialEq)]
 pub struct SerializeContainerAttributes {
-    /// The container tagging representation.
-    pub tagging: Tagging,
-    /// Whether any field is flattened.
-    pub has_flatten: bool,
     /// Whether the container uses `#[serde(transparent)]`.
     pub transparent: bool,
     /// Whether the Rust item is marked `#[non_exhaustive]`.
@@ -807,18 +804,15 @@ pub struct SerializeContainerAttributes {
 
 /// Serde attributes that apply to a whole deserialized container.
 ///
-/// [`Default`] represents an ordinary externally tagged container with no default, expectation, or
-/// optional behavior configured.
+/// [`Default`] represents a container with no default, expectation, or optional behavior
+/// configured. Enum tagging is recorded once in [`DeserializeEnumShape::repr`], and flattened
+/// fields are identified by [`FieldWireShape::Flatten`].
 #[derive(Clone, Debug, Default, Eq, PartialEq)]
 pub struct DeserializeContainerAttributes {
-    /// The container tagging representation.
-    pub tagging: Tagging,
     /// Whether unknown fields are rejected.
     pub deny_unknown_fields: bool,
     /// The default used for missing fields.
     pub default: DefaultShape,
-    /// Whether any field is flattened.
-    pub has_flatten: bool,
     /// Whether the container uses `#[serde(transparent)]`.
     pub transparent: bool,
     /// Custom Serde expectation text, if present.
