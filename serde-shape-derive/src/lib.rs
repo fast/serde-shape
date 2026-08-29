@@ -869,13 +869,17 @@ fn deserialize_field_shape(field: &ast::Field<'_>) -> syn::Result<TokenStream2> 
         let value_shape = if let Some(function) = shape_attrs.deserialize_with() {
             quote!(#function(context))
         } else if let Some(custom_deserializer) = field.attrs.deserialize_with() {
-            let detail = option_path(Some(custom_deserializer));
-            quote! {
-                __serde_shape::ShapeRef::Opaque(__serde_shape::OpaqueShape {
-                    type_name: ::core::any::type_name::<#ty>(),
-                    reason: __serde_shape::OpaqueReason::CustomDeserializer,
-                    detail: #detail,
-                })
+            if let Some(shape) = serde_borrowed_cow_shape(custom_deserializer) {
+                shape
+            } else {
+                let detail = option_path(Some(custom_deserializer));
+                quote! {
+                    __serde_shape::ShapeRef::Opaque(__serde_shape::OpaqueShape {
+                        type_name: ::core::any::type_name::<#ty>(),
+                        reason: __serde_shape::OpaqueReason::CustomDeserializer,
+                        detail: #detail,
+                    })
+                }
             }
         } else {
             quote!(<#ty as __serde_shape::DeserializeShape>::deserialize_shape_in(context))
@@ -957,6 +961,27 @@ fn default_shape(default: &attr::Default) -> TokenStream2 {
 fn aliases(aliases: &BTreeSet<Name>) -> TokenStream2 {
     let aliases = aliases.iter().map(lit_name);
     quote!(__serde_shape::__private::vec![#(#aliases),*])
+}
+
+fn serde_borrowed_cow_shape(path: &syn::ExprPath) -> Option<TokenStream2> {
+    if path.qself.is_some() || path.path.leading_colon.is_some() {
+        return None;
+    }
+
+    let mut segments = path.path.segments.iter();
+    let serde = segments.next()?;
+    let _private = segments.next()?;
+    let de = segments.next()?;
+    let helper = segments.next()?;
+    if segments.next().is_some() || serde.ident != "_serde" || de.ident != "de" {
+        return None;
+    }
+
+    match helper.ident.to_string().as_str() {
+        "borrow_cow_str" => Some(quote!(__serde_shape::ShapeRef::String)),
+        "borrow_cow_bytes" => Some(quote!(__serde_shape::ShapeRef::Bytes)),
+        _ => None,
+    }
 }
 
 fn lit_name(value: &Name) -> LitStr {
