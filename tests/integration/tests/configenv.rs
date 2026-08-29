@@ -20,6 +20,7 @@ use serde::Deserialize;
 use serde::de::IntoDeserializer;
 use serde_shape::DeserializeDefinitionKind;
 use serde_shape::DeserializeEnumShape;
+use serde_shape::DeserializeFieldShape;
 use serde_shape::DeserializeShape;
 use serde_shape::DeserializeShapeGraph;
 use serde_shape::DeserializeStructShape;
@@ -29,17 +30,7 @@ use serde_shape::FieldsStyle;
 use serde_shape::ShapeId;
 use serde_shape::ShapeRef;
 use serde_shape::Tagging;
-use serde_shape::UnionShape;
 use toml_edit::DocumentMut;
-
-#[derive(Clone, Debug, Eq, PartialEq)]
-struct EnvOption {
-    env_name: String,
-    path: Vec<String>,
-    value_kind: String,
-    optional: bool,
-    condition: Option<String>,
-}
 
 #[derive(Debug, Deserialize, DeserializeShape, PartialEq)]
 #[serde(deny_unknown_fields)]
@@ -77,7 +68,8 @@ enum ExecutionMode {
 
 #[test]
 fn edits_an_internally_tagged_newtype_variant_through_generated_paths() {
-    let options = env_options::<ClientConfig>("APP_CONFIG");
+    let paths = env_paths::<ClientConfig>("APP_CONFIG");
+    assert_eq!(paths.len(), 4);
     let mut document = r#"
         [transport]
         kind = "tcp"
@@ -112,12 +104,11 @@ fn edits_an_internally_tagged_newtype_variant_through_generated_paths() {
     ];
 
     for (env_name, value, expected_path) in overrides {
-        let option = options
-            .iter()
-            .find(|option| option.env_name == env_name)
+        let path = paths
+            .get(env_name)
             .expect("generated environment option should exist");
-        assert_eq!(option.path, expected_path);
-        set_toml_path(&mut document, &option.path, value);
+        assert_eq!(path, &expected_path);
+        set_toml_path(&mut document, path, value);
     }
 
     let config = ClientConfig::deserialize(document.into_deserializer())
@@ -136,13 +127,12 @@ fn edits_an_internally_tagged_newtype_variant_through_generated_paths() {
 
 #[test]
 fn edits_an_internally_tagged_unit_enum_through_its_tag_path() {
-    let options = env_options::<ModeConfig>("APP_CONFIG");
-    let option = options
-        .iter()
-        .find(|option| option.env_name == "APP_CONFIG_MODE_KIND")
+    let paths = env_paths::<ModeConfig>("APP_CONFIG");
+    let path = paths
+        .get("APP_CONFIG_MODE_KIND")
         .expect("generated tag option should exist");
-    assert_eq!(option.path, ["mode", "kind"]);
-    assert_eq!(option.value_kind, "enum[fast|safe]");
+    assert_eq!(paths.len(), 1);
+    assert_eq!(path, &["mode", "kind"]);
 
     let mut document = r#"
         [mode]
@@ -150,7 +140,7 @@ fn edits_an_internally_tagged_unit_enum_through_its_tag_path() {
     "#
     .parse::<DocumentMut>()
     .expect("config should be valid TOML");
-    set_toml_path(&mut document, &option.path, toml_edit::value("safe"));
+    set_toml_path(&mut document, path, toml_edit::value("safe"));
 
     let config = ModeConfig::deserialize(document.into_deserializer())
         .expect("edited TOML should deserialize");
@@ -162,62 +152,34 @@ fn edits_an_internally_tagged_unit_enum_through_its_tag_path() {
     );
 }
 
-fn env_options<T: DeserializeShape>(env_prefix: &str) -> Vec<EnvOption> {
-    let shape = DeserializeShapeGraph::for_type::<T>();
-    let mut collector = EnvCollector {
-        shape: &shape,
-        env_prefix,
-        options: BTreeMap::new(),
+fn env_paths<T: DeserializeShape>(prefix: &str) -> BTreeMap<String, Vec<String>> {
+    let graph = T::deserialize_shape();
+    let mut collector = EnvPathCollector {
+        graph: &graph,
+        prefix,
+        paths: BTreeMap::new(),
     };
-    collector.visit_shape_ref(shape.root(), &mut Vec::new(), false, None);
-    collector.options.into_values().collect()
+    collector.visit(graph.root(), &mut Vec::new(), &mut Vec::new());
+    collector.paths
 }
 
-struct EnvCollector<'a> {
-    shape: &'a DeserializeShapeGraph,
-    env_prefix: &'a str,
-    options: BTreeMap<Vec<String>, EnvOption>,
+struct EnvPathCollector<'a> {
+    graph: &'a DeserializeShapeGraph,
+    prefix: &'a str,
+    paths: BTreeMap<String, Vec<String>>,
 }
 
-impl EnvCollector<'_> {
-    fn visit_shape_ref(
+impl EnvPathCollector<'_> {
+    fn visit(
         &mut self,
         shape_ref: &ShapeRef,
         path: &mut Vec<String>,
-        optional: bool,
-        condition: Option<String>,
+        definition_stack: &mut Vec<ShapeId>,
     ) {
         match shape_ref {
-            ShapeRef::Option(inner) => {
-                self.visit_shape_ref(inner, path, true, condition);
-            }
-            ShapeRef::Union(union) => {
-                let value_kind = self.union_kind(union);
-                self.push_leaf(path, &value_kind, optional, condition);
-            }
-            ShapeRef::Definition(id) => {
-                self.visit_definition(*id, path, optional, condition);
-            }
-            ShapeRef::Seq(_) | ShapeRef::Array { .. } => {
-                self.push_leaf(path, "array", optional, condition);
-            }
-            ShapeRef::Map { .. } => {
-                self.push_leaf(path, "object", optional, condition);
-            }
-            ShapeRef::Tuple(_) => {
-                self.push_leaf(path, "array", optional, condition);
-            }
-            ShapeRef::Opaque(opaque) => {
-                self.push_leaf(
-                    path,
-                    &format!("opaque({:?})", opaque.reason),
-                    optional,
-                    condition,
-                );
-            }
-            shape_ref => {
-                self.push_leaf(path, primitive_kind(shape_ref), optional, condition);
-            }
+            ShapeRef::Option(inner) => self.visit(inner, path, definition_stack),
+            ShapeRef::Definition(id) => self.visit_definition(*id, path, definition_stack),
+            _ => self.record(path),
         }
     }
 
@@ -225,59 +187,43 @@ impl EnvCollector<'_> {
         &mut self,
         id: ShapeId,
         path: &mut Vec<String>,
-        optional: bool,
-        condition: Option<String>,
+        definition_stack: &mut Vec<ShapeId>,
     ) {
-        let definition = self.shape.definition(id).expect("shape definition exists");
+        if definition_stack.contains(&id) {
+            return;
+        }
+        definition_stack.push(id);
+
+        let definition = self.graph.definition(id).expect("shape definition exists");
         match &definition.kind {
             DeserializeDefinitionKind::Struct(shape) => {
-                self.visit_struct(shape, path, optional, condition);
+                self.visit_struct(shape, path, definition_stack);
             }
             DeserializeDefinitionKind::Enum(shape) => {
-                self.visit_enum(shape, path, optional, condition);
+                self.visit_enum(shape, path, definition_stack);
             }
-            DeserializeDefinitionKind::Opaque(opaque) => {
-                self.push_leaf(
-                    path,
-                    &format!("opaque({:?})", opaque.reason),
-                    optional,
-                    condition,
-                );
-            }
+            DeserializeDefinitionKind::Opaque(_) => self.record(path),
         }
+
+        definition_stack.pop();
     }
 
     fn visit_struct(
         &mut self,
         shape: &DeserializeStructShape,
         path: &mut Vec<String>,
-        optional: bool,
-        condition: Option<String>,
+        definition_stack: &mut Vec<ShapeId>,
     ) {
         match shape.style {
             FieldsStyle::Struct => {
                 for field in &shape.fields {
-                    let field_optional = optional || !field.default.is_none();
-                    self.visit_field_wire_shape(
-                        field.name,
-                        &field.wire_shape,
-                        path,
-                        field_optional,
-                        condition.clone(),
-                    );
+                    self.visit_field(field, path, definition_stack);
                 }
             }
             FieldsStyle::Newtype if shape.fields.len() == 1 => {
-                self.visit_newtype_wire_shape(
-                    &shape.fields[0].wire_shape,
-                    path,
-                    optional,
-                    condition,
-                );
+                self.visit_newtype(&shape.fields[0].wire_shape, path, definition_stack);
             }
-            FieldsStyle::Tuple | FieldsStyle::Newtype | FieldsStyle::Unit => {
-                self.push_leaf(path, "object", optional, condition);
-            }
+            FieldsStyle::Tuple | FieldsStyle::Newtype | FieldsStyle::Unit => self.record(path),
         }
     }
 
@@ -285,244 +231,85 @@ impl EnvCollector<'_> {
         &mut self,
         shape: &DeserializeEnumShape,
         path: &mut Vec<String>,
-        optional: bool,
-        condition: Option<String>,
+        definition_stack: &mut Vec<ShapeId>,
     ) {
-        let variants = shape
-            .variants
-            .iter()
-            .filter(|variant| !matches!(&variant.content, DeserializeVariantContent::Omitted))
-            .map(|variant| variant.name)
-            .collect::<Vec<_>>();
-
-        let all_variants_are_unit = shape
-            .variants
-            .iter()
-            .filter(|variant| !matches!(&variant.content, DeserializeVariantContent::Omitted))
-            .all(|variant| variant.style == FieldsStyle::Unit)
-            && !variants.is_empty();
-
-        if matches!(&shape.repr, Tagging::External) && all_variants_are_unit {
-            self.push_leaf(
-                path,
-                &format!("enum[{}]", variants.join("|")),
-                optional,
-                condition,
-            );
+        let Tagging::Internal { tag } = &shape.repr else {
+            self.record(path);
             return;
-        }
+        };
 
-        if let Tagging::Internal { tag } = shape.repr {
-            let tag_path = appended_path(path, tag);
-            self.push_leaf(
-                &tag_path,
-                &format!("enum[{}]", variants.join("|")),
-                optional,
-                condition.clone(),
-            );
+        path.push((*tag).to_owned());
+        self.record(path);
+        path.pop();
 
-            for variant in &shape.variants {
-                let variant_condition = format!("{}={}", tag_path.join("."), variant.name);
-                let variant_condition = Some(merge_conditions(
-                    condition.as_deref(),
-                    variant_condition.as_str(),
-                ));
-
-                match &variant.content {
-                    DeserializeVariantContent::Omitted => {}
-                    DeserializeVariantContent::Fields(fields)
-                        if variant.style == FieldsStyle::Newtype && fields.len() == 1 =>
-                    {
-                        self.visit_newtype_wire_shape(
-                            &fields[0].wire_shape,
-                            path,
-                            optional,
-                            variant_condition,
-                        );
-                    }
-                    DeserializeVariantContent::Fields(fields) => {
-                        for field in fields {
-                            self.visit_field_wire_shape(
-                                field.name,
-                                &field.wire_shape,
-                                path,
-                                optional,
-                                variant_condition.clone(),
-                            );
-                        }
-                    }
-                    DeserializeVariantContent::Custom(opaque) => {
-                        self.push_leaf(
-                            path,
-                            &format!("opaque({:?})", opaque.reason),
-                            optional,
-                            variant_condition,
-                        );
-                    }
-                    _ => {
-                        self.push_leaf(path, "unsupported", optional, variant_condition);
+        for variant in &shape.variants {
+            match &variant.content {
+                DeserializeVariantContent::Omitted => {}
+                DeserializeVariantContent::Fields(fields)
+                    if variant.style == FieldsStyle::Newtype && fields.len() == 1 =>
+                {
+                    self.visit_newtype(&fields[0].wire_shape, path, definition_stack);
+                }
+                DeserializeVariantContent::Fields(fields) => {
+                    for field in fields {
+                        self.visit_field(field, path, definition_stack);
                     }
                 }
+                DeserializeVariantContent::Custom(_) => self.record(path),
+                _ => self.record(path),
             }
-            return;
         }
-
-        self.push_leaf(
-            path,
-            &format!("enum[{}]", variants.join("|")),
-            optional,
-            condition,
-        );
     }
 
-    fn visit_field_wire_shape(
+    fn visit_field(
         &mut self,
-        field_name: &str,
-        wire_shape: &FieldWireShape,
+        field: &DeserializeFieldShape,
         path: &mut Vec<String>,
-        optional: bool,
-        condition: Option<String>,
+        definition_stack: &mut Vec<ShapeId>,
     ) {
-        match wire_shape {
+        match &field.wire_shape {
             FieldWireShape::Omitted => {}
             FieldWireShape::Value(shape_ref) => {
-                path.push(field_name.to_owned());
-                self.visit_shape_ref(shape_ref, path, optional, condition);
+                path.push(field.name.to_owned());
+                self.visit(shape_ref, path, definition_stack);
                 path.pop();
             }
-            FieldWireShape::Flatten(shape_ref) => {
-                self.visit_shape_ref(shape_ref, path, optional, condition);
-            }
-            FieldWireShape::Inline(shape_ref) => {
-                self.visit_shape_ref(shape_ref, path, optional, condition);
+            FieldWireShape::Flatten(shape_ref) | FieldWireShape::Inline(shape_ref) => {
+                self.visit(shape_ref, path, definition_stack);
             }
             _ => {
-                path.push(field_name.to_owned());
-                self.push_leaf(path, "unsupported", optional, condition);
+                path.push(field.name.to_owned());
+                self.record(path);
                 path.pop();
             }
         }
     }
 
-    fn visit_newtype_wire_shape(
+    fn visit_newtype(
         &mut self,
         wire_shape: &FieldWireShape,
         path: &mut Vec<String>,
-        optional: bool,
-        condition: Option<String>,
+        definition_stack: &mut Vec<ShapeId>,
     ) {
         match wire_shape {
             FieldWireShape::Omitted => {}
             FieldWireShape::Value(shape_ref)
             | FieldWireShape::Flatten(shape_ref)
             | FieldWireShape::Inline(shape_ref) => {
-                self.visit_shape_ref(shape_ref, path, optional, condition);
+                self.visit(shape_ref, path, definition_stack);
             }
-            _ => {
-                self.push_leaf(path, "unsupported", optional, condition);
-            }
+            _ => self.record(path),
         }
     }
 
-    fn union_kind(&self, union: &UnionShape) -> String {
-        let alternatives = union.alternatives();
-        if alternatives.iter().all(ShapeRef::is_integer) {
-            return "integer".to_owned();
-        }
-        if alternatives.iter().all(ShapeRef::is_float) {
-            return "float".to_owned();
-        }
-        if alternatives.iter().all(ShapeRef::is_number) {
-            return "number".to_owned();
-        }
-
-        alternatives
-            .iter()
-            .fold(Vec::<String>::new(), |mut kinds, alternative| {
-                let kind = self.union_alternative_kind(alternative);
-                if !kinds.contains(&kind) {
-                    kinds.push(kind);
-                }
-                kinds
-            })
-            .join("|")
-    }
-
-    fn union_alternative_kind(&self, shape_ref: &ShapeRef) -> String {
-        match shape_ref {
-            ShapeRef::Option(inner) => self.union_alternative_kind(inner),
-            ShapeRef::Seq(_) | ShapeRef::Array { .. } | ShapeRef::Tuple(_) => "array".to_owned(),
-            ShapeRef::Map { .. } => "object".to_owned(),
-            ShapeRef::Union(union) => self.union_kind(union),
-            ShapeRef::Definition(id) => {
-                let definition = self.shape.definition(*id).expect("shape definition exists");
-                match &definition.kind {
-                    DeserializeDefinitionKind::Struct(shape) if shape.attributes.transparent => {
-                        shape
-                            .fields
-                            .iter()
-                            .find_map(|field| match &field.wire_shape {
-                                FieldWireShape::Inline(inner) => {
-                                    Some(self.union_alternative_kind(inner))
-                                }
-                                FieldWireShape::Omitted
-                                | FieldWireShape::Value(_)
-                                | FieldWireShape::Flatten(_) => None,
-                                _ => None,
-                            })
-                            .unwrap_or_else(|| "unit".to_owned())
-                    }
-                    DeserializeDefinitionKind::Struct(shape)
-                        if shape.style == FieldsStyle::Newtype && shape.fields.len() == 1 =>
-                    {
-                        match &shape.fields[0].wire_shape {
-                            FieldWireShape::Omitted => "unit".to_owned(),
-                            FieldWireShape::Value(inner)
-                            | FieldWireShape::Flatten(inner)
-                            | FieldWireShape::Inline(inner) => self.union_alternative_kind(inner),
-                            _ => "unknown".to_owned(),
-                        }
-                    }
-                    DeserializeDefinitionKind::Struct(_) => "object".to_owned(),
-                    DeserializeDefinitionKind::Enum(_) => "enum".to_owned(),
-                    DeserializeDefinitionKind::Opaque(opaque) => {
-                        format!("opaque({:?})", opaque.reason)
-                    }
-                }
-            }
-            ShapeRef::Opaque(opaque) => format!("opaque({:?})", opaque.reason),
-            shape_ref => primitive_kind(shape_ref).to_owned(),
-        }
-    }
-
-    fn push_leaf(
-        &mut self,
-        path: &[String],
-        value_kind: &str,
-        optional: bool,
-        condition: Option<String>,
-    ) {
+    fn record(&mut self, path: &[String]) {
         if path.is_empty() {
             return;
         }
-
-        let path = path.to_vec();
-        self.options
-            .entry(path.clone())
-            .or_insert_with(|| EnvOption {
-                env_name: env_name(self.env_prefix, &path),
-                path,
-                value_kind: value_kind.to_owned(),
-                optional,
-                condition,
-            });
+        self.paths
+            .entry(env_name(self.prefix, path))
+            .or_insert_with(|| path.to_vec());
     }
-}
-
-fn appended_path(path: &[String], segment: &str) -> Vec<String> {
-    let mut path = path.to_owned();
-    path.push(segment.to_owned());
-    path
 }
 
 fn set_toml_path(document: &mut DocumentMut, path: &[String], value: toml_edit::Item) {
@@ -534,41 +321,10 @@ fn set_toml_path(document: &mut DocumentMut, path: &[String], value: toml_edit::
     current[key.as_str()] = value;
 }
 
-fn merge_conditions(existing: Option<&str>, new: &str) -> String {
-    existing.map_or_else(|| new.to_owned(), |existing| format!("{existing}; {new}"))
-}
-
-fn primitive_kind(shape_ref: &ShapeRef) -> &'static str {
-    if shape_ref.is_integer() {
-        "integer"
-    } else if shape_ref.is_float() {
-        "float"
-    } else if shape_ref.is_number() {
-        "number"
-    } else {
-        match shape_ref {
-            ShapeRef::Unit => "unit",
-            ShapeRef::Bool => "boolean",
-            ShapeRef::Char | ShapeRef::String | ShapeRef::Bytes => "string",
-            ShapeRef::Option(_)
-            | ShapeRef::Seq(_)
-            | ShapeRef::Array { .. }
-            | ShapeRef::Map { .. }
-            | ShapeRef::Tuple(_)
-            | ShapeRef::Union(_)
-            | ShapeRef::Definition(_)
-            | ShapeRef::Opaque(_) => {
-                unreachable!("compound shapes are handled before leaf mapping")
-            }
-            _ => unreachable!("numeric shapes are handled before leaf mapping"),
-        }
-    }
-}
-
 fn env_name(prefix: &str, path: &[String]) -> String {
-    let path = path
-        .iter()
-        .flat_map(|segment| segment.chars().chain(['_']))
+    let suffix = path
+        .join("_")
+        .chars()
         .map(|ch| {
             if ch.is_ascii_alphanumeric() {
                 ch.to_ascii_uppercase()
@@ -577,5 +333,5 @@ fn env_name(prefix: &str, path: &[String]) -> String {
             }
         })
         .collect::<String>();
-    format!("{prefix}_{}", path.trim_end_matches('_'))
+    format!("{prefix}_{suffix}")
 }

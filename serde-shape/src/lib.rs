@@ -53,7 +53,6 @@
 //! use serde_shape::DeserializeDefinitionKind;
 //! use serde_shape::DeserializeShape;
 //! use serde_shape::FieldsStyle;
-//! use serde_shape::ShapeRef;
 //!
 //! #[derive(DeserializeShape)]
 //! #[serde(rename_all = "kebab-case", deny_unknown_fields)]
@@ -71,10 +70,7 @@
 //! }
 //!
 //! let graph = Config::deserialize_shape();
-//! let ShapeRef::Definition(config_id) = graph.root() else {
-//!     panic!("Config should produce a named definition");
-//! };
-//! let config = graph.definition(*config_id).unwrap();
+//! let config = graph.root_definition().unwrap();
 //!
 //! let DeserializeDefinitionKind::Struct(shape) = &config.kind else {
 //!     panic!("Config should produce a struct shape");
@@ -99,7 +95,6 @@
 //! use serde_shape::DeserializeShape;
 //! use serde_shape::SerializeDefinitionKind;
 //! use serde_shape::SerializeShape;
-//! use serde_shape::ShapeRef;
 //!
 //! #[derive(SerializeShape, DeserializeShape)]
 //! #[serde(rename(serialize = "wire-output", deserialize = "wire-input"))]
@@ -110,16 +105,8 @@
 //!
 //! let serialize_graph = Message::serialize_shape();
 //! let deserialize_graph = Message::deserialize_shape();
-//!
-//! let ShapeRef::Definition(serialize_id) = serialize_graph.root() else {
-//!     panic!("Message should produce a named serialization definition");
-//! };
-//! let ShapeRef::Definition(deserialize_id) = deserialize_graph.root() else {
-//!     panic!("Message should produce a named deserialization definition");
-//! };
-//!
-//! let serialize_definition = serialize_graph.definition(*serialize_id).unwrap();
-//! let deserialize_definition = deserialize_graph.definition(*deserialize_id).unwrap();
+//! let serialize_definition = serialize_graph.root_definition().unwrap();
+//! let deserialize_definition = deserialize_graph.root_definition().unwrap();
 //!
 //! assert_eq!(serialize_definition.type_name.name, "wire-output");
 //! assert_eq!(deserialize_definition.type_name.name, "wire-input");
@@ -145,6 +132,8 @@
 //! Definition IDs are local to one graph. Use [`SerializeShapeGraph::definition`] or
 //! [`DeserializeShapeGraph::definition`] to resolve them. Definition ordering and debug output
 //! are not stable persistence formats.
+//! Definitions may be recursive, so graph walkers must detect repeated [`ShapeId`] values before
+//! following definition references.
 //!
 //! Types that branch on Serde's human-readable mode may expose a union of their known
 //! representations. Shape graphs describe possible Serde data-model calls across formats rather
@@ -231,7 +220,8 @@ pub mod __private {
 ///
 /// Use `#[serde_shape(deserialize_with = "path")]` on a container or field to override an
 /// opaque or foreign representation. The function must accept `&mut DeserializeShapeContext`
-/// and return a [`ShapeRef`].
+/// and return a [`ShapeRef`]. Generic hooks can replace inferred bounds with
+/// `#[serde_shape(bound(deserialize = "T: DeserializeShape"))]` on the container.
 ///
 /// # Example
 ///
@@ -239,7 +229,6 @@ pub mod __private {
 /// use serde_shape::DefaultShape;
 /// use serde_shape::DeserializeDefinitionKind;
 /// use serde_shape::DeserializeShape;
-/// use serde_shape::ShapeRef;
 ///
 /// #[derive(DeserializeShape)]
 /// #[serde(rename_all = "kebab-case")]
@@ -250,10 +239,7 @@ pub mod __private {
 /// }
 ///
 /// let graph = Config::deserialize_shape();
-/// let ShapeRef::Definition(id) = graph.root() else {
-///     panic!("Config should produce a named definition");
-/// };
-/// let definition = graph.definition(*id).unwrap();
+/// let definition = graph.root_definition().unwrap();
 ///
 /// let DeserializeDefinitionKind::Struct(shape) = &definition.kind else {
 ///     panic!("Config should produce a struct shape");
@@ -274,14 +260,14 @@ pub use serde_shape_derive::DeserializeShape;
 ///
 /// Use `#[serde_shape(serialize_with = "path")]` on a container or field to override an opaque
 /// or foreign representation. The function must accept `&mut SerializeShapeContext` and return
-/// a [`ShapeRef`].
+/// a [`ShapeRef`]. Generic hooks can replace inferred bounds with
+/// `#[serde_shape(bound(serialize = "T: SerializeShape"))]` on the container.
 ///
 /// # Example
 ///
 /// ```rust
 /// use serde_shape::SerializeDefinitionKind;
 /// use serde_shape::SerializeShape;
-/// use serde_shape::ShapeRef;
 ///
 /// #[derive(SerializeShape)]
 /// #[serde(rename = "api-response", rename_all = "camelCase")]
@@ -292,10 +278,7 @@ pub use serde_shape_derive::DeserializeShape;
 /// }
 ///
 /// let graph = Response::serialize_shape();
-/// let ShapeRef::Definition(id) = graph.root() else {
-///     panic!("Response should produce a named definition");
-/// };
-/// let definition = graph.definition(*id).unwrap();
+/// let definition = graph.root_definition().unwrap();
 ///
 /// let SerializeDefinitionKind::Struct(shape) = &definition.kind else {
 ///     panic!("Response should produce a struct shape");
@@ -318,10 +301,7 @@ pub trait SerializeShape {
     fn serialize_shape_in(context: &mut SerializeShapeContext) -> ShapeRef;
 
     /// Build a complete serialization shape graph rooted at this type.
-    fn serialize_shape() -> SerializeShapeGraph
-    where
-        Self: Sized,
-    {
+    fn serialize_shape() -> SerializeShapeGraph {
         SerializeShapeGraph::for_type::<Self>()
     }
 }
@@ -332,10 +312,7 @@ pub trait DeserializeShape {
     fn deserialize_shape_in(context: &mut DeserializeShapeContext) -> ShapeRef;
 
     /// Build a complete deserialization shape graph rooted at this type.
-    fn deserialize_shape() -> DeserializeShapeGraph
-    where
-        Self: Sized,
-    {
+    fn deserialize_shape() -> DeserializeShapeGraph {
         DeserializeShapeGraph::for_type::<Self>()
     }
 }
@@ -366,6 +343,14 @@ impl SerializeShapeGraph {
     /// Return the root shape reference.
     pub fn root(&self) -> &ShapeRef {
         &self.root
+    }
+
+    /// Return the root definition when the graph root is a named type.
+    pub fn root_definition(&self) -> Option<&SerializeDefinitionShape> {
+        let ShapeRef::Definition(id) = self.root() else {
+            return None;
+        };
+        self.definition(*id)
     }
 
     /// Return the named definitions reachable from the root.
@@ -405,6 +390,14 @@ impl DeserializeShapeGraph {
     /// Return the root shape reference.
     pub fn root(&self) -> &ShapeRef {
         &self.root
+    }
+
+    /// Return the root definition when the graph root is a named type.
+    pub fn root_definition(&self) -> Option<&DeserializeDefinitionShape> {
+        let ShapeRef::Definition(id) = self.root() else {
+            return None;
+        };
+        self.definition(*id)
     }
 
     /// Return the named definitions reachable from the root.

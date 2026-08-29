@@ -52,16 +52,14 @@ Typical use cases:
 
 Field shapes expose `wire_shape` as the source of truth for regular values, flattened fields, inline transparent fields, and omitted fields. Custom serializer/deserializer boundaries are represented by `ShapeRef::Opaque`, including when they are flattened or inline.
 
-You may use [`schemars`](https://docs.rs/schemars) for JSON Schema generation and validation. But `schemars` is not a general-purpose Serde shape reflection library, and it does not support all Serde attributes. `serde-shape` is designed to be a more complete and general-purpose reflection of Serde shapes.
+If the consumer needs JSON Schema, [`schemars`](https://docs.rs/schemars) directly targets that format. `serde-shape` instead keeps serialization and deserialization shapes separate and leaves format-specific export and validation to downstream tools.
 
 ## Example
 
 The following example shows how to inspect a nested config type.
 
 ```rust
-use serde_shape::{
-    DeserializeDefinitionKind, DeserializeShape, FieldsStyle, ShapeRef,
-};
+use serde_shape::{DeserializeDefinitionKind, DeserializeShape, FieldsStyle};
 
 #[derive(DeserializeShape)]
 #[serde(rename_all = "kebab-case", deny_unknown_fields)]
@@ -81,10 +79,7 @@ struct TlsConfig {
 }
 
 let graph = Config::deserialize_shape();
-let ShapeRef::Definition(config_id) = graph.root() else {
-    panic!("Config should produce a named definition");
-};
-let definition = graph.definition(*config_id).unwrap();
+let definition = graph.root_definition().unwrap();
 
 let DeserializeDefinitionKind::Struct(shape) = &definition.kind else {
     panic!("Config should produce a struct shape");
@@ -136,9 +131,13 @@ struct Config {
 
 Each function receives the current graph context and returns a `ShapeRef`. It may delegate to another type's shape implementation or construct a custom shape directly. A custom shape function is an assertion about the Serde behavior; `serde-shape` cannot verify that the declared shape matches the serializer or deserializer implementation.
 
+For a generic custom hook, container-level `#[serde_shape(bound(serialize = "...", deserialize = "..."))]` replaces the automatically inferred bounds in the corresponding direction, following Serde's bound-override convention.
+
 ## Model boundaries
 
 Shape graphs are an inspection API, not a stable interchange format. `ShapeId` values are local to one graph, and definition ordering and `Debug` output are not persistence contracts.
+
+Definitions may be recursive. A `ShapeRef::Definition` is a graph edge, so walkers must detect repeated `ShapeId` values instead of expanding definitions indefinitely.
 
 Types that branch on `Serializer::is_human_readable()` or `Deserializer::is_human_readable()` may expose a union of their known representations. The graph describes the possible Serde calls across formats; it is not specialized for one serializer format.
 
@@ -159,11 +158,12 @@ The built-in implementations follow Serde's own data-model calls in each directi
 | Containers | `Option`, `Result`, arrays, slices for serialization, tuples through arity 16, `Vec`, `VecDeque`, `LinkedList`, `BinaryHeap`, `BTreeSet`, and `BTreeMap` |
 | Wrappers | References, `Box`, `Cow`, `Cell`, `RefCell`, `Wrapping`, `Reverse`, and `PhantomData` |
 | Time | `core::time::Duration` |
-| `std` feature | `HashMap`, `HashSet`, `Path`, `PathBuf`, IP and socket address types, `Mutex`, and `RwLock` |
+| Network | `core::net` IP and socket address types |
+| `std` feature | `HashMap`, `HashSet`, `Path`, `PathBuf`, `Mutex`, and `RwLock` |
 
 Network address shapes are unions of their human-readable string representation and their compact Serde representation. A serialized byte slice is a sequence, while borrowed byte deserialization uses `ShapeRef::Bytes`.
 
-For an unsupported foreign type, use a local newtype and implement `SerializeShape` or `DeserializeShape` manually. Custom Serde functions remain visible as opaque boundaries because their wire behavior cannot be inferred.
+For an unsupported foreign type, use a local newtype and implement `SerializeShape` or `DeserializeShape` manually. Custom Serde functions remain opaque by default because their wire behavior cannot be inferred; use a `serde_shape` custom hook when the representation is known.
 
 ## `no_std` support
 
@@ -183,4 +183,4 @@ See the [contributor guide](CONTRIBUTING.md) for the development workflow and te
 
 ## License
 
-This project is licensed under the [Apache License, Version 2.0](https://github.com/fast/serde-shape/blob/main/LICENSE).
+This project is licensed under the [Apache License, Version 2.0](https://www.apache.org/licenses/LICENSE-2.0).

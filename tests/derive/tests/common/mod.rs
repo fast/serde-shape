@@ -16,18 +16,14 @@ use renamed_shape::DeserializeDefinitionShape;
 use renamed_shape::DeserializeShape;
 use renamed_shape::SerializeDefinitionShape;
 use renamed_shape::SerializeShape;
-use renamed_shape::ShapeRef;
 
 pub(super) fn deserialize_root_definition<T>() -> DeserializeDefinitionShape
 where
     T: DeserializeShape,
 {
     let graph = T::deserialize_shape();
-    let ShapeRef::Definition(id) = graph.root() else {
-        panic!("deserialization root shape should be a definition");
-    };
     graph
-        .definition(*id)
+        .root_definition()
         .expect("deserialization root definition should exist")
         .clone()
 }
@@ -37,11 +33,8 @@ where
     T: SerializeShape,
 {
     let graph = T::serialize_shape();
-    let ShapeRef::Definition(id) = graph.root() else {
-        panic!("serialization root shape should be a definition");
-    };
     graph
-        .definition(*id)
+        .root_definition()
         .expect("serialization root definition should exist")
         .clone()
 }
