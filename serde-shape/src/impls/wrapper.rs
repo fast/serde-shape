@@ -117,14 +117,14 @@ where
 }
 
 impl DeserializeShape for &str {
-    fn deserialize_shape_in(context: &mut DeserializeShapeContext) -> ShapeRef {
-        str::deserialize_shape_in(context)
+    fn deserialize_shape_in(_context: &mut DeserializeShapeContext) -> ShapeRef {
+        ShapeRef::String
     }
 }
 
 impl DeserializeShape for &[u8] {
-    fn deserialize_shape_in(context: &mut DeserializeShapeContext) -> ShapeRef {
-        <[u8]>::deserialize_shape_in(context)
+    fn deserialize_shape_in(_context: &mut DeserializeShapeContext) -> ShapeRef {
+        ShapeRef::Bytes
     }
 }
 
@@ -223,8 +223,8 @@ impl DeserializeShape for Box<std::path::Path> {
 
 #[cfg(feature = "std")]
 impl DeserializeShape for &std::path::Path {
-    fn deserialize_shape_in(context: &mut DeserializeShapeContext) -> ShapeRef {
-        std::path::Path::deserialize_shape_in(context)
+    fn deserialize_shape_in(_context: &mut DeserializeShapeContext) -> ShapeRef {
+        ShapeRef::String
     }
 }
 

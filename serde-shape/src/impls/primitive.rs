@@ -56,7 +56,6 @@ primitive_shape! {
     usize => ShapeRef::Usize;
     f32 => ShapeRef::F32;
     f64 => ShapeRef::F64;
-    str => ShapeRef::String;
     String => ShapeRef::String;
     core::num::NonZeroI8 => ShapeRef::I8;
     core::num::NonZeroI16 => ShapeRef::I16;
@@ -72,16 +71,31 @@ primitive_shape! {
     core::num::NonZeroUsize => ShapeRef::Usize;
 }
 
-impl DeserializeShape for [u8] {
-    fn deserialize_shape_in(_context: &mut DeserializeShapeContext) -> ShapeRef {
-        ShapeRef::Bytes
+impl SerializeShape for str {
+    fn serialize_shape_in(_context: &mut SerializeShapeContext) -> ShapeRef {
+        ShapeRef::String
     }
 }
 
 #[cfg(feature = "std")]
-primitive_shape! {
-    std::path::Path => ShapeRef::String;
-    std::path::PathBuf => ShapeRef::String;
+impl SerializeShape for std::path::Path {
+    fn serialize_shape_in(_context: &mut SerializeShapeContext) -> ShapeRef {
+        ShapeRef::String
+    }
+}
+
+#[cfg(feature = "std")]
+impl SerializeShape for std::path::PathBuf {
+    fn serialize_shape_in(_context: &mut SerializeShapeContext) -> ShapeRef {
+        ShapeRef::String
+    }
+}
+
+#[cfg(feature = "std")]
+impl DeserializeShape for std::path::PathBuf {
+    fn deserialize_shape_in(_context: &mut DeserializeShapeContext) -> ShapeRef {
+        ShapeRef::String
+    }
 }
 
 #[cfg(target_has_atomic = "8")]
