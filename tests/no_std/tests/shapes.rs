@@ -28,12 +28,12 @@ fn reflects_no_std_deserialization() {
     };
     let root_id = *root_id;
     assert_eq!(root_id.index(), 0);
-    assert_eq!(graph.definitions().len(), 1);
+    assert_eq!(graph.definitions().len(), 2);
 
     let DeserializeDefinitionKind::Struct(shape) = &graph.definition(root_id).unwrap().kind else {
         panic!("root definition should be a struct");
     };
-    assert_eq!(shape.fields.len(), 3);
+    assert_eq!(shape.fields.len(), 4);
     assert_eq!(
         shape.fields[0].wire_shape,
         FieldWireShape::Value(ShapeRef::String)
@@ -48,6 +48,10 @@ fn reflects_no_std_deserialization() {
         shape.fields[2].wire_shape,
         FieldWireShape::Value(ShapeRef::Option(Box::new(ShapeRef::Definition(root_id))))
     );
+    assert!(matches!(
+        shape.fields[3].wire_shape,
+        FieldWireShape::Value(ShapeRef::Union(_))
+    ));
 }
 
 #[test]
@@ -57,12 +61,12 @@ fn reflects_no_std_serialization() {
         panic!("root shape should be a definition");
     };
     let root_id = *root_id;
-    assert_eq!(graph.definitions().len(), 1);
+    assert_eq!(graph.definitions().len(), 2);
 
     let SerializeDefinitionKind::Struct(shape) = &graph.definition(root_id).unwrap().kind else {
         panic!("root definition should be a struct");
     };
-    assert_eq!(shape.fields.len(), 3);
+    assert_eq!(shape.fields.len(), 4);
     assert_eq!(
         shape.fields[0].wire_shape,
         FieldWireShape::Value(ShapeRef::String)
@@ -77,4 +81,8 @@ fn reflects_no_std_serialization() {
         shape.fields[2].wire_shape,
         FieldWireShape::Value(ShapeRef::Option(Box::new(ShapeRef::Definition(root_id))))
     );
+    assert!(matches!(
+        shape.fields[3].wire_shape,
+        FieldWireShape::Value(ShapeRef::Union(_))
+    ));
 }

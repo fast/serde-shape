@@ -20,6 +20,7 @@ extern crate alloc;
 use alloc::boxed::Box;
 use alloc::string::String;
 use alloc::vec::Vec;
+use core::net::SocketAddr;
 
 use serde_shape::DeserializeShape;
 use serde_shape::SerializeShape;
@@ -29,4 +30,5 @@ pub struct NoStdConfig {
     name: String,
     values: Vec<Option<u16>>,
     child: Option<Box<NoStdConfig>>,
+    listen: SocketAddr,
 }

@@ -15,12 +15,12 @@
 use alloc::boxed::Box;
 use alloc::vec;
 use core::any::type_name;
-use std::net::IpAddr;
-use std::net::Ipv4Addr;
-use std::net::Ipv6Addr;
-use std::net::SocketAddr;
-use std::net::SocketAddrV4;
-use std::net::SocketAddrV6;
+use core::net::IpAddr;
+use core::net::Ipv4Addr;
+use core::net::Ipv6Addr;
+use core::net::SocketAddr;
+use core::net::SocketAddrV4;
+use core::net::SocketAddrV6;
 
 use crate::DefaultShape;
 use crate::DeserializeContainerAttributes;

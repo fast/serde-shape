@@ -21,6 +21,7 @@ All notable changes to this project will be documented in this file.
 
 * Reflect the proxy type used by Serde `from`, `try_from`, and `into` container attributes.
 * Follow Serde's directional bounds for `Cow`: serialization reflects the borrowed type and deserialization reflects the owned type.
+* Make IP and socket address shapes available in `no_std` builds through `core::net`.
 
 ### Improvements
 

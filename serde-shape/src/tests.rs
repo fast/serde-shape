@@ -375,16 +375,20 @@ fn maps_common_std_shapes() {
         SerializeShapeGraph::for_type::<std::path::PathBuf>().root(),
         &ShapeRef::String
     );
+}
+
+#[test]
+fn maps_network_shapes_without_std() {
     let ipv4_binary = ShapeRef::Array {
         item: Box::new(ShapeRef::U8),
         len: 4,
     };
     assert_eq!(
-        SerializeShapeGraph::for_type::<std::net::Ipv4Addr>().root(),
+        SerializeShapeGraph::for_type::<core::net::Ipv4Addr>().root(),
         &ShapeRef::union([ShapeRef::String, ipv4_binary.clone()])
     );
 
-    let socket = DeserializeShapeGraph::for_type::<std::net::SocketAddr>();
+    let socket = DeserializeShapeGraph::for_type::<core::net::SocketAddr>();
     let ShapeRef::Union(root) = socket.root() else {
         panic!("socket address should reflect human-readable and binary shapes");
     };

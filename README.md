@@ -154,7 +154,8 @@ The built-in implementations follow Serde's own data-model calls in each directi
 | Containers | `Option`, `Result`, arrays, slices for serialization, tuples through arity 16, `Vec`, `VecDeque`, `LinkedList`, `BinaryHeap`, `BTreeSet`, and `BTreeMap` |
 | Wrappers | References, `Box`, `Cow`, `Cell`, `RefCell`, `Wrapping`, `Reverse`, and `PhantomData` |
 | Time | `core::time::Duration` |
-| `std` feature | `HashMap`, `HashSet`, `Path`, `PathBuf`, IP and socket address types, `Mutex`, and `RwLock` |
+| Network | `core::net` IP and socket address types |
+| `std` feature | `HashMap`, `HashSet`, `Path`, `PathBuf`, `Mutex`, and `RwLock` |
 
 Network address shapes are unions of their human-readable string representation and their compact Serde representation. A serialized byte slice is a sequence, while borrowed byte deserialization uses `ShapeRef::Bytes`.
 
