@@ -22,6 +22,7 @@ All notable changes to this project will be documented in this file.
 ### New features
 
 * Reflect serialized `core::fmt::Arguments` as a string, matching Serde's formatting implementation.
+* Add target-specific `OsStr` and `OsString` enum shapes on Unix and Windows, including owned `Box<OsStr>` input.
 * Add `SerializeShapeGraph::from_fn` and `DeserializeShapeGraph::from_fn` so custom shape functions can describe foreign graph roots without a dummy wrapper type.
 * Add `#[serde_shape(serialize_with = "path", deserialize_with = "path")]` hooks for custom Serde functions and foreign representations.
 * Allow custom shape hooks on enum variants so known custom variant content does not have to remain opaque.

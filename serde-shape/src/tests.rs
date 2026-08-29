@@ -44,6 +44,8 @@ use crate::DeserializeDefinitionKind;
 use crate::DeserializeShape;
 use crate::DeserializeShapeContext;
 use crate::DeserializeShapeGraph;
+#[cfg(all(feature = "std", any(unix, windows)))]
+use crate::DeserializeVariantContent;
 use crate::FieldWireShape;
 use crate::FieldsStyle;
 use crate::OpaqueReason;
@@ -545,6 +547,41 @@ fn maps_common_std_shapes() {
     assert_eq!(shape.fields[0].name, "secs_since_epoch");
     assert_eq!(shape.fields[1].name, "nanos_since_epoch");
     assert!(shape.attributes.deny_unknown_fields);
+}
+
+#[cfg(all(feature = "std", any(unix, windows)))]
+#[test]
+fn maps_os_strings_as_platform_enums() {
+    let serialize = SerializeShapeGraph::for_type::<std::ffi::OsString>();
+    let serialize = serialize
+        .root_definition()
+        .expect("OsString should have a named serialization definition");
+    let SerializeDefinitionKind::Enum(serialize) = &serialize.kind else {
+        panic!("OsString should serialize as an enum");
+    };
+
+    let deserialize = DeserializeShapeGraph::for_type::<Box<std::ffi::OsStr>>();
+    let deserialize = deserialize
+        .root_definition()
+        .expect("Box<OsStr> should have a named deserialization definition");
+    let DeserializeDefinitionKind::Enum(deserialize) = &deserialize.kind else {
+        panic!("Box<OsStr> should deserialize from an enum");
+    };
+
+    #[cfg(unix)]
+    let (variant, item) = ("Unix", ShapeRef::U8);
+    #[cfg(windows)]
+    let (variant, item) = ("Windows", ShapeRef::U16);
+
+    assert_eq!(serialize.variants[0].name, variant);
+    assert_eq!(deserialize.variants[0].name, variant);
+    let DeserializeVariantContent::Fields(fields) = &deserialize.variants[0].content else {
+        panic!("platform variant should contain one value");
+    };
+    assert_eq!(
+        fields[0].wire_shape,
+        FieldWireShape::Value(ShapeRef::Seq(Box::new(item)))
+    );
 }
 
 #[test]

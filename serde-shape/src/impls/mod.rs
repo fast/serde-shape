@@ -16,6 +16,8 @@ mod bound;
 mod container;
 mod ffi;
 mod net;
+#[cfg(all(feature = "std", any(unix, windows)))]
+mod os_string;
 mod primitive;
 mod range;
 mod result;
