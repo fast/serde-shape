@@ -20,7 +20,11 @@ use alloc::collections::BinaryHeap;
 use alloc::collections::LinkedList;
 use alloc::collections::VecDeque;
 use alloc::ffi::CString;
+use alloc::rc::Rc;
+use alloc::rc::Weak as RcWeak;
 use alloc::string::String;
+#[cfg(target_has_atomic = "ptr")]
+use alloc::sync::Arc;
 use alloc::vec;
 use alloc::vec::Vec;
 use core::borrow::Borrow;
@@ -364,6 +368,27 @@ fn maps_common_core_and_alloc_shapes() {
     assert_eq!(
         <Box<CStr> as DeserializeShape>::deserialize_shape().root(),
         &ShapeRef::Bytes
+    );
+}
+
+#[test]
+fn follows_shared_pointer_serde_shapes() {
+    assert_eq!(
+        <Rc<str> as SerializeShape>::serialize_shape().root(),
+        &ShapeRef::String
+    );
+    assert_eq!(
+        <Rc<[u8]> as DeserializeShape>::deserialize_shape().root(),
+        &ShapeRef::Seq(Box::new(ShapeRef::U8))
+    );
+    assert_eq!(
+        SerializeShapeGraph::for_type::<RcWeak<u16>>().root(),
+        &ShapeRef::Option(Box::new(ShapeRef::U16))
+    );
+    #[cfg(target_has_atomic = "ptr")]
+    assert_eq!(
+        <Arc<[u8]> as DeserializeShape>::deserialize_shape().root(),
+        &ShapeRef::Seq(Box::new(ShapeRef::U8))
     );
 }
 

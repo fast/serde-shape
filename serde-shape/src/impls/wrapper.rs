@@ -15,6 +15,12 @@
 use alloc::borrow::Cow;
 use alloc::borrow::ToOwned;
 use alloc::boxed::Box;
+use alloc::rc::Rc;
+use alloc::rc::Weak as RcWeak;
+#[cfg(target_has_atomic = "ptr")]
+use alloc::sync::Arc;
+#[cfg(target_has_atomic = "ptr")]
+use alloc::sync::Weak as ArcWeak;
 use core::cell::Cell;
 use core::cell::RefCell;
 use core::cmp::Reverse;
@@ -117,6 +123,52 @@ impl DeserializeShape for Box<str> {
         ShapeRef::String
     }
 }
+
+macro_rules! shared_pointer_shape {
+    ($strong:ident, $weak:ident) => {
+        impl<T> SerializeShape for $strong<T>
+        where
+            T: SerializeShape + ?Sized,
+        {
+            fn serialize_shape_in(context: &mut SerializeShapeContext) -> ShapeRef {
+                T::serialize_shape_in(context)
+            }
+        }
+
+        impl<T> DeserializeShape for $strong<T>
+        where
+            T: ?Sized,
+            Box<T>: DeserializeShape,
+        {
+            fn deserialize_shape_in(context: &mut DeserializeShapeContext) -> ShapeRef {
+                <Box<T> as DeserializeShape>::deserialize_shape_in(context)
+            }
+        }
+
+        impl<T> SerializeShape for $weak<T>
+        where
+            T: SerializeShape + ?Sized,
+        {
+            fn serialize_shape_in(context: &mut SerializeShapeContext) -> ShapeRef {
+                ShapeRef::Option(Box::new(T::serialize_shape_in(context)))
+            }
+        }
+
+        impl<T> DeserializeShape for $weak<T>
+        where
+            T: DeserializeShape,
+        {
+            fn deserialize_shape_in(context: &mut DeserializeShapeContext) -> ShapeRef {
+                ShapeRef::Option(Box::new(T::deserialize_shape_in(context)))
+            }
+        }
+    };
+}
+
+shared_pointer_shape!(Rc, RcWeak);
+
+#[cfg(target_has_atomic = "ptr")]
+shared_pointer_shape!(Arc, ArcWeak);
 
 #[cfg(feature = "std")]
 impl DeserializeShape for Box<std::path::Path> {

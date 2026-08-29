@@ -16,6 +16,7 @@ All notable changes to this project will be documented in this file.
 * Add `#[serde_shape(serialize_with = "path", deserialize_with = "path")]` hooks for custom Serde functions and foreign representations.
 * Allow custom shape hooks on enum variants so known custom variant content does not have to remain opaque.
 * Reflect Serde's byte-buffer representation for `CStr`, `CString`, and owned `Box<CStr>` input.
+* Add `Rc`, `Arc`, and weak-pointer shapes, preserving Serde's owned input and optional weak-pointer representations.
 * Add directional `#[serde_shape(bound(...))]` overrides for generic custom shape hooks.
 * Add `SerializeShapeGraph::root_definition` and `DeserializeShapeGraph::root_definition` for directly inspecting named root types.
 * Preserve Rust doc comments on derived containers, variants, and fields as user-facing descriptions.

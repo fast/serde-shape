@@ -158,13 +158,15 @@ The built-in implementations follow Serde's own data-model calls in each directi
 | --- | --- |
 | Scalars | Rust primitives, `String`, `str`, non-zero integers, and atomics available on the target |
 | Containers | `Option`, `Result`, arrays, slices for serialization, tuples through arity 16, `Vec`, `VecDeque`, `LinkedList`, `BinaryHeap`, `BTreeSet`, and `BTreeMap` |
-| Wrappers | References, `Box`, `Cow`, `Cell`, `RefCell`, `Wrapping`, `Reverse`, and `PhantomData` |
+| Wrappers | References, `Box`, `Rc`, `Arc`, their weak pointers, `Cow`, `Cell`, `RefCell`, `Wrapping`, `Reverse`, and `PhantomData` |
 | FFI | `CStr` and `CString` byte representations, including owned `Box<CStr>` input |
 | Time | `core::time::Duration` |
 | Network | `core::net` IP and socket address types |
 | `std` feature | `HashMap`, `HashSet`, `Path`, `PathBuf`, `Mutex`, and `RwLock` |
 
 Network address shapes are unions of their human-readable string representation and their compact Serde representation. A serialized byte slice is a sequence, while borrowed byte deserialization uses `ShapeRef::Bytes`.
+
+Serde's `rc` feature is still required to serialize or deserialize `Rc`, `Arc`, and their weak pointers; the shape implementations do not enable Serde features.
 
 For an unsupported foreign type, use a local newtype and implement `SerializeShape` or `DeserializeShape` manually. Custom Serde functions remain opaque by default because their wire behavior cannot be inferred; use a `serde_shape` custom hook when the representation is known.
 
