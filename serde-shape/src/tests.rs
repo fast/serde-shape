@@ -13,6 +13,7 @@
 // limitations under the License.
 
 use alloc::borrow::Cow;
+use alloc::borrow::ToOwned;
 use alloc::boxed::Box;
 use alloc::collections::BTreeMap;
 use alloc::collections::BinaryHeap;
@@ -21,11 +22,13 @@ use alloc::collections::VecDeque;
 use alloc::string::String;
 use alloc::vec;
 use alloc::vec::Vec;
+use core::borrow::Borrow;
 use core::cell::Cell;
 use core::cmp::Reverse;
 use core::num::Wrapping;
 
 use crate::DeserializeDefinitionKind;
+use crate::DeserializeShape;
 use crate::DeserializeShapeContext;
 use crate::DeserializeShapeGraph;
 use crate::DeserializeTypeName;
@@ -34,11 +37,42 @@ use crate::FieldsStyle;
 use crate::OpaqueReason;
 use crate::OpaqueShape;
 use crate::SerializeDefinitionKind;
+use crate::SerializeShape;
 use crate::SerializeShapeContext;
 use crate::SerializeShapeGraph;
 use crate::SerializeTypeName;
 use crate::ShapeRef;
 use crate::Tagging;
+
+struct BorrowedShape;
+
+struct OwnedShape(BorrowedShape);
+
+impl ToOwned for BorrowedShape {
+    type Owned = OwnedShape;
+
+    fn to_owned(&self) -> Self::Owned {
+        OwnedShape(BorrowedShape)
+    }
+}
+
+impl Borrow<BorrowedShape> for OwnedShape {
+    fn borrow(&self) -> &BorrowedShape {
+        &self.0
+    }
+}
+
+impl SerializeShape for BorrowedShape {
+    fn serialize_shape_in(_context: &mut SerializeShapeContext) -> ShapeRef {
+        ShapeRef::U8
+    }
+}
+
+impl DeserializeShape for OwnedShape {
+    fn deserialize_shape_in(_context: &mut DeserializeShapeContext) -> ShapeRef {
+        ShapeRef::String
+    }
+}
 
 #[test]
 fn classifies_flat_numeric_shapes() {
@@ -307,6 +341,18 @@ fn maps_common_core_and_alloc_shapes() {
     assert_eq!(
         DeserializeShapeGraph::for_type::<BinaryHeap<u16>>().root,
         ShapeRef::Seq(Box::new(ShapeRef::U16))
+    );
+}
+
+#[test]
+fn follows_cow_directional_serde_bounds() {
+    assert_eq!(
+        SerializeShapeGraph::for_type::<Cow<'static, BorrowedShape>>().root,
+        ShapeRef::U8
+    );
+    assert_eq!(
+        DeserializeShapeGraph::for_type::<Cow<'static, BorrowedShape>>().root,
+        ShapeRef::String
     );
 }
 
