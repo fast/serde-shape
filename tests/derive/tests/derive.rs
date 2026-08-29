@@ -76,6 +76,18 @@ struct UserId(u64);
 struct FromString(String);
 
 #[derive(DeserializeShape)]
+#[serde(try_from = "u16")]
+struct TryFromU16(u16);
+
+#[derive(SerializeShape)]
+#[serde(into = "String")]
+struct IntoString(String);
+
+#[derive(DeserializeShape)]
+#[serde(from = "T")]
+struct FromGeneric<T>(T);
+
+#[derive(DeserializeShape)]
 struct SkipsGeneric<T> {
     #[serde(skip)]
     value: T,
@@ -219,7 +231,7 @@ fn exposes_deserialize_enum_attributes() {
 }
 
 #[test]
-fn exposes_transparent_and_conversion_boundaries() {
+fn exposes_transparent_shape() {
     let transparent = UserId::deserialize_shape();
     let ShapeRef::Definition(id) = transparent.root else {
         panic!("transparent root should be a definition");
@@ -232,16 +244,14 @@ fn exposes_transparent_and_conversion_boundaries() {
         shape.fields[0].wire_shape,
         FieldWireShape::Inline(ShapeRef::U64)
     );
+}
 
-    let converted = FromString::deserialize_shape();
-    let ShapeRef::Definition(id) = converted.root else {
-        panic!("converted root should be a definition");
-    };
-    let DeserializeDefinitionKind::Opaque(opaque) = &converted.definition(id).unwrap().kind else {
-        panic!("converted definition should be opaque");
-    };
-    assert_eq!(opaque.reason, OpaqueReason::FromType);
-    assert_eq!(opaque.detail, Some("String"));
+#[test]
+fn follows_serde_conversion_shapes() {
+    assert_eq!(FromString::deserialize_shape().root, ShapeRef::String);
+    assert_eq!(TryFromU16::deserialize_shape().root, ShapeRef::U16);
+    assert_eq!(IntoString::serialize_shape().root, ShapeRef::String);
+    assert_eq!(FromGeneric::<u8>::deserialize_shape().root, ShapeRef::U8);
 }
 
 #[test]

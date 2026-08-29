@@ -137,7 +137,14 @@ fn parse_container<'a>(input: &'a DeriveInput, derive: Derive) -> syn::Result<as
 }
 
 fn add_serialize_shape_bounds(generics: &mut syn::Generics, container: &ast::Container<'_>) {
-    if container.attrs.type_into().is_some() || container.attrs.remote().is_some() {
+    if container.attrs.remote().is_some() {
+        return;
+    }
+    if let Some(ty) = container.attrs.type_into() {
+        generics
+            .make_where_clause()
+            .predicates
+            .push(parse_quote!(#ty: __serde_shape::SerializeShape));
         return;
     }
 
@@ -174,10 +181,18 @@ fn add_serialize_shape_bounds(generics: &mut syn::Generics, container: &ast::Con
 }
 
 fn add_deserialize_shape_bounds(generics: &mut syn::Generics, container: &ast::Container<'_>) {
-    if container.attrs.type_from().is_some()
-        || container.attrs.type_try_from().is_some()
-        || container.attrs.remote().is_some()
+    if container.attrs.remote().is_some() {
+        return;
+    }
+    if let Some(ty) = container
+        .attrs
+        .type_from()
+        .or_else(|| container.attrs.type_try_from())
     {
+        generics
+            .make_where_clause()
+            .predicates
+            .push(parse_quote!(#ty: __serde_shape::DeserializeShape));
         return;
     }
 
@@ -404,6 +419,10 @@ fn push_bound_type(field_bound_types: &mut Vec<Type>, ty: Type) {
 }
 
 fn serialize_shape_body(container: &ast::Container<'_>) -> TokenStream2 {
+    if let Some(ty) = container.attrs.type_into() {
+        return quote!(<#ty as __serde_shape::SerializeShape>::serialize_shape_in(context));
+    }
+
     let name = lit(container.attrs.name().serialize_name());
     let kind = serialize_definition_kind(container);
 
@@ -421,6 +440,14 @@ fn serialize_shape_body(container: &ast::Container<'_>) -> TokenStream2 {
 }
 
 fn deserialize_shape_body(container: &ast::Container<'_>) -> TokenStream2 {
+    if let Some(ty) = container
+        .attrs
+        .type_from()
+        .or_else(|| container.attrs.type_try_from())
+    {
+        return quote!(<#ty as __serde_shape::DeserializeShape>::deserialize_shape_in(context));
+    }
+
     let name = lit(container.attrs.name().deserialize_name());
     let kind = deserialize_definition_kind(container);
 
@@ -438,11 +465,9 @@ fn deserialize_shape_body(container: &ast::Container<'_>) -> TokenStream2 {
 }
 
 fn serialize_definition_kind(container: &ast::Container<'_>) -> TokenStream2 {
-    if let Some(ty) = container.attrs.type_into() {
-        return serialize_opaque_definition("IntoType", ty);
-    }
     if let Some(path) = container.attrs.remote() {
-        return serialize_opaque_definition("Remote", path);
+        let opaque = remote_opaque_shape(path);
+        return quote!(__serde_shape::SerializeDefinitionKind::Opaque(#opaque));
     }
 
     let attributes = serialize_container_attributes(&container.attrs);
@@ -473,14 +498,9 @@ fn serialize_definition_kind(container: &ast::Container<'_>) -> TokenStream2 {
 }
 
 fn deserialize_definition_kind(container: &ast::Container<'_>) -> TokenStream2 {
-    if let Some(ty) = container.attrs.type_from() {
-        return deserialize_opaque_definition("FromType", ty);
-    }
-    if let Some(ty) = container.attrs.type_try_from() {
-        return deserialize_opaque_definition("TryFromType", ty);
-    }
     if let Some(path) = container.attrs.remote() {
-        return deserialize_opaque_definition("Remote", path);
+        let opaque = remote_opaque_shape(path);
+        return quote!(__serde_shape::DeserializeDefinitionKind::Opaque(#opaque));
     }
 
     let attributes = deserialize_container_attributes(&container.attrs);
@@ -510,35 +530,18 @@ fn deserialize_definition_kind(container: &ast::Container<'_>) -> TokenStream2 {
     }
 }
 
-fn serialize_opaque_definition<T>(reason: &str, detail: T) -> TokenStream2
+fn remote_opaque_shape<T>(detail: T) -> TokenStream2
 where
     T: ToTokens,
 {
-    let reason = opaque_reason(reason);
     let detail = lit(detail.to_token_stream().to_string());
 
     quote! {
-        __serde_shape::SerializeDefinitionKind::Opaque(__serde_shape::OpaqueShape {
+        __serde_shape::OpaqueShape {
             type_name: ::core::any::type_name::<Self>(),
-            reason: #reason,
+            reason: __serde_shape::OpaqueReason::Remote,
             detail: ::core::option::Option::Some(#detail),
-        })
-    }
-}
-
-fn deserialize_opaque_definition<T>(reason: &str, detail: T) -> TokenStream2
-where
-    T: ToTokens,
-{
-    let reason = opaque_reason(reason);
-    let detail = lit(detail.to_token_stream().to_string());
-
-    quote! {
-        __serde_shape::DeserializeDefinitionKind::Opaque(__serde_shape::OpaqueShape {
-            type_name: ::core::any::type_name::<Self>(),
-            reason: #reason,
-            detail: ::core::option::Option::Some(#detail),
-        })
+        }
     }
 }
 
@@ -795,16 +798,6 @@ fn default_shape(default: &attr::Default) -> TokenStream2 {
             let path = lit(path.to_token_stream().to_string());
             quote!(__serde_shape::DefaultShape::Path(#path))
         }
-    }
-}
-
-fn opaque_reason(reason: &str) -> TokenStream2 {
-    match reason {
-        "FromType" => quote!(__serde_shape::OpaqueReason::FromType),
-        "TryFromType" => quote!(__serde_shape::OpaqueReason::TryFromType),
-        "IntoType" => quote!(__serde_shape::OpaqueReason::IntoType),
-        "Remote" => quote!(__serde_shape::OpaqueReason::Remote),
-        _ => quote!(__serde_shape::OpaqueReason::Unsupported),
     }
 }
 
