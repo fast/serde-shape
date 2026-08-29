@@ -38,6 +38,7 @@ All notable changes to this project will be documented in this file.
 
 ### Improvements
 
+* Align the derive macro with Serde's current `syn` 3 parser stack so applications deriving both Serde and shape metadata do not compile two `syn` major versions.
 * Verify both publishable crate archives from their normalized manifests in CI.
 * Implement `Default` for container attributes, `Tagging`, and `DefaultShape` so manual shape implementations can initialize ordinary Serde metadata concisely.
 * Allow unsized types such as `str` and slices to use the `SerializeShape::serialize_shape` and `DeserializeShape::deserialize_shape` convenience methods directly.
