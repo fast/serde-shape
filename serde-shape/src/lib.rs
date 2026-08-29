@@ -403,6 +403,22 @@ impl SerializeShapeContext {
     where
         F: FnOnce(&mut Self) -> SerializeDefinitionKind + 'static,
     {
+        self.define_named_type_with_description(type_name, None, build)
+    }
+
+    /// Define a named type with user-facing documentation.
+    ///
+    /// This behaves like [`Self::define_named_type`] and stores `description` on the resulting
+    /// definition.
+    pub fn define_named_type_with_description<F>(
+        &mut self,
+        type_name: SerializeTypeName,
+        description: Option<&'static str>,
+        build: F,
+    ) -> ShapeRef
+    where
+        F: FnOnce(&mut Self) -> SerializeDefinitionKind + 'static,
+    {
         let identity = (TypeId::of::<F>(), type_name.rust_name);
         if let Some(id) = self.definitions_by_identity.get(&identity) {
             return ShapeRef::Definition(*id);
@@ -416,6 +432,7 @@ impl SerializeShapeContext {
         self.definitions[id.0] = Some(SerializeDefinitionShape {
             id,
             type_name,
+            description,
             kind,
         });
         ShapeRef::Definition(id)
@@ -445,6 +462,22 @@ impl DeserializeShapeContext {
     where
         F: FnOnce(&mut Self) -> DeserializeDefinitionKind + 'static,
     {
+        self.define_named_type_with_description(type_name, None, build)
+    }
+
+    /// Define a named type with user-facing documentation.
+    ///
+    /// This behaves like [`Self::define_named_type`] and stores `description` on the resulting
+    /// definition.
+    pub fn define_named_type_with_description<F>(
+        &mut self,
+        type_name: DeserializeTypeName,
+        description: Option<&'static str>,
+        build: F,
+    ) -> ShapeRef
+    where
+        F: FnOnce(&mut Self) -> DeserializeDefinitionKind + 'static,
+    {
         let identity = (TypeId::of::<F>(), type_name.rust_name);
         if let Some(id) = self.definitions_by_identity.get(&identity) {
             return ShapeRef::Definition(*id);
@@ -458,6 +491,7 @@ impl DeserializeShapeContext {
         self.definitions[id.0] = Some(DeserializeDefinitionShape {
             id,
             type_name,
+            description,
             kind,
         });
         ShapeRef::Definition(id)
@@ -683,6 +717,8 @@ pub struct SerializeDefinitionShape {
     pub id: ShapeId,
     /// The Rust and Serde names for this definition.
     pub type_name: SerializeTypeName,
+    /// User-facing documentation for this definition, if available.
+    pub description: Option<&'static str>,
     /// The definition body.
     pub kind: SerializeDefinitionKind,
 }
@@ -694,6 +730,8 @@ pub struct DeserializeDefinitionShape {
     pub id: ShapeId,
     /// The Rust and Serde names for this definition.
     pub type_name: DeserializeTypeName,
+    /// User-facing documentation for this definition, if available.
+    pub description: Option<&'static str>,
     /// The definition body.
     pub kind: DeserializeDefinitionKind,
 }
@@ -837,6 +875,8 @@ pub struct SerializeFieldShape {
     pub member: FieldMember,
     /// The primary Serde serialize name.
     pub name: &'static str,
+    /// User-facing documentation for this field, if available.
+    pub description: Option<&'static str>,
     /// How this field contributes to the serialized wire shape.
     pub wire_shape: FieldWireShape,
     /// The predicate used to skip this field during serialization.
@@ -852,6 +892,8 @@ pub struct DeserializeFieldShape {
     pub name: &'static str,
     /// All accepted Serde deserialize names, including the primary name.
     pub aliases: Vec<&'static str>,
+    /// User-facing documentation for this field, if available.
+    pub description: Option<&'static str>,
     /// How this field contributes to the deserialized wire shape.
     pub wire_shape: FieldWireShape,
     /// The default used if this field is missing.
@@ -888,6 +930,8 @@ pub struct SerializeVariantShape {
     pub rust_name: &'static str,
     /// The primary Serde serialize name.
     pub name: &'static str,
+    /// User-facing documentation for this variant, if available.
+    pub description: Option<&'static str>,
     /// The variant field style.
     pub style: FieldsStyle,
     /// How the variant contributes its serialized content.
@@ -917,6 +961,8 @@ pub struct DeserializeVariantShape {
     pub name: &'static str,
     /// All accepted Serde deserialize names, including the primary name.
     pub aliases: Vec<&'static str>,
+    /// User-facing documentation for this variant, if available.
+    pub description: Option<&'static str>,
     /// The variant field style.
     pub style: FieldsStyle,
     /// How the variant contributes its deserialized content.

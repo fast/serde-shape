@@ -14,6 +14,8 @@
 
 use proc_macro2::Span;
 use syn::Attribute;
+use syn::Expr;
+use syn::Lit;
 use syn::LitStr;
 use syn::Type;
 use syn::meta::ParseNestedMeta;
@@ -87,6 +89,40 @@ impl ShapeAttrs {
     pub fn is_empty(&self) -> bool {
         self.serialize_as.is_none() && self.deserialize_as.is_none() && self.with.is_none()
     }
+}
+
+pub fn description(attrs: &[Attribute]) -> Option<String> {
+    let mut lines = attrs
+        .iter()
+        .filter(|attr| attr.path().is_ident("doc"))
+        .filter_map(|attr| match &attr.meta {
+            syn::Meta::NameValue(meta) => match &meta.value {
+                Expr::Lit(expr) => match &expr.lit {
+                    Lit::Str(line) => {
+                        let line = line.value();
+                        Some(
+                            line.strip_prefix(' ')
+                                .unwrap_or(&line)
+                                .trim_end()
+                                .to_owned(),
+                        )
+                    }
+                    _ => None,
+                },
+                _ => None,
+            },
+            _ => None,
+        })
+        .collect::<Vec<_>>();
+
+    while lines.first().is_some_and(String::is_empty) {
+        lines.remove(0);
+    }
+    while lines.last().is_some_and(String::is_empty) {
+        lines.pop();
+    }
+
+    (!lines.is_empty()).then(|| lines.join("\n"))
 }
 
 fn parse_type(meta: &ParseNestedMeta<'_>) -> syn::Result<Type> {

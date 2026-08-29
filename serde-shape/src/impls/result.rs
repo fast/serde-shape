@@ -107,10 +107,12 @@ fn serialize_result_variant(name: &'static str, shape: ShapeRef) -> SerializeVar
     SerializeVariantShape {
         rust_name: name,
         name,
+        description: None,
         style: FieldsStyle::Newtype,
         content: SerializeVariantContent::Fields(vec![SerializeFieldShape {
             member: FieldMember::Unnamed(0),
             name: "0",
+            description: None,
             wire_shape: FieldWireShape::Value(shape),
             skip_if: None,
         }]),
@@ -123,11 +125,13 @@ fn deserialize_result_variant(name: &'static str, shape: ShapeRef) -> Deserializ
         rust_name: name,
         name,
         aliases: vec![name],
+        description: None,
         style: FieldsStyle::Newtype,
         content: DeserializeVariantContent::Fields(vec![DeserializeFieldShape {
             member: FieldMember::Unnamed(0),
             name: "0",
             aliases: vec!["0"],
+            description: None,
             wire_shape: FieldWireShape::Value(shape),
             default: DefaultShape::None,
         }]),

@@ -100,6 +100,20 @@ struct FieldShapeOverrides {
     directional: NotShape,
 }
 
+/// Selects the retry policy.
+///
+/// This text is available to configuration tooling.
+#[derive(SerializeShape, DeserializeShape)]
+enum DocumentedSetting {
+    /// Uses the built-in retry policy.
+    Default,
+    /// Uses a fixed retry limit.
+    Fixed {
+        /// Maximum number of retry attempts.
+        retries: u8,
+    },
+}
+
 #[derive(DeserializeShape)]
 struct SkipsGeneric<T> {
     #[serde(skip)]
@@ -308,6 +322,57 @@ fn applies_container_and_field_shape_overrides() {
     assert_eq!(
         shape.fields[1].wire_shape,
         FieldWireShape::Value(ShapeRef::Bool)
+    );
+}
+
+#[test]
+fn preserves_rust_documentation() {
+    let serialize = DocumentedSetting::serialize_shape();
+    let ShapeRef::Definition(id) = serialize.root else {
+        panic!("serialize root should be a definition");
+    };
+    let definition = serialize.definition(id).unwrap();
+    assert_eq!(
+        definition.description,
+        Some("Selects the retry policy.\n\nThis text is available to configuration tooling.")
+    );
+    let SerializeDefinitionKind::Enum(shape) = &definition.kind else {
+        panic!("serialize definition should be an enum");
+    };
+    assert_eq!(
+        shape.variants[1].description,
+        Some("Uses a fixed retry limit.")
+    );
+    let SerializeVariantContent::Fields(fields) = &shape.variants[1].content else {
+        panic!("fixed variant should expose fields");
+    };
+    assert_eq!(
+        fields[0].description,
+        Some("Maximum number of retry attempts.")
+    );
+
+    let deserialize = DocumentedSetting::deserialize_shape();
+    let ShapeRef::Definition(id) = deserialize.root else {
+        panic!("deserialize root should be a definition");
+    };
+    let definition = deserialize.definition(id).unwrap();
+    assert_eq!(
+        definition.description,
+        Some("Selects the retry policy.\n\nThis text is available to configuration tooling.")
+    );
+    let DeserializeDefinitionKind::Enum(shape) = &definition.kind else {
+        panic!("deserialize definition should be an enum");
+    };
+    assert_eq!(
+        shape.variants[1].description,
+        Some("Uses a fixed retry limit.")
+    );
+    let DeserializeVariantContent::Fields(fields) = &shape.variants[1].content else {
+        panic!("fixed variant should expose fields");
+    };
+    assert_eq!(
+        fields[0].description,
+        Some("Maximum number of retry attempts.")
     );
 }
 

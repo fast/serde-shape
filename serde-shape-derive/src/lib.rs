@@ -42,6 +42,7 @@ use syn::parse_quote;
 mod shape_attr;
 
 use shape_attr::ShapeAttrs;
+use shape_attr::description;
 
 /// Derive `serde_shape::SerializeShape` from Serde serialize metadata.
 #[proc_macro_derive(SerializeShape, attributes(serde, serde_shape))]
@@ -509,14 +510,17 @@ fn serialize_shape_body(
     }
 
     let name = lit(container.attrs.name().serialize_name());
+    let description = description(&container.original.attrs);
+    let description = option_lit(description.as_deref());
     let kind = serialize_definition_kind(container)?;
 
     Ok(quote! {
-        context.define_named_type(
+        context.define_named_type_with_description(
             __serde_shape::SerializeTypeName {
                 rust_name: ::core::any::type_name::<Self>(),
                 name: #name,
             },
+            #description,
             |context| {
                 #kind
             },
@@ -540,14 +544,17 @@ fn deserialize_shape_body(
     }
 
     let name = lit(container.attrs.name().deserialize_name());
+    let description = description(&container.original.attrs);
+    let description = option_lit(description.as_deref());
     let kind = deserialize_definition_kind(container)?;
 
     Ok(quote! {
-        context.define_named_type(
+        context.define_named_type_with_description(
             __serde_shape::DeserializeTypeName {
                 rust_name: ::core::any::type_name::<Self>(),
                 name: #name,
             },
+            #description,
             |context| {
                 #kind
             },
@@ -689,6 +696,8 @@ fn deserialize_container_attributes(attrs: &attr::Container) -> TokenStream2 {
 fn serialize_variant_shape(variant: &ast::Variant<'_>) -> syn::Result<TokenStream2> {
     let rust_name = lit(variant.ident.to_string());
     let name = lit(variant.attrs.name().serialize_name());
+    let description = description(&variant.original.attrs);
+    let description = option_lit(description.as_deref());
     let style = fields_style(variant.style);
     let skip = variant.attrs.skip_serializing();
     let untagged = variant.attrs.untagged();
@@ -720,6 +729,7 @@ fn serialize_variant_shape(variant: &ast::Variant<'_>) -> syn::Result<TokenStrea
         __serde_shape::SerializeVariantShape {
             rust_name: #rust_name,
             name: #name,
+            description: #description,
             style: #style,
             content: #content,
             untagged: #untagged,
@@ -731,6 +741,8 @@ fn deserialize_variant_shape(variant: &ast::Variant<'_>) -> syn::Result<TokenStr
     let rust_name = lit(variant.ident.to_string());
     let name = lit(variant.attrs.name().deserialize_name());
     let aliases = aliases(variant.attrs.aliases());
+    let description = description(&variant.original.attrs);
+    let description = option_lit(description.as_deref());
     let style = fields_style(variant.style);
     let skip = variant.attrs.skip_deserializing();
     let other = variant.attrs.other();
@@ -764,6 +776,7 @@ fn deserialize_variant_shape(variant: &ast::Variant<'_>) -> syn::Result<TokenStr
             rust_name: #rust_name,
             name: #name,
             aliases: #aliases,
+            description: #description,
             style: #style,
             content: #content,
             other: #other,
@@ -776,6 +789,8 @@ fn serialize_field_shape(field: &ast::Field<'_>) -> syn::Result<TokenStream2> {
     let shape_attrs = ShapeAttrs::parse(&field.original.attrs)?;
     let member = field_member(&field.member);
     let name = lit(field.attrs.name().serialize_name());
+    let description = description(&field.original.attrs);
+    let description = option_lit(description.as_deref());
     let skip = field.attrs.skip_serializing();
     let skip_if = option_path(field.attrs.skip_serializing_if());
     let flatten = field.attrs.flatten();
@@ -812,6 +827,7 @@ fn serialize_field_shape(field: &ast::Field<'_>) -> syn::Result<TokenStream2> {
         __serde_shape::SerializeFieldShape {
             member: #member,
             name: #name,
+            description: #description,
             wire_shape: #wire_shape,
             skip_if: #skip_if,
         }
@@ -823,6 +839,8 @@ fn deserialize_field_shape(field: &ast::Field<'_>) -> syn::Result<TokenStream2> 
     let member = field_member(&field.member);
     let name = lit(field.attrs.name().deserialize_name());
     let aliases = aliases(field.attrs.aliases());
+    let description = description(&field.original.attrs);
+    let description = option_lit(description.as_deref());
     let skip = field.attrs.skip_deserializing();
     let default = default_shape(field.attrs.default());
     let flatten = field.attrs.flatten();
@@ -860,6 +878,7 @@ fn deserialize_field_shape(field: &ast::Field<'_>) -> syn::Result<TokenStream2> 
             member: #member,
             name: #name,
             aliases: #aliases,
+            description: #description,
             wire_shape: #wire_shape,
             default: #default,
         }
