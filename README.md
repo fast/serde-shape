@@ -12,7 +12,7 @@
 [docs-url]: https://docs.rs/serde-shape
 [msrv-badge]: https://img.shields.io/badge/MSRV-1.85-green?logo=rust
 [license-badge]: https://img.shields.io/crates/l/serde-shape
-[license-url]: https://github.com/fast/serde-shape/blob/main/LICENSE
+[license-url]: https://www.apache.org/licenses/LICENSE-2.0
 [actions-badge]: https://github.com/fast/serde-shape/workflows/CI/badge.svg
 [actions-url]: https://github.com/fast/serde-shape/actions?query=workflow%3ACI
 
