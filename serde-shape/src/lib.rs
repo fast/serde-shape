@@ -318,10 +318,7 @@ pub trait SerializeShape {
     fn serialize_shape_in(context: &mut SerializeShapeContext) -> ShapeRef;
 
     /// Build a complete serialization shape graph rooted at this type.
-    fn serialize_shape() -> SerializeShapeGraph
-    where
-        Self: Sized,
-    {
+    fn serialize_shape() -> SerializeShapeGraph {
         SerializeShapeGraph::for_type::<Self>()
     }
 }
@@ -332,10 +329,7 @@ pub trait DeserializeShape {
     fn deserialize_shape_in(context: &mut DeserializeShapeContext) -> ShapeRef;
 
     /// Build a complete deserialization shape graph rooted at this type.
-    fn deserialize_shape() -> DeserializeShapeGraph
-    where
-        Self: Sized,
-    {
+    fn deserialize_shape() -> DeserializeShapeGraph {
         DeserializeShapeGraph::for_type::<Self>()
     }
 }

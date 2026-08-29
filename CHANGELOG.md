@@ -23,5 +23,6 @@ All notable changes to this project will be documented in this file.
 
 ### Improvements
 
+* Allow unsized types such as `str` and slices to use the `SerializeShape::serialize_shape` and `DeserializeShape::deserialize_shape` convenience methods directly.
 * Document runtime graph construction, format-dependent unions, graph-local identifiers, built-in coverage, and custom representation boundaries.
 * Replace broad debug snapshots with focused behavior assertions and remove the snapshot-testing dependency.

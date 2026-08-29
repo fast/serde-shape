@@ -213,7 +213,7 @@ fn builds_map_shape() {
 #[test]
 fn distinguishes_byte_sequences_from_borrowed_byte_input() {
     assert_eq!(
-        SerializeShapeGraph::for_type::<[u8]>().root(),
+        <[u8] as SerializeShape>::serialize_shape().root(),
         &ShapeRef::Seq(Box::new(ShapeRef::U8))
     );
     assert_eq!(
@@ -221,7 +221,7 @@ fn distinguishes_byte_sequences_from_borrowed_byte_input() {
         &ShapeRef::Seq(Box::new(ShapeRef::U8))
     );
     assert_eq!(
-        DeserializeShapeGraph::for_type::<[u8]>().root(),
+        <[u8] as DeserializeShape>::deserialize_shape().root(),
         &ShapeRef::Bytes
     );
 }
