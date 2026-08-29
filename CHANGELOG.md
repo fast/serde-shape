@@ -19,6 +19,7 @@ All notable changes to this project will be documented in this file.
 * Add `Rc`, `Arc`, and weak-pointer shapes, preserving Serde's owned input and optional weak-pointer representations.
 * Reflect `Saturating<T>` with Serde's generic serialization and primitive-only deserialization support.
 * Add named struct shapes for Serde's `Range`, `RangeFrom`, `RangeInclusive`, and `RangeTo` representations.
+* Reflect `Bound<T>` as Serde's externally tagged `Unbounded`, `Included`, and `Excluded` enum.
 * Add directional `#[serde_shape(bound(...))]` overrides for generic custom shape hooks.
 * Add `SerializeShapeGraph::root_definition` and `DeserializeShapeGraph::root_definition` for directly inspecting named root types.
 * Preserve Rust doc comments on derived containers, variants, and fields as user-facing descriptions.

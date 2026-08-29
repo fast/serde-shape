@@ -34,6 +34,7 @@ use core::cmp::Reverse;
 use core::ffi::CStr;
 use core::num::Saturating;
 use core::num::Wrapping;
+use core::ops::Bound;
 use core::ops::Range;
 use core::ops::RangeFrom;
 use core::ops::RangeInclusive;
@@ -310,6 +311,30 @@ fn maps_range_struct_shapes() {
     assert_range_shapes::<RangeFrom<u8>>("RangeFrom", &["start"]);
     assert_range_shapes::<RangeInclusive<u8>>("RangeInclusive", &["start", "end"]);
     assert_range_shapes::<RangeTo<u8>>("RangeTo", &["end"]);
+}
+
+#[test]
+fn maps_bound_as_an_externally_tagged_enum() {
+    let serialize = SerializeShapeGraph::for_type::<Bound<u8>>();
+    let SerializeDefinitionKind::Enum(shape) = &serialize.root_definition().unwrap().kind else {
+        panic!("bound serialization shape should be an enum");
+    };
+    assert_eq!(shape.repr, Tagging::External);
+    assert_eq!(shape.variants[0].name, "Unbounded");
+    assert_eq!(shape.variants[0].style, FieldsStyle::Unit);
+    assert_eq!(shape.variants[1].name, "Included");
+    assert_eq!(shape.variants[1].style, FieldsStyle::Newtype);
+
+    let deserialize = DeserializeShapeGraph::for_type::<Bound<u8>>();
+    let DeserializeDefinitionKind::Enum(shape) = &deserialize.root_definition().unwrap().kind
+    else {
+        panic!("bound deserialization shape should be an enum");
+    };
+    assert_eq!(shape.variants[2].name, "Excluded");
+    let crate::DeserializeVariantContent::Fields(fields) = &shape.variants[2].content else {
+        panic!("Excluded should contain one reflected field");
+    };
+    assert_eq!(fields[0].wire_shape, FieldWireShape::Value(ShapeRef::U8));
 }
 
 fn assert_range_shapes<T>(type_name: &str, field_names: &[&str])
