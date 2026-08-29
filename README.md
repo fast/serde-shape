@@ -183,4 +183,4 @@ See the [contributor guide](CONTRIBUTING.md) for the development workflow and te
 
 ## License
 
-This project is licensed under the [Apache License, Version 2.0](https://github.com/fast/serde-shape/blob/main/LICENSE).
+This project is licensed under the [Apache License, Version 2.0](https://www.apache.org/licenses/LICENSE-2.0).
