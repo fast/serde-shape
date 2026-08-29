@@ -396,6 +396,7 @@ name = "x"
 version = "0.0.0"
 dependencies = [
  "clap",
+ "serde_json",
  "which",
 ]
 
