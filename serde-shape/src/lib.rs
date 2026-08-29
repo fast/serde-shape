@@ -790,7 +790,7 @@ pub enum DeserializeDefinitionKind {
 }
 
 /// Serde attributes that apply to a whole serialized container.
-#[derive(Clone, Debug, Eq, PartialEq)]
+#[derive(Clone, Debug, Default, Eq, PartialEq)]
 pub struct SerializeContainerAttributes {
     /// The container tagging representation.
     pub tagging: Tagging,
@@ -803,7 +803,7 @@ pub struct SerializeContainerAttributes {
 }
 
 /// Serde attributes that apply to a whole deserialized container.
-#[derive(Clone, Debug, Eq, PartialEq)]
+#[derive(Clone, Debug, Default, Eq, PartialEq)]
 pub struct DeserializeContainerAttributes {
     /// The container tagging representation.
     pub tagging: Tagging,
@@ -822,9 +822,10 @@ pub struct DeserializeContainerAttributes {
 }
 
 /// Serde container or enum tagging representation.
-#[derive(Clone, Debug, Eq, PartialEq)]
+#[derive(Clone, Debug, Default, Eq, PartialEq)]
 pub enum Tagging {
     /// The default externally tagged representation.
+    #[default]
     External,
     /// `#[serde(tag = "...")]`.
     Internal {
@@ -1017,9 +1018,10 @@ pub enum DeserializeVariantContent {
 }
 
 /// A Serde default marker.
-#[derive(Clone, Debug, Eq, PartialEq)]
+#[derive(Clone, Debug, Default, Eq, PartialEq)]
 pub enum DefaultShape {
     /// No default is configured.
+    #[default]
     None,
     /// `Default::default()` is used.
     Default,
