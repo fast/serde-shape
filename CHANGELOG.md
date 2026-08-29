@@ -21,6 +21,7 @@ All notable changes to this project will be documented in this file.
 
 ### Bug fixes
 
+* Distinguish borrowed byte input from owned boxed slices: `&[u8]` reflects bytes while `Box<[u8]>` reflects a sequence, matching Serde.
 * Match Serde's serialization bounds for `BinaryHeap`, `RefCell`, `Mutex`, and `RwLock`, including unsized wrapper contents.
 * Reflect the proxy type used by Serde `from`, `try_from`, and `into` container attributes.
 * Follow Serde's directional bounds for `Cow`: serialization reflects the borrowed type and deserialization reflects the owned type.

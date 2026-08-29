@@ -75,7 +75,7 @@ transparent_shape! {
     (T) Box<T>
     where
         serialize { T: SerializeShape + ?Sized }
-        deserialize { T: DeserializeShape + ?Sized }
+        deserialize { T: DeserializeShape }
     => T;
 
     (T) Cell<T>
@@ -101,6 +101,28 @@ transparent_shape! {
         serialize { T: SerializeShape }
         deserialize { T: DeserializeShape }
     => T;
+}
+
+impl<T> DeserializeShape for Box<[T]>
+where
+    T: DeserializeShape,
+{
+    fn deserialize_shape_in(context: &mut DeserializeShapeContext) -> ShapeRef {
+        ShapeRef::Seq(Box::new(T::deserialize_shape_in(context)))
+    }
+}
+
+impl DeserializeShape for Box<str> {
+    fn deserialize_shape_in(_context: &mut DeserializeShapeContext) -> ShapeRef {
+        ShapeRef::String
+    }
+}
+
+#[cfg(feature = "std")]
+impl DeserializeShape for Box<std::path::Path> {
+    fn deserialize_shape_in(_context: &mut DeserializeShapeContext) -> ShapeRef {
+        ShapeRef::String
+    }
 }
 
 #[cfg(feature = "std")]
