@@ -10,6 +10,7 @@ Repository tasks are defined by `cargo x`:
 cargo x build --locked
 cargo x test
 cargo x lint
+cargo x package --locked
 ```
 
 Run `cargo x --help` or `cargo x <command> --help` for command-specific options. `cargo x lint --fix` applies supported formatting and lint fixes.

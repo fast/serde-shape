@@ -47,6 +47,7 @@ jobs:
         with:
           tool: typos-cli,taplo-cli,hawkeye
       - run: cargo x lint
+      - run: cargo x package --locked
 
   msrv:
     name: Resolve MSRV

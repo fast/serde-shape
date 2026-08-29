@@ -37,6 +37,7 @@ All notable changes to this project will be documented in this file.
 
 ### Improvements
 
+* Verify both publishable crate archives from their normalized manifests in CI.
 * Implement `Default` for container attributes, `Tagging`, and `DefaultShape` so manual shape implementations can initialize ordinary Serde metadata concisely.
 * Allow unsized types such as `str` and slices to use the `SerializeShape::serialize_shape` and `DeserializeShape::deserialize_shape` convenience methods directly.
 * Document runtime graph construction, format-dependent unions, graph-local identifiers, built-in coverage, and custom representation boundaries.
