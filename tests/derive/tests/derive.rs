@@ -44,7 +44,7 @@ struct Config {
     http_port: u16,
     #[serde(alias = "endpoint")]
     api_url: Option<String>,
-    #[serde(default = "default_retries")]
+    #[serde(default = "crate::default_retries")]
     retries: u8,
     #[serde(flatten)]
     storage: Storage,
@@ -282,7 +282,10 @@ fn exposes_deserialize_container_attributes() {
     };
     assert_eq!(http_port.name, "http-port");
     assert_eq!(api_url.aliases, ["api-url", "endpoint"]);
-    assert_eq!(retries.default, DefaultShape::Path("default_retries"));
+    assert_eq!(
+        retries.default,
+        DefaultShape::Path("crate::default_retries")
+    );
     assert!(matches!(storage.wire_shape, FieldWireShape::Flatten(_)));
     assert_eq!(skipped.wire_shape, FieldWireShape::Omitted);
     let FieldWireShape::Value(ShapeRef::Opaque(opaque)) = &secret.wire_shape else {

@@ -936,7 +936,7 @@ fn default_shape(default: &attr::Default) -> TokenStream2 {
         attr::Default::None => quote!(__serde_shape::DefaultShape::None),
         attr::Default::Default => quote!(__serde_shape::DefaultShape::Default),
         attr::Default::Path(path) => {
-            let path = lit(path.to_token_stream().to_string());
+            let path = lit(path.to_token_stream().to_string().replace(' ', ""));
             quote!(__serde_shape::DefaultShape::Path(#path))
         }
     }
