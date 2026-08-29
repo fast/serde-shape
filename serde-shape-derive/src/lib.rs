@@ -149,13 +149,7 @@ fn validate_shape_attrs(container: &ast::Container<'_>) -> syn::Result<()> {
     match &container.data {
         ast::Data::Enum(variants) => {
             for variant in variants {
-                let attrs = ShapeAttrs::parse(&variant.original.attrs)?;
-                if !attrs.is_empty() {
-                    return Err(syn::Error::new_spanned(
-                        variant.original,
-                        "serde_shape attributes are not supported on variants",
-                    ));
-                }
+                validate_variant_shape_attrs(variant)?;
                 for field in &variant.fields {
                     validate_field_shape_attrs(field)?;
                 }
@@ -166,6 +160,17 @@ fn validate_shape_attrs(container: &ast::Container<'_>) -> syn::Result<()> {
                 validate_field_shape_attrs(field)?;
             }
         }
+    }
+    Ok(())
+}
+
+fn validate_variant_shape_attrs(variant: &ast::Variant<'_>) -> syn::Result<()> {
+    let attrs = ShapeAttrs::parse(&variant.original.attrs)?;
+    if attrs.has_bound() {
+        return Err(syn::Error::new_spanned(
+            variant.original,
+            "serde_shape bounds are supported on containers, not variants",
+        ));
     }
     Ok(())
 }
@@ -221,7 +226,11 @@ fn add_serialize_shape_bounds(
         }
         ast::Data::Enum(variants) => {
             for variant in variants {
-                if variant.attrs.skip_serializing() || variant.attrs.serialize_with().is_some() {
+                let variant_shape_attrs = ShapeAttrs::parse(&variant.original.attrs)?;
+                if variant.attrs.skip_serializing()
+                    || variant.attrs.serialize_with().is_some()
+                    || variant_shape_attrs.serialize_with().is_some()
+                {
                     continue;
                 }
                 collect_serialize_field_bound_types(
@@ -286,7 +295,10 @@ fn add_deserialize_shape_bounds(
         }
         ast::Data::Enum(variants) => {
             for variant in variants {
-                if variant.attrs.skip_deserializing() || variant.attrs.deserialize_with().is_some()
+                let variant_shape_attrs = ShapeAttrs::parse(&variant.original.attrs)?;
+                if variant.attrs.skip_deserializing()
+                    || variant.attrs.deserialize_with().is_some()
+                    || variant_shape_attrs.deserialize_with().is_some()
                 {
                     continue;
                 }
@@ -699,6 +711,7 @@ fn deserialize_container_attributes(attrs: &attr::Container) -> TokenStream2 {
 }
 
 fn serialize_variant_shape(variant: &ast::Variant<'_>) -> syn::Result<TokenStream2> {
+    let shape_attrs = ShapeAttrs::parse(&variant.original.attrs)?;
     let rust_name = lit(variant.ident.to_string());
     let name = lit(variant.attrs.name().serialize_name());
     let description = description(&variant.original.attrs);
@@ -708,6 +721,8 @@ fn serialize_variant_shape(variant: &ast::Variant<'_>) -> syn::Result<TokenStrea
     let untagged = variant.attrs.untagged();
     let content = if skip {
         quote!(__serde_shape::SerializeVariantContent::Omitted)
+    } else if let Some(function) = shape_attrs.serialize_with() {
+        quote!(__serde_shape::SerializeVariantContent::Shape(#function(context)))
     } else if let Some(custom_serializer) = variant.attrs.serialize_with() {
         let detail = option_path(Some(custom_serializer));
         quote! {
@@ -743,6 +758,7 @@ fn serialize_variant_shape(variant: &ast::Variant<'_>) -> syn::Result<TokenStrea
 }
 
 fn deserialize_variant_shape(variant: &ast::Variant<'_>) -> syn::Result<TokenStream2> {
+    let shape_attrs = ShapeAttrs::parse(&variant.original.attrs)?;
     let rust_name = lit(variant.ident.to_string());
     let name = lit(variant.attrs.name().deserialize_name());
     let aliases = aliases(variant.attrs.aliases());
@@ -754,6 +770,8 @@ fn deserialize_variant_shape(variant: &ast::Variant<'_>) -> syn::Result<TokenStr
     let untagged = variant.attrs.untagged();
     let content = if skip {
         quote!(__serde_shape::DeserializeVariantContent::Omitted)
+    } else if let Some(function) = shape_attrs.deserialize_with() {
+        quote!(__serde_shape::DeserializeVariantContent::Shape(#function(context)))
     } else if let Some(custom_deserializer) = variant.attrs.deserialize_with() {
         let detail = option_path(Some(custom_deserializer));
         quote! {

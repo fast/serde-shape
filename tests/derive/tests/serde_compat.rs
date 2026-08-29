@@ -60,6 +60,31 @@ enum CustomVariant {
     Value(u64),
 }
 
+#[derive(Debug, PartialEq, Serialize, Deserialize, SerializeShape, DeserializeShape)]
+enum DeclaredCustomVariant {
+    #[serde(with = "flat_value")]
+    #[serde_shape(
+        serialize_with = "serialize_flat_value_shape",
+        deserialize_with = "deserialize_flat_value_shape"
+    )]
+    Value(FlatValue),
+}
+
+fn serialize_flat_value_shape(_context: &mut renamed_shape::SerializeShapeContext) -> ShapeRef {
+    flat_value_shape()
+}
+
+fn deserialize_flat_value_shape(_context: &mut renamed_shape::DeserializeShapeContext) -> ShapeRef {
+    flat_value_shape()
+}
+
+fn flat_value_shape() -> ShapeRef {
+    ShapeRef::Map {
+        key: Box::new(ShapeRef::String),
+        value: Box::new(ShapeRef::U64),
+    }
+}
+
 #[test]
 fn composes_flatten_with_custom_field_boundaries() {
     let value = FlattenedCustom {
@@ -155,6 +180,29 @@ fn retains_custom_variant_boundary_details() {
     };
     assert_eq!(opaque.reason, OpaqueReason::CustomDeserializer);
     assert_eq!(opaque.detail, Some("stringified::deserialize"));
+}
+
+#[test]
+fn declares_known_custom_variant_content() {
+    let value = DeclaredCustomVariant::Value(FlatValue(19));
+    let json = serde_json::to_value(&value).expect("value should serialize");
+    assert_eq!(json, serde_json::json!({ "Value": { "custom": 19 } }));
+    assert_eq!(
+        serde_json::from_value::<DeclaredCustomVariant>(json).expect("value should deserialize"),
+        value
+    );
+
+    let expected = flat_value_shape();
+    let serialize_variant = first_serialize_variant::<DeclaredCustomVariant>();
+    assert_eq!(
+        serialize_variant.content,
+        SerializeVariantContent::Shape(expected.clone())
+    );
+    let deserialize_variant = first_deserialize_variant::<DeclaredCustomVariant>();
+    assert_eq!(
+        deserialize_variant.content,
+        DeserializeVariantContent::Shape(expected)
+    );
 }
 
 fn first_serialize_field<T>() -> SerializeFieldShape

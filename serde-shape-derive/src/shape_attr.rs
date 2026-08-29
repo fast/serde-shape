@@ -108,10 +108,6 @@ impl ShapeAttrs {
     pub fn has_bound(&self) -> bool {
         self.serialize_bound.is_some() || self.deserialize_bound.is_some()
     }
-
-    pub fn is_empty(&self) -> bool {
-        self.serialize_with.is_none() && self.deserialize_with.is_none() && !self.has_bound()
-    }
 }
 
 pub fn description(attrs: &[Attribute]) -> Option<String> {
