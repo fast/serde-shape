@@ -216,22 +216,9 @@ fn deserialize_newtype_variant(name: &'static str, shape: ShapeRef) -> Deseriali
 }
 
 fn serialize_enum_attributes() -> SerializeContainerAttributes {
-    SerializeContainerAttributes {
-        tagging: Tagging::External,
-        has_flatten: false,
-        transparent: false,
-        non_exhaustive: false,
-    }
+    SerializeContainerAttributes::default()
 }
 
 fn deserialize_enum_attributes() -> DeserializeContainerAttributes {
-    DeserializeContainerAttributes {
-        tagging: Tagging::External,
-        deny_unknown_fields: false,
-        default: DefaultShape::None,
-        has_flatten: false,
-        transparent: false,
-        expecting: None,
-        non_exhaustive: false,
-    }
+    DeserializeContainerAttributes::default()
 }

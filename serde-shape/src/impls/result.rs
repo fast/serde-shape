@@ -58,12 +58,7 @@ where
                         serialize_result_variant("Ok", T::serialize_shape_in(context)),
                         serialize_result_variant("Err", E::serialize_shape_in(context)),
                     ],
-                    attributes: SerializeContainerAttributes {
-                        tagging: Tagging::External,
-                        has_flatten: false,
-                        transparent: false,
-                        non_exhaustive: false,
-                    },
+                    attributes: SerializeContainerAttributes::default(),
                 })
             },
         )
@@ -88,15 +83,7 @@ where
                         deserialize_result_variant("Ok", T::deserialize_shape_in(context)),
                         deserialize_result_variant("Err", E::deserialize_shape_in(context)),
                     ],
-                    attributes: DeserializeContainerAttributes {
-                        tagging: Tagging::External,
-                        deny_unknown_fields: false,
-                        default: DefaultShape::None,
-                        has_flatten: false,
-                        transparent: false,
-                        expecting: None,
-                        non_exhaustive: false,
-                    },
+                    attributes: DeserializeContainerAttributes::default(),
                 })
             },
         )
