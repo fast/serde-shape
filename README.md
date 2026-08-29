@@ -16,7 +16,7 @@
 [actions-badge]: https://github.com/fast/serde-shape/workflows/CI/badge.svg
 [actions-url]: https://github.com/fast/serde-shape/actions?query=workflow%3ACI
 
-`serde-shape` reflects the shape of Serde serialization and deserialization at compile time.
+`serde-shape` builds inspectable graphs of Serde serialization and deserialization shapes. Derive macros generate the metadata code at compile time; calling `serialize_shape()` or `deserialize_shape()` constructs the graph at runtime without serializing or deserializing a value.
 
 It gives libraries and tools a lightweight graph of the Rust types, Serde names, field metadata, enum tagging, defaults, aliases, union value alternatives, skips, and custom serializer/deserializer boundaries that make up a type's wire shape.
 
