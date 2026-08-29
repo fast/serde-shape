@@ -12,6 +12,10 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+mod common;
+
+use common::deserialize_root_definition;
+use common::serialize_root_definition;
 use renamed_shape::DeserializeDefinitionKind;
 use renamed_shape::DeserializeFieldShape;
 use renamed_shape::DeserializeShape;
@@ -157,68 +161,52 @@ fn first_serialize_field<T>() -> SerializeFieldShape
 where
     T: SerializeShape,
 {
-    let graph = T::serialize_shape();
-    let ShapeRef::Definition(id) = graph.root() else {
-        panic!("root shape should be a definition");
-    };
-    let definition = graph.definition(*id).expect("definition should exist");
-    let SerializeDefinitionKind::Struct(shape) = &definition.kind else {
+    let definition = serialize_root_definition::<T>();
+    let SerializeDefinitionKind::Struct(shape) = definition.kind else {
         panic!("definition should be a struct");
     };
-    shape.fields.first().expect("field should exist").clone()
+    shape.fields.into_iter().next().expect("field should exist")
 }
 
 fn first_deserialize_field<T>() -> DeserializeFieldShape
 where
     T: DeserializeShape,
 {
-    let graph = T::deserialize_shape();
-    let ShapeRef::Definition(id) = graph.root() else {
-        panic!("root shape should be a definition");
-    };
-    let definition = graph.definition(*id).expect("definition should exist");
-    let DeserializeDefinitionKind::Struct(shape) = &definition.kind else {
+    let definition = deserialize_root_definition::<T>();
+    let DeserializeDefinitionKind::Struct(shape) = definition.kind else {
         panic!("definition should be a struct");
     };
-    shape.fields.first().expect("field should exist").clone()
+    shape.fields.into_iter().next().expect("field should exist")
 }
 
 fn first_serialize_variant<T>() -> SerializeVariantShape
 where
     T: SerializeShape,
 {
-    let graph = T::serialize_shape();
-    let ShapeRef::Definition(id) = graph.root() else {
-        panic!("root shape should be a definition");
-    };
-    let definition = graph.definition(*id).expect("definition should exist");
-    let SerializeDefinitionKind::Enum(shape) = &definition.kind else {
+    let definition = serialize_root_definition::<T>();
+    let SerializeDefinitionKind::Enum(shape) = definition.kind else {
         panic!("definition should be an enum");
     };
     shape
         .variants
-        .first()
+        .into_iter()
+        .next()
         .expect("variant should exist")
-        .clone()
 }
 
 fn first_deserialize_variant<T>() -> DeserializeVariantShape
 where
     T: DeserializeShape,
 {
-    let graph = T::deserialize_shape();
-    let ShapeRef::Definition(id) = graph.root() else {
-        panic!("root shape should be a definition");
-    };
-    let definition = graph.definition(*id).expect("definition should exist");
-    let DeserializeDefinitionKind::Enum(shape) = &definition.kind else {
+    let definition = deserialize_root_definition::<T>();
+    let DeserializeDefinitionKind::Enum(shape) = definition.kind else {
         panic!("definition should be an enum");
     };
     shape
         .variants
-        .first()
+        .into_iter()
+        .next()
         .expect("variant should exist")
-        .clone()
 }
 
 mod flat_value {
