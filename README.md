@@ -59,9 +59,7 @@ You may use [`schemars`](https://docs.rs/schemars) for JSON Schema generation an
 The following example shows how to inspect a nested config type.
 
 ```rust
-use serde_shape::{
-    DeserializeDefinitionKind, DeserializeShape, FieldsStyle, ShapeRef,
-};
+use serde_shape::{DeserializeDefinitionKind, DeserializeShape, FieldsStyle};
 
 #[derive(DeserializeShape)]
 #[serde(rename_all = "kebab-case", deny_unknown_fields)]
@@ -81,10 +79,7 @@ struct TlsConfig {
 }
 
 let graph = Config::deserialize_shape();
-let ShapeRef::Definition(config_id) = graph.root() else {
-    panic!("Config should produce a named definition");
-};
-let definition = graph.definition(*config_id).unwrap();
+let definition = graph.root_definition().unwrap();
 
 let DeserializeDefinitionKind::Struct(shape) = &definition.kind else {
     panic!("Config should produce a struct shape");

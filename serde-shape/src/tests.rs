@@ -205,8 +205,10 @@ fn builds_map_shape() {
     };
 
     assert_eq!(serialize_shape.root(), &expected);
+    assert!(serialize_shape.root_definition().is_none());
     assert!(serialize_shape.definitions().is_empty());
     assert_eq!(deserialize_shape.root(), &expected);
+    assert!(deserialize_shape.root_definition().is_none());
     assert!(deserialize_shape.definitions().is_empty());
 }
 
