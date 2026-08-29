@@ -362,10 +362,7 @@ impl SerializeShapeGraph {
 
     /// Return the root definition when the graph root is a named type.
     pub fn root_definition(&self) -> Option<&SerializeDefinitionShape> {
-        let ShapeRef::Definition(id) = self.root() else {
-            return None;
-        };
-        self.definition(*id)
+        self.definition_for(self.root())
     }
 
     /// Return the named definitions reachable from the root.
@@ -376,6 +373,16 @@ impl SerializeShapeGraph {
     /// Return a definition by id.
     pub fn definition(&self, id: ShapeId) -> Option<&SerializeDefinitionShape> {
         self.definitions.get(id.0)
+    }
+
+    /// Return the definition directly referenced by `shape`.
+    ///
+    /// Returns `None` for non-definition shapes and for ids that do not belong to this graph.
+    pub fn definition_for(&self, shape: &ShapeRef) -> Option<&SerializeDefinitionShape> {
+        let ShapeRef::Definition(id) = shape else {
+            return None;
+        };
+        self.definition(*id)
     }
 }
 
@@ -436,10 +443,7 @@ impl DeserializeShapeGraph {
 
     /// Return the root definition when the graph root is a named type.
     pub fn root_definition(&self) -> Option<&DeserializeDefinitionShape> {
-        let ShapeRef::Definition(id) = self.root() else {
-            return None;
-        };
-        self.definition(*id)
+        self.definition_for(self.root())
     }
 
     /// Return the named definitions reachable from the root.
@@ -450,6 +454,16 @@ impl DeserializeShapeGraph {
     /// Return a definition by id.
     pub fn definition(&self, id: ShapeId) -> Option<&DeserializeDefinitionShape> {
         self.definitions.get(id.0)
+    }
+
+    /// Return the definition directly referenced by `shape`.
+    ///
+    /// Returns `None` for non-definition shapes and for ids that do not belong to this graph.
+    pub fn definition_for(&self, shape: &ShapeRef) -> Option<&DeserializeDefinitionShape> {
+        let ShapeRef::Definition(id) = shape else {
+            return None;
+        };
+        self.definition(*id)
     }
 }
 
