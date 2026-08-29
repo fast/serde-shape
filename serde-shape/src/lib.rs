@@ -331,17 +331,28 @@ pub struct SerializeShapeGraph {
 }
 
 impl SerializeShapeGraph {
+    /// Build a serialization graph from a function that returns its root shape.
+    ///
+    /// This is useful when the root type is foreign or when no Rust type corresponds to the
+    /// complete wire shape. Use [`Self::for_type`] when the root implements [`SerializeShape`].
+    pub fn from_fn<F>(build_root: F) -> Self
+    where
+        F: FnOnce(&mut SerializeShapeContext) -> ShapeRef,
+    {
+        let mut context = SerializeShapeContext::default();
+        let root = build_root(&mut context);
+        Self {
+            root,
+            definitions: context.finish(),
+        }
+    }
+
     /// Build a complete serialization shape graph rooted at `T`.
     pub fn for_type<T>() -> Self
     where
         T: SerializeShape + ?Sized,
     {
-        let mut context = SerializeShapeContext::default();
-        let root = T::serialize_shape_in(&mut context);
-        Self {
-            root,
-            definitions: context.finish(),
-        }
+        Self::from_fn(T::serialize_shape_in)
     }
 
     /// Return the root shape reference.
@@ -378,17 +389,44 @@ pub struct DeserializeShapeGraph {
 }
 
 impl DeserializeShapeGraph {
+    /// Build a deserialization graph from a function that returns its root shape.
+    ///
+    /// This lets a custom shape function describe a foreign root without introducing a wrapper
+    /// type solely to implement [`DeserializeShape`].
+    ///
+    /// ```rust
+    /// use serde_shape::DeserializeShapeContext;
+    /// use serde_shape::DeserializeShapeGraph;
+    /// use serde_shape::ShapeRef;
+    ///
+    /// fn duration_input(_context: &mut DeserializeShapeContext) -> ShapeRef {
+    ///     ShapeRef::union([ShapeRef::String, ShapeRef::U64])
+    /// }
+    ///
+    /// let graph = DeserializeShapeGraph::from_fn(duration_input);
+    /// assert_eq!(
+    ///     graph.root(),
+    ///     &ShapeRef::union([ShapeRef::String, ShapeRef::U64]),
+    /// );
+    /// ```
+    pub fn from_fn<F>(build_root: F) -> Self
+    where
+        F: FnOnce(&mut DeserializeShapeContext) -> ShapeRef,
+    {
+        let mut context = DeserializeShapeContext::default();
+        let root = build_root(&mut context);
+        Self {
+            root,
+            definitions: context.finish(),
+        }
+    }
+
     /// Build a complete deserialization shape graph rooted at `T`.
     pub fn for_type<T>() -> Self
     where
         T: DeserializeShape + ?Sized,
     {
-        let mut context = DeserializeShapeContext::default();
-        let root = T::deserialize_shape_in(&mut context);
-        Self {
-            root,
-            definitions: context.finish(),
-        }
+        Self::from_fn(T::deserialize_shape_in)
     }
 
     /// Return the root shape reference.
