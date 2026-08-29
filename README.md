@@ -158,14 +158,14 @@ The built-in implementations follow Serde's semantic representations in each dir
 
 | Group | Supported types |
 | --- | --- |
-| Scalars | Rust primitives, `String`, serialized `str`, non-zero integers, and atomics available on the target |
+| Scalars | Rust primitives, `String`, serialized `str`, and non-zero integers |
 | Containers | `Option`, `Result`, arrays, slices for serialization, tuples through arity 16, `Vec`, `VecDeque`, `LinkedList`, `BinaryHeap`, `BTreeSet`, and `BTreeMap` |
 | Wrappers | Serialized references, borrowed string/byte/path inputs, `Box`, `Rc`, `Arc`, their weak pointers, `Cow`, `Cell`, `RefCell`, `Wrapping`, `Saturating`, `Reverse`, and `PhantomData` |
 | FFI | `CStr` and `CString` byte representations, including owned `Box<CStr>` input |
 | Ranges | `Range`, `RangeFrom`, `RangeInclusive`, `RangeTo`, and `Bound` |
 | Time | `core::time::Duration` and, with `std`, `SystemTime` |
 | Network | `core::net` IP and socket address types |
-| `std` feature | `HashMap`, `HashSet`, `Path`, `PathBuf`, `Mutex`, and `RwLock` |
+| `std` feature | Atomics available on the target, `HashMap`, `HashSet`, `Path`, `PathBuf`, `Mutex`, and `RwLock` |
 
 Network address shapes are unions of their human-readable string representation and their compact Serde representation. A serialized byte slice and an owned `Box<[u8]>` input are sequences, while borrowed byte deserialization uses `ShapeRef::Bytes`.
 

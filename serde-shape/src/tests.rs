@@ -194,7 +194,7 @@ fn keeps_distinct_definition_builders_with_the_same_type_name() {
     assert_eq!(deserialize.finish().len(), 2);
 }
 
-#[cfg(target_has_atomic = "ptr")]
+#[cfg(all(feature = "std", target_has_atomic = "ptr"))]
 #[test]
 fn maps_atomic_shapes() {
     assert_eq!(

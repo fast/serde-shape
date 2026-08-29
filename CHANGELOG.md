@@ -6,6 +6,7 @@ All notable changes to this project will be documented in this file.
 
 ### Breaking changes
 
+* Gate atomic shape implementations behind the `std` feature, matching Serde's own atomic implementations instead of advertising them in `no_std` builds where Serde cannot use them.
 * Remove `DeserializeShape` from the unsized `str`, `[u8]`, and `Path` types, which do not implement Serde `Deserialize`. Their supported borrowed and owned forms retain explicit shapes.
 * Replace the identical `SerializeTypeName` and `DeserializeTypeName` structures with one direction-neutral `TypeName`. Manual named definitions can use `TypeName::of::<T>(serde_name)` instead of repeating `core::any::type_name::<T>()`.
 * Remove the redundant `transparent` field from container attributes. Transparent containers remain observable through their field's `FieldWireShape::Inline` position.

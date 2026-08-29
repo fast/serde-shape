@@ -98,32 +98,32 @@ impl DeserializeShape for std::path::PathBuf {
     }
 }
 
-#[cfg(target_has_atomic = "8")]
+#[cfg(all(feature = "std", target_has_atomic = "8"))]
 primitive_shape! {
     core::sync::atomic::AtomicBool => ShapeRef::Bool;
     core::sync::atomic::AtomicI8 => ShapeRef::I8;
     core::sync::atomic::AtomicU8 => ShapeRef::U8;
 }
 
-#[cfg(target_has_atomic = "16")]
+#[cfg(all(feature = "std", target_has_atomic = "16"))]
 primitive_shape! {
     core::sync::atomic::AtomicI16 => ShapeRef::I16;
     core::sync::atomic::AtomicU16 => ShapeRef::U16;
 }
 
-#[cfg(target_has_atomic = "32")]
+#[cfg(all(feature = "std", target_has_atomic = "32"))]
 primitive_shape! {
     core::sync::atomic::AtomicI32 => ShapeRef::I32;
     core::sync::atomic::AtomicU32 => ShapeRef::U32;
 }
 
-#[cfg(target_has_atomic = "64")]
+#[cfg(all(feature = "std", target_has_atomic = "64"))]
 primitive_shape! {
     core::sync::atomic::AtomicI64 => ShapeRef::I64;
     core::sync::atomic::AtomicU64 => ShapeRef::U64;
 }
 
-#[cfg(target_has_atomic = "ptr")]
+#[cfg(all(feature = "std", target_has_atomic = "ptr"))]
 primitive_shape! {
     core::sync::atomic::AtomicIsize => ShapeRef::Isize;
     core::sync::atomic::AtomicUsize => ShapeRef::Usize;
