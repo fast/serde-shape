@@ -158,7 +158,7 @@ The built-in implementations follow Serde's semantic representations in each dir
 
 | Group | Supported types |
 | --- | --- |
-| Scalars | Rust primitives, `String`, serialized `str`, and non-zero integers |
+| Scalars | Rust primitives, `String`, serialized `str` and `fmt::Arguments`, and non-zero integers |
 | Containers | `Option`, `Result`, arrays, slices for serialization, tuples through arity 16, `Vec`, `VecDeque`, `LinkedList`, `BinaryHeap`, `BTreeSet`, and `BTreeMap` |
 | Wrappers | Serialized references, borrowed string/byte/path inputs, `Box`, `Rc`, `Arc`, their weak pointers, `Cow`, `Cell`, `RefCell`, `Wrapping`, `Saturating`, `Reverse`, and `PhantomData` |
 | FFI | `CStr` and `CString` byte representations, including owned `Box<CStr>` input |

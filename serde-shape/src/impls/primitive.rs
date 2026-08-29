@@ -77,6 +77,12 @@ impl SerializeShape for str {
     }
 }
 
+impl SerializeShape for core::fmt::Arguments<'_> {
+    fn serialize_shape_in(_context: &mut SerializeShapeContext) -> ShapeRef {
+        ShapeRef::String
+    }
+}
+
 #[cfg(feature = "std")]
 impl SerializeShape for std::path::Path {
     fn serialize_shape_in(_context: &mut SerializeShapeContext) -> ShapeRef {

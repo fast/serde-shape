@@ -407,6 +407,10 @@ fn supports_serde_tuple_arity() {
 #[test]
 fn maps_common_core_and_alloc_shapes() {
     assert_eq!(
+        SerializeShapeGraph::for_type::<core::fmt::Arguments<'static>>().root(),
+        &ShapeRef::String
+    );
+    assert_eq!(
         DeserializeShapeGraph::for_type::<Cow<'static, str>>().root(),
         &ShapeRef::String
     );
