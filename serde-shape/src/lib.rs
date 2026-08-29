@@ -157,6 +157,10 @@
 //! transparent fields, and omitted fields. Custom serializer/deserializer boundaries use
 //! [`ShapeRef::Opaque`] and remain composable with those field positions.
 //!
+//! Use `#[serde_shape(with = "Type")]` to declare the representation of a container or field that
+//! cannot be inferred. `serialize_as` and `deserialize_as` provide direction-specific overrides.
+//! The replacement type must implement the corresponding shape trait.
+//!
 //! # Manual implementations
 //!
 //! Implement [`trait@SerializeShape`] or [`trait@DeserializeShape`] manually when a type's Serde
@@ -216,6 +220,9 @@ pub mod __private {
 /// metadata that Serde uses for deserialization. The generated implementation records the
 /// deserialization-side names, shape graph, and Serde field/container metadata.
 ///
+/// Use `#[serde_shape(deserialize_as = "Type")]` on a container or field to override an opaque
+/// or foreign representation. `#[serde_shape(with = "Type")]` applies to both directions.
+///
 /// # Example
 ///
 /// ```rust
@@ -254,6 +261,9 @@ pub use serde_shape_derive::DeserializeShape;
 /// Use this macro when a type's emitted output shape should be reflected from the same
 /// metadata that Serde uses for serialization. The generated implementation records the
 /// serialization-side names, shape graph, and Serde field/container metadata.
+///
+/// Use `#[serde_shape(serialize_as = "Type")]` on a container or field to override an opaque
+/// or foreign representation. `#[serde_shape(with = "Type")]` applies to both directions.
 ///
 /// # Example
 ///

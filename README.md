@@ -98,6 +98,29 @@ assert_eq!(shape.fields[2].name, "tls");
 
 See the [crate documentation][docs-url] for the full shape graph model, derive behavior, and manual implementation examples.
 
+## Custom representations
+
+Custom Serde functions and foreign types do not expose enough information for `serde-shape` to infer their wire representation. Declare the representation explicitly with `#[serde_shape(with = "Type")]`, or use `serialize_as` and `deserialize_as` when the two directions differ:
+
+```rust
+use serde_shape::{DeserializeShape, SerializeShape};
+
+struct ForeignDuration;
+struct ForeignUrl;
+
+#[derive(SerializeShape, DeserializeShape)]
+struct Config {
+    #[serde(with = "duration_format")]
+    #[serde_shape(with = "String")]
+    timeout: ForeignDuration,
+
+    #[serde_shape(serialize_as = "String", deserialize_as = "String")]
+    endpoint: ForeignUrl,
+}
+```
+
+The replacement type must implement the corresponding shape trait. An override is an assertion about the custom Serde behavior; `serde-shape` cannot verify that the declared type matches the serializer or deserializer implementation.
+
 ## Feature flags
 
 `serde-shape` enables no features by default.

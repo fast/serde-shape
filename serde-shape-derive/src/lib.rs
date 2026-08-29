@@ -39,8 +39,12 @@ use syn::TypeParamBound;
 use syn::parse_macro_input;
 use syn::parse_quote;
 
+mod shape_attr;
+
+use shape_attr::ShapeAttrs;
+
 /// Derive `serde_shape::SerializeShape` from Serde serialize metadata.
-#[proc_macro_derive(SerializeShape, attributes(serde))]
+#[proc_macro_derive(SerializeShape, attributes(serde, serde_shape))]
 pub fn derive_serialize_shape(input: TokenStream) -> TokenStream {
     let input = parse_macro_input!(input as DeriveInput);
 
@@ -51,7 +55,7 @@ pub fn derive_serialize_shape(input: TokenStream) -> TokenStream {
 }
 
 /// Derive `serde_shape::DeserializeShape` from Serde deserialize metadata.
-#[proc_macro_derive(DeserializeShape, attributes(serde))]
+#[proc_macro_derive(DeserializeShape, attributes(serde, serde_shape))]
 pub fn derive_deserialize_shape(input: TokenStream) -> TokenStream {
     let input = parse_macro_input!(input as DeriveInput);
 
@@ -64,11 +68,13 @@ pub fn derive_deserialize_shape(input: TokenStream) -> TokenStream {
 fn expand_serialize_shape(input: &DeriveInput) -> syn::Result<TokenStream2> {
     let serde_shape = serde_shape_crate()?;
     let container = parse_container(input, Derive::Serialize)?;
+    let shape_attrs = ShapeAttrs::parse(&input.attrs)?;
+    validate_shape_attrs(&container)?;
     let ident = &input.ident;
     let mut generics = input.generics.clone();
-    add_serialize_shape_bounds(&mut generics, &container);
+    add_serialize_shape_bounds(&mut generics, &container, &shape_attrs)?;
     let (impl_generics, ty_generics, where_clause) = generics.split_for_impl();
-    let body = serialize_shape_body(&container);
+    let body = serialize_shape_body(&container, &shape_attrs)?;
 
     Ok(quote! {
         const _: () = {
@@ -88,11 +94,13 @@ fn expand_serialize_shape(input: &DeriveInput) -> syn::Result<TokenStream2> {
 fn expand_deserialize_shape(input: &DeriveInput) -> syn::Result<TokenStream2> {
     let serde_shape = serde_shape_crate()?;
     let container = parse_container(input, Derive::Deserialize)?;
+    let shape_attrs = ShapeAttrs::parse(&input.attrs)?;
+    validate_shape_attrs(&container)?;
     let ident = &input.ident;
     let mut generics = input.generics.clone();
-    add_deserialize_shape_bounds(&mut generics, &container);
+    add_deserialize_shape_bounds(&mut generics, &container, &shape_attrs)?;
     let (impl_generics, ty_generics, where_clause) = generics.split_for_impl();
-    let body = deserialize_shape_body(&container);
+    let body = deserialize_shape_body(&container, &shape_attrs)?;
 
     Ok(quote! {
         const _: () = {
@@ -136,27 +144,67 @@ fn parse_container<'a>(input: &'a DeriveInput, derive: Derive) -> syn::Result<as
     Ok(container)
 }
 
-fn add_serialize_shape_bounds(generics: &mut syn::Generics, container: &ast::Container<'_>) {
-    if container.attrs.remote().is_some() {
-        return;
+fn validate_shape_attrs(container: &ast::Container<'_>) -> syn::Result<()> {
+    match &container.data {
+        ast::Data::Enum(variants) => {
+            for variant in variants {
+                let attrs = ShapeAttrs::parse(&variant.original.attrs)?;
+                if !attrs.is_empty() {
+                    return Err(syn::Error::new_spanned(
+                        variant.original,
+                        "serde_shape type overrides are supported on containers and fields, not variants",
+                    ));
+                }
+                for field in &variant.fields {
+                    ShapeAttrs::parse(&field.original.attrs)?;
+                }
+            }
+        }
+        ast::Data::Struct(_, fields) => {
+            for field in fields {
+                ShapeAttrs::parse(&field.original.attrs)?;
+            }
+        }
     }
-    if let Some(ty) = container.attrs.type_into() {
-        generics
-            .make_where_clause()
-            .predicates
-            .push(parse_quote!(#ty: __serde_shape::SerializeShape));
-        return;
-    }
+    Ok(())
+}
 
+fn add_serialize_shape_bounds(
+    generics: &mut syn::Generics,
+    container: &ast::Container<'_>,
+    shape_attrs: &ShapeAttrs,
+) -> syn::Result<()> {
     let type_params: BTreeSet<_> = generics
         .type_params()
         .map(|param| param.ident.to_string())
         .collect();
+    if let Some(ty) = shape_attrs.serialize_as() {
+        if type_uses_params(ty, &type_params) {
+            generics
+                .make_where_clause()
+                .predicates
+                .push(parse_quote!(#ty: __serde_shape::SerializeShape));
+        }
+        return Ok(());
+    }
+    if container.attrs.remote().is_some() {
+        return Ok(());
+    }
+    if let Some(ty) = container.attrs.type_into() {
+        if type_uses_params(ty, &type_params) {
+            generics
+                .make_where_clause()
+                .predicates
+                .push(parse_quote!(#ty: __serde_shape::SerializeShape));
+        }
+        return Ok(());
+    }
+
     let mut field_bound_types = Vec::new();
 
     match &container.data {
         ast::Data::Struct(_, fields) => {
-            collect_serialize_field_bound_types(fields, &type_params, &mut field_bound_types);
+            collect_serialize_field_bound_types(fields, &type_params, &mut field_bound_types)?;
         }
         ast::Data::Enum(variants) => {
             for variant in variants {
@@ -167,7 +215,7 @@ fn add_serialize_shape_bounds(generics: &mut syn::Generics, container: &ast::Con
                     &variant.fields,
                     &type_params,
                     &mut field_bound_types,
-                );
+                )?;
             }
         }
     }
@@ -178,33 +226,49 @@ fn add_serialize_shape_bounds(generics: &mut syn::Generics, container: &ast::Con
             .predicates
             .push(parse_quote!(#ty: __serde_shape::SerializeShape));
     }
+    Ok(())
 }
 
-fn add_deserialize_shape_bounds(generics: &mut syn::Generics, container: &ast::Container<'_>) {
+fn add_deserialize_shape_bounds(
+    generics: &mut syn::Generics,
+    container: &ast::Container<'_>,
+    shape_attrs: &ShapeAttrs,
+) -> syn::Result<()> {
+    let type_params: BTreeSet<_> = generics
+        .type_params()
+        .map(|param| param.ident.to_string())
+        .collect();
+    if let Some(ty) = shape_attrs.deserialize_as() {
+        if type_uses_params(ty, &type_params) {
+            generics
+                .make_where_clause()
+                .predicates
+                .push(parse_quote!(#ty: __serde_shape::DeserializeShape));
+        }
+        return Ok(());
+    }
     if container.attrs.remote().is_some() {
-        return;
+        return Ok(());
     }
     if let Some(ty) = container
         .attrs
         .type_from()
         .or_else(|| container.attrs.type_try_from())
     {
-        generics
-            .make_where_clause()
-            .predicates
-            .push(parse_quote!(#ty: __serde_shape::DeserializeShape));
-        return;
+        if type_uses_params(ty, &type_params) {
+            generics
+                .make_where_clause()
+                .predicates
+                .push(parse_quote!(#ty: __serde_shape::DeserializeShape));
+        }
+        return Ok(());
     }
 
-    let type_params: BTreeSet<_> = generics
-        .type_params()
-        .map(|param| param.ident.to_string())
-        .collect();
     let mut field_bound_types = Vec::new();
 
     match &container.data {
         ast::Data::Struct(_, fields) => {
-            collect_deserialize_field_bound_types(fields, &type_params, &mut field_bound_types);
+            collect_deserialize_field_bound_types(fields, &type_params, &mut field_bound_types)?;
         }
         ast::Data::Enum(variants) => {
             for variant in variants {
@@ -216,7 +280,7 @@ fn add_deserialize_shape_bounds(generics: &mut syn::Generics, container: &ast::C
                     &variant.fields,
                     &type_params,
                     &mut field_bound_types,
-                );
+                )?;
             }
         }
     }
@@ -227,40 +291,49 @@ fn add_deserialize_shape_bounds(generics: &mut syn::Generics, container: &ast::C
             .predicates
             .push(parse_quote!(#ty: __serde_shape::DeserializeShape));
     }
+    Ok(())
 }
 
 fn collect_serialize_field_bound_types(
     fields: &[ast::Field<'_>],
     type_params: &BTreeSet<String>,
     field_bound_types: &mut Vec<Type>,
-) {
+) -> syn::Result<()> {
     for field in fields {
-        if field.attrs.skip_serializing() || field.attrs.serialize_with().is_some() {
+        let shape_attrs = ShapeAttrs::parse(&field.original.attrs)?;
+        if field.attrs.skip_serializing() {
             continue;
         }
-        collect_field_bound_type(field, type_params, field_bound_types);
+        if let Some(ty) = shape_attrs.serialize_as() {
+            if type_uses_params(ty, type_params) {
+                push_bound_type(field_bound_types, ty.clone());
+            }
+        } else if field.attrs.serialize_with().is_none() {
+            collect_shape_bound_types(field.ty, type_params, field_bound_types);
+        }
     }
+    Ok(())
 }
 
 fn collect_deserialize_field_bound_types(
     fields: &[ast::Field<'_>],
     type_params: &BTreeSet<String>,
     field_bound_types: &mut Vec<Type>,
-) {
+) -> syn::Result<()> {
     for field in fields {
-        if field.attrs.skip_deserializing() || field.attrs.deserialize_with().is_some() {
+        let shape_attrs = ShapeAttrs::parse(&field.original.attrs)?;
+        if field.attrs.skip_deserializing() {
             continue;
         }
-        collect_field_bound_type(field, type_params, field_bound_types);
+        if let Some(ty) = shape_attrs.deserialize_as() {
+            if type_uses_params(ty, type_params) {
+                push_bound_type(field_bound_types, ty.clone());
+            }
+        } else if field.attrs.deserialize_with().is_none() {
+            collect_shape_bound_types(field.ty, type_params, field_bound_types);
+        }
     }
-}
-
-fn collect_field_bound_type(
-    field: &ast::Field<'_>,
-    type_params: &BTreeSet<String>,
-    field_bound_types: &mut Vec<Type>,
-) {
-    collect_shape_bound_types(field.ty, type_params, field_bound_types);
+    Ok(())
 }
 
 fn collect_shape_bound_types(
@@ -345,6 +418,12 @@ fn collect_shape_bound_types(
     }
 }
 
+fn type_uses_params(ty: &Type, type_params: &BTreeSet<String>) -> bool {
+    let mut bound_types = Vec::new();
+    collect_shape_bound_types(ty, type_params, &mut bound_types);
+    !bound_types.is_empty()
+}
+
 fn collect_path_arguments(
     arguments: &PathArguments,
     type_params: &BTreeSet<String>,
@@ -418,15 +497,21 @@ fn push_bound_type(field_bound_types: &mut Vec<Type>, ty: Type) {
     }
 }
 
-fn serialize_shape_body(container: &ast::Container<'_>) -> TokenStream2 {
+fn serialize_shape_body(
+    container: &ast::Container<'_>,
+    shape_attrs: &ShapeAttrs,
+) -> syn::Result<TokenStream2> {
+    if let Some(ty) = shape_attrs.serialize_as() {
+        return Ok(quote!(<#ty as __serde_shape::SerializeShape>::serialize_shape_in(context)));
+    }
     if let Some(ty) = container.attrs.type_into() {
-        return quote!(<#ty as __serde_shape::SerializeShape>::serialize_shape_in(context));
+        return Ok(quote!(<#ty as __serde_shape::SerializeShape>::serialize_shape_in(context)));
     }
 
     let name = lit(container.attrs.name().serialize_name());
-    let kind = serialize_definition_kind(container);
+    let kind = serialize_definition_kind(container)?;
 
-    quote! {
+    Ok(quote! {
         context.define_named_type(
             __serde_shape::SerializeTypeName {
                 rust_name: ::core::any::type_name::<Self>(),
@@ -436,22 +521,28 @@ fn serialize_shape_body(container: &ast::Container<'_>) -> TokenStream2 {
                 #kind
             },
         )
-    }
+    })
 }
 
-fn deserialize_shape_body(container: &ast::Container<'_>) -> TokenStream2 {
+fn deserialize_shape_body(
+    container: &ast::Container<'_>,
+    shape_attrs: &ShapeAttrs,
+) -> syn::Result<TokenStream2> {
+    if let Some(ty) = shape_attrs.deserialize_as() {
+        return Ok(quote!(<#ty as __serde_shape::DeserializeShape>::deserialize_shape_in(context)));
+    }
     if let Some(ty) = container
         .attrs
         .type_from()
         .or_else(|| container.attrs.type_try_from())
     {
-        return quote!(<#ty as __serde_shape::DeserializeShape>::deserialize_shape_in(context));
+        return Ok(quote!(<#ty as __serde_shape::DeserializeShape>::deserialize_shape_in(context)));
     }
 
     let name = lit(container.attrs.name().deserialize_name());
-    let kind = deserialize_definition_kind(container);
+    let kind = deserialize_definition_kind(container)?;
 
-    quote! {
+    Ok(quote! {
         context.define_named_type(
             __serde_shape::DeserializeTypeName {
                 rust_name: ::core::any::type_name::<Self>(),
@@ -461,20 +552,23 @@ fn deserialize_shape_body(container: &ast::Container<'_>) -> TokenStream2 {
                 #kind
             },
         )
-    }
+    })
 }
 
-fn serialize_definition_kind(container: &ast::Container<'_>) -> TokenStream2 {
+fn serialize_definition_kind(container: &ast::Container<'_>) -> syn::Result<TokenStream2> {
     if let Some(path) = container.attrs.remote() {
         let opaque = remote_opaque_shape(path);
-        return quote!(__serde_shape::SerializeDefinitionKind::Opaque(#opaque));
+        return Ok(quote!(__serde_shape::SerializeDefinitionKind::Opaque(#opaque)));
     }
 
     let attributes = serialize_container_attributes(&container.attrs);
-    match &container.data {
+    Ok(match &container.data {
         ast::Data::Struct(style, fields) => {
             let style = fields_style(*style);
-            let fields = fields.iter().map(serialize_field_shape);
+            let fields = fields
+                .iter()
+                .map(serialize_field_shape)
+                .collect::<syn::Result<Vec<_>>>()?;
             quote! {
                 __serde_shape::SerializeDefinitionKind::Struct(__serde_shape::SerializeStructShape {
                     style: #style,
@@ -485,7 +579,10 @@ fn serialize_definition_kind(container: &ast::Container<'_>) -> TokenStream2 {
         }
         ast::Data::Enum(variants) => {
             let repr = tagging(container.attrs.tag());
-            let variants = variants.iter().map(serialize_variant_shape);
+            let variants = variants
+                .iter()
+                .map(serialize_variant_shape)
+                .collect::<syn::Result<Vec<_>>>()?;
             quote! {
                 __serde_shape::SerializeDefinitionKind::Enum(__serde_shape::SerializeEnumShape {
                     repr: #repr,
@@ -494,20 +591,23 @@ fn serialize_definition_kind(container: &ast::Container<'_>) -> TokenStream2 {
                 })
             }
         }
-    }
+    })
 }
 
-fn deserialize_definition_kind(container: &ast::Container<'_>) -> TokenStream2 {
+fn deserialize_definition_kind(container: &ast::Container<'_>) -> syn::Result<TokenStream2> {
     if let Some(path) = container.attrs.remote() {
         let opaque = remote_opaque_shape(path);
-        return quote!(__serde_shape::DeserializeDefinitionKind::Opaque(#opaque));
+        return Ok(quote!(__serde_shape::DeserializeDefinitionKind::Opaque(#opaque)));
     }
 
     let attributes = deserialize_container_attributes(&container.attrs);
-    match &container.data {
+    Ok(match &container.data {
         ast::Data::Struct(style, fields) => {
             let style = fields_style(*style);
-            let fields = fields.iter().map(deserialize_field_shape);
+            let fields = fields
+                .iter()
+                .map(deserialize_field_shape)
+                .collect::<syn::Result<Vec<_>>>()?;
             quote! {
                 __serde_shape::DeserializeDefinitionKind::Struct(__serde_shape::DeserializeStructShape {
                     style: #style,
@@ -518,7 +618,10 @@ fn deserialize_definition_kind(container: &ast::Container<'_>) -> TokenStream2 {
         }
         ast::Data::Enum(variants) => {
             let repr = tagging(container.attrs.tag());
-            let variants = variants.iter().map(deserialize_variant_shape);
+            let variants = variants
+                .iter()
+                .map(deserialize_variant_shape)
+                .collect::<syn::Result<Vec<_>>>()?;
             quote! {
                 __serde_shape::DeserializeDefinitionKind::Enum(__serde_shape::DeserializeEnumShape {
                     repr: #repr,
@@ -527,7 +630,7 @@ fn deserialize_definition_kind(container: &ast::Container<'_>) -> TokenStream2 {
                 })
             }
         }
-    }
+    })
 }
 
 fn remote_opaque_shape<T>(detail: T) -> TokenStream2
@@ -583,7 +686,7 @@ fn deserialize_container_attributes(attrs: &attr::Container) -> TokenStream2 {
     }
 }
 
-fn serialize_variant_shape(variant: &ast::Variant<'_>) -> TokenStream2 {
+fn serialize_variant_shape(variant: &ast::Variant<'_>) -> syn::Result<TokenStream2> {
     let rust_name = lit(variant.ident.to_string());
     let name = lit(variant.attrs.name().serialize_name());
     let style = fields_style(variant.style);
@@ -601,7 +704,11 @@ fn serialize_variant_shape(variant: &ast::Variant<'_>) -> TokenStream2 {
             })
         }
     } else {
-        let fields = variant.fields.iter().map(serialize_field_shape);
+        let fields = variant
+            .fields
+            .iter()
+            .map(serialize_field_shape)
+            .collect::<syn::Result<Vec<_>>>()?;
         quote! {
             __serde_shape::SerializeVariantContent::Fields(
                 __serde_shape::__private::vec![#(#fields),*],
@@ -609,7 +716,7 @@ fn serialize_variant_shape(variant: &ast::Variant<'_>) -> TokenStream2 {
         }
     };
 
-    quote! {
+    Ok(quote! {
         __serde_shape::SerializeVariantShape {
             rust_name: #rust_name,
             name: #name,
@@ -617,10 +724,10 @@ fn serialize_variant_shape(variant: &ast::Variant<'_>) -> TokenStream2 {
             content: #content,
             untagged: #untagged,
         }
-    }
+    })
 }
 
-fn deserialize_variant_shape(variant: &ast::Variant<'_>) -> TokenStream2 {
+fn deserialize_variant_shape(variant: &ast::Variant<'_>) -> syn::Result<TokenStream2> {
     let rust_name = lit(variant.ident.to_string());
     let name = lit(variant.attrs.name().deserialize_name());
     let aliases = aliases(variant.attrs.aliases());
@@ -640,7 +747,11 @@ fn deserialize_variant_shape(variant: &ast::Variant<'_>) -> TokenStream2 {
             })
         }
     } else {
-        let fields = variant.fields.iter().map(deserialize_field_shape);
+        let fields = variant
+            .fields
+            .iter()
+            .map(deserialize_field_shape)
+            .collect::<syn::Result<Vec<_>>>()?;
         quote! {
             __serde_shape::DeserializeVariantContent::Fields(
                 __serde_shape::__private::vec![#(#fields),*],
@@ -648,7 +759,7 @@ fn deserialize_variant_shape(variant: &ast::Variant<'_>) -> TokenStream2 {
         }
     };
 
-    quote! {
+    Ok(quote! {
         __serde_shape::DeserializeVariantShape {
             rust_name: #rust_name,
             name: #name,
@@ -658,10 +769,11 @@ fn deserialize_variant_shape(variant: &ast::Variant<'_>) -> TokenStream2 {
             other: #other,
             untagged: #untagged,
         }
-    }
+    })
 }
 
-fn serialize_field_shape(field: &ast::Field<'_>) -> TokenStream2 {
+fn serialize_field_shape(field: &ast::Field<'_>) -> syn::Result<TokenStream2> {
+    let shape_attrs = ShapeAttrs::parse(&field.original.attrs)?;
     let member = field_member(&field.member);
     let name = lit(field.attrs.name().serialize_name());
     let skip = field.attrs.skip_serializing();
@@ -672,7 +784,9 @@ fn serialize_field_shape(field: &ast::Field<'_>) -> TokenStream2 {
     let wire_shape = if skip {
         quote!(__serde_shape::FieldWireShape::Omitted)
     } else {
-        let value_shape = if let Some(custom_serializer) = field.attrs.serialize_with() {
+        let value_shape = if let Some(ty) = shape_attrs.serialize_as() {
+            quote!(<#ty as __serde_shape::SerializeShape>::serialize_shape_in(context))
+        } else if let Some(custom_serializer) = field.attrs.serialize_with() {
             let detail = option_path(Some(custom_serializer));
             quote! {
                 __serde_shape::ShapeRef::Opaque(__serde_shape::OpaqueShape {
@@ -694,17 +808,18 @@ fn serialize_field_shape(field: &ast::Field<'_>) -> TokenStream2 {
         }
     };
 
-    quote! {
+    Ok(quote! {
         __serde_shape::SerializeFieldShape {
             member: #member,
             name: #name,
             wire_shape: #wire_shape,
             skip_if: #skip_if,
         }
-    }
+    })
 }
 
-fn deserialize_field_shape(field: &ast::Field<'_>) -> TokenStream2 {
+fn deserialize_field_shape(field: &ast::Field<'_>) -> syn::Result<TokenStream2> {
+    let shape_attrs = ShapeAttrs::parse(&field.original.attrs)?;
     let member = field_member(&field.member);
     let name = lit(field.attrs.name().deserialize_name());
     let aliases = aliases(field.attrs.aliases());
@@ -716,7 +831,9 @@ fn deserialize_field_shape(field: &ast::Field<'_>) -> TokenStream2 {
     let wire_shape = if skip {
         quote!(__serde_shape::FieldWireShape::Omitted)
     } else {
-        let value_shape = if let Some(custom_deserializer) = field.attrs.deserialize_with() {
+        let value_shape = if let Some(ty) = shape_attrs.deserialize_as() {
+            quote!(<#ty as __serde_shape::DeserializeShape>::deserialize_shape_in(context))
+        } else if let Some(custom_deserializer) = field.attrs.deserialize_with() {
             let detail = option_path(Some(custom_deserializer));
             quote! {
                 __serde_shape::ShapeRef::Opaque(__serde_shape::OpaqueShape {
@@ -738,7 +855,7 @@ fn deserialize_field_shape(field: &ast::Field<'_>) -> TokenStream2 {
         }
     };
 
-    quote! {
+    Ok(quote! {
         __serde_shape::DeserializeFieldShape {
             member: #member,
             name: #name,
@@ -746,7 +863,7 @@ fn deserialize_field_shape(field: &ast::Field<'_>) -> TokenStream2 {
             wire_shape: #wire_shape,
             default: #default,
         }
-    }
+    })
 }
 
 fn field_member(member: &Member) -> TokenStream2 {

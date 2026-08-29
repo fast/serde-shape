@@ -87,6 +87,19 @@ struct IntoString(String);
 #[serde(from = "T")]
 struct FromGeneric<T>(T);
 
+#[derive(SerializeShape, DeserializeShape)]
+#[serde_shape(serialize_as = "u16", deserialize_as = "String")]
+struct ContainerShapeOverride(NotShape);
+
+#[derive(SerializeShape, DeserializeShape)]
+struct FieldShapeOverrides {
+    #[serde(with = "custom_representation")]
+    #[serde_shape(with = "String")]
+    custom: NotShape,
+    #[serde_shape(serialize_as = "u8", deserialize_as = "bool")]
+    directional: NotShape,
+}
+
 #[derive(DeserializeShape)]
 struct SkipsGeneric<T> {
     #[serde(skip)]
@@ -252,6 +265,50 @@ fn follows_serde_conversion_shapes() {
     assert_eq!(TryFromU16::deserialize_shape().root, ShapeRef::U16);
     assert_eq!(IntoString::serialize_shape().root, ShapeRef::String);
     assert_eq!(FromGeneric::<u8>::deserialize_shape().root, ShapeRef::U8);
+}
+
+#[test]
+fn applies_container_and_field_shape_overrides() {
+    assert_eq!(
+        ContainerShapeOverride::serialize_shape().root,
+        ShapeRef::U16
+    );
+    assert_eq!(
+        ContainerShapeOverride::deserialize_shape().root,
+        ShapeRef::String
+    );
+
+    let serialize = FieldShapeOverrides::serialize_shape();
+    let ShapeRef::Definition(id) = serialize.root else {
+        panic!("serialize root should be a definition");
+    };
+    let SerializeDefinitionKind::Struct(shape) = &serialize.definition(id).unwrap().kind else {
+        panic!("serialize definition should be a struct");
+    };
+    assert_eq!(
+        shape.fields[0].wire_shape,
+        FieldWireShape::Value(ShapeRef::String)
+    );
+    assert_eq!(
+        shape.fields[1].wire_shape,
+        FieldWireShape::Value(ShapeRef::U8)
+    );
+
+    let deserialize = FieldShapeOverrides::deserialize_shape();
+    let ShapeRef::Definition(id) = deserialize.root else {
+        panic!("deserialize root should be a definition");
+    };
+    let DeserializeDefinitionKind::Struct(shape) = &deserialize.definition(id).unwrap().kind else {
+        panic!("deserialize definition should be a struct");
+    };
+    assert_eq!(
+        shape.fields[0].wire_shape,
+        FieldWireShape::Value(ShapeRef::String)
+    );
+    assert_eq!(
+        shape.fields[1].wire_shape,
+        FieldWireShape::Value(ShapeRef::Bool)
+    );
 }
 
 #[test]
