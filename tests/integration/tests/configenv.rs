@@ -169,7 +169,7 @@ fn env_options<T: DeserializeShape>(env_prefix: &str) -> Vec<EnvOption> {
         env_prefix,
         options: BTreeMap::new(),
     };
-    collector.visit_shape_ref(&shape.root, &mut Vec::new(), false, None);
+    collector.visit_shape_ref(shape.root(), &mut Vec::new(), false, None);
     collector.options.into_values().collect()
 }
 

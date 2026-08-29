@@ -186,12 +186,12 @@ fn keeps_distinct_definition_builders_with_the_same_type_name() {
 #[test]
 fn maps_atomic_shapes() {
     assert_eq!(
-        SerializeShapeGraph::for_type::<core::sync::atomic::AtomicUsize>().root,
-        ShapeRef::Usize
+        SerializeShapeGraph::for_type::<core::sync::atomic::AtomicUsize>().root(),
+        &ShapeRef::Usize
     );
     assert_eq!(
-        DeserializeShapeGraph::for_type::<core::sync::atomic::AtomicUsize>().root,
-        ShapeRef::Usize
+        DeserializeShapeGraph::for_type::<core::sync::atomic::AtomicUsize>().root(),
+        &ShapeRef::Usize
     );
 }
 
@@ -204,35 +204,35 @@ fn builds_map_shape() {
         value: Box::new(ShapeRef::Option(Box::new(ShapeRef::U16))),
     };
 
-    assert_eq!(serialize_shape.root, expected);
-    assert!(serialize_shape.definitions.is_empty());
-    assert_eq!(deserialize_shape.root, expected);
-    assert!(deserialize_shape.definitions.is_empty());
+    assert_eq!(serialize_shape.root(), &expected);
+    assert!(serialize_shape.definitions().is_empty());
+    assert_eq!(deserialize_shape.root(), &expected);
+    assert!(deserialize_shape.definitions().is_empty());
 }
 
 #[test]
 fn distinguishes_byte_sequences_from_borrowed_byte_input() {
     assert_eq!(
-        SerializeShapeGraph::for_type::<[u8]>().root,
-        ShapeRef::Seq(Box::new(ShapeRef::U8))
+        SerializeShapeGraph::for_type::<[u8]>().root(),
+        &ShapeRef::Seq(Box::new(ShapeRef::U8))
     );
     assert_eq!(
-        SerializeShapeGraph::for_type::<Vec<u8>>().root,
-        ShapeRef::Seq(Box::new(ShapeRef::U8))
+        SerializeShapeGraph::for_type::<Vec<u8>>().root(),
+        &ShapeRef::Seq(Box::new(ShapeRef::U8))
     );
     assert_eq!(
-        DeserializeShapeGraph::for_type::<[u8]>().root,
-        ShapeRef::Bytes
+        DeserializeShapeGraph::for_type::<[u8]>().root(),
+        &ShapeRef::Bytes
     );
 }
 
 #[test]
 fn maps_result_as_an_externally_tagged_enum() {
     let serialize = SerializeShapeGraph::for_type::<Result<u8, String>>();
-    let ShapeRef::Definition(id) = serialize.root else {
+    let ShapeRef::Definition(id) = serialize.root() else {
         panic!("result should produce a named definition");
     };
-    let SerializeDefinitionKind::Enum(shape) = &serialize.definition(id).unwrap().kind else {
+    let SerializeDefinitionKind::Enum(shape) = &serialize.definition(*id).unwrap().kind else {
         panic!("result definition should be an enum");
     };
 
@@ -246,10 +246,10 @@ fn maps_result_as_an_externally_tagged_enum() {
     assert_eq!(fields[0].wire_shape, FieldWireShape::Value(ShapeRef::U8));
 
     let deserialize = DeserializeShapeGraph::for_type::<Result<u8, String>>();
-    let ShapeRef::Definition(id) = deserialize.root else {
+    let ShapeRef::Definition(id) = deserialize.root() else {
         panic!("result should produce a named definition");
     };
-    let DeserializeDefinitionKind::Enum(shape) = &deserialize.definition(id).unwrap().kind else {
+    let DeserializeDefinitionKind::Enum(shape) = &deserialize.definition(*id).unwrap().kind else {
         panic!("result definition should be an enum");
     };
     assert_eq!(shape.variants[1].name, "Err");
@@ -265,10 +265,11 @@ fn maps_result_as_an_externally_tagged_enum() {
 #[test]
 fn maps_duration_as_serde_struct_fields() {
     let deserialize = DeserializeShapeGraph::for_type::<core::time::Duration>();
-    let ShapeRef::Definition(id) = deserialize.root else {
+    let ShapeRef::Definition(id) = deserialize.root() else {
         panic!("duration should produce a named definition");
     };
-    let DeserializeDefinitionKind::Struct(shape) = &deserialize.definition(id).unwrap().kind else {
+    let DeserializeDefinitionKind::Struct(shape) = &deserialize.definition(*id).unwrap().kind
+    else {
         panic!("duration definition should be a struct");
     };
 
@@ -306,53 +307,54 @@ fn supports_serde_tuple_arity() {
         u8,
     );
 
-    let ShapeRef::Tuple(items) = SerializeShapeGraph::for_type::<Tuple16>().root else {
+    let graph = SerializeShapeGraph::for_type::<Tuple16>();
+    let ShapeRef::Tuple(items) = graph.root() else {
         panic!("16-element tuple should produce a tuple shape");
     };
-    assert_eq!(items, vec![ShapeRef::U8; 16]);
+    assert_eq!(items, &vec![ShapeRef::U8; 16]);
 }
 
 #[test]
 fn maps_common_core_and_alloc_shapes() {
     assert_eq!(
-        DeserializeShapeGraph::for_type::<Cow<'static, str>>().root,
-        ShapeRef::String
+        DeserializeShapeGraph::for_type::<Cow<'static, str>>().root(),
+        &ShapeRef::String
     );
     assert_eq!(
-        SerializeShapeGraph::for_type::<Cell<u8>>().root,
-        ShapeRef::U8
+        SerializeShapeGraph::for_type::<Cell<u8>>().root(),
+        &ShapeRef::U8
     );
     assert_eq!(
-        DeserializeShapeGraph::for_type::<Wrapping<i16>>().root,
-        ShapeRef::I16
+        DeserializeShapeGraph::for_type::<Wrapping<i16>>().root(),
+        &ShapeRef::I16
     );
     assert_eq!(
-        SerializeShapeGraph::for_type::<Reverse<u32>>().root,
-        ShapeRef::U32
+        SerializeShapeGraph::for_type::<Reverse<u32>>().root(),
+        &ShapeRef::U32
     );
     assert_eq!(
-        DeserializeShapeGraph::for_type::<VecDeque<u8>>().root,
-        ShapeRef::Seq(Box::new(ShapeRef::U8))
+        DeserializeShapeGraph::for_type::<VecDeque<u8>>().root(),
+        &ShapeRef::Seq(Box::new(ShapeRef::U8))
     );
     assert_eq!(
-        SerializeShapeGraph::for_type::<LinkedList<i32>>().root,
-        ShapeRef::Seq(Box::new(ShapeRef::I32))
+        SerializeShapeGraph::for_type::<LinkedList<i32>>().root(),
+        &ShapeRef::Seq(Box::new(ShapeRef::I32))
     );
     assert_eq!(
-        DeserializeShapeGraph::for_type::<BinaryHeap<u16>>().root,
-        ShapeRef::Seq(Box::new(ShapeRef::U16))
+        DeserializeShapeGraph::for_type::<BinaryHeap<u16>>().root(),
+        &ShapeRef::Seq(Box::new(ShapeRef::U16))
     );
 }
 
 #[test]
 fn follows_cow_directional_serde_bounds() {
     assert_eq!(
-        SerializeShapeGraph::for_type::<Cow<'static, BorrowedShape>>().root,
-        ShapeRef::U8
+        SerializeShapeGraph::for_type::<Cow<'static, BorrowedShape>>().root(),
+        &ShapeRef::U8
     );
     assert_eq!(
-        DeserializeShapeGraph::for_type::<Cow<'static, BorrowedShape>>().root,
-        ShapeRef::String
+        DeserializeShapeGraph::for_type::<Cow<'static, BorrowedShape>>().root(),
+        &ShapeRef::String
     );
 }
 
@@ -360,28 +362,28 @@ fn follows_cow_directional_serde_bounds() {
 #[test]
 fn maps_common_std_shapes() {
     assert_eq!(
-        SerializeShapeGraph::for_type::<std::path::Path>().root,
-        ShapeRef::String
+        SerializeShapeGraph::for_type::<std::path::Path>().root(),
+        &ShapeRef::String
     );
     assert_eq!(
-        DeserializeShapeGraph::for_type::<std::path::Path>().root,
-        ShapeRef::String
+        DeserializeShapeGraph::for_type::<std::path::Path>().root(),
+        &ShapeRef::String
     );
     assert_eq!(
-        SerializeShapeGraph::for_type::<std::path::PathBuf>().root,
-        ShapeRef::String
+        SerializeShapeGraph::for_type::<std::path::PathBuf>().root(),
+        &ShapeRef::String
     );
     let ipv4_binary = ShapeRef::Array {
         item: Box::new(ShapeRef::U8),
         len: 4,
     };
     assert_eq!(
-        SerializeShapeGraph::for_type::<std::net::Ipv4Addr>().root,
-        ShapeRef::union([ShapeRef::String, ipv4_binary.clone()])
+        SerializeShapeGraph::for_type::<std::net::Ipv4Addr>().root(),
+        &ShapeRef::union([ShapeRef::String, ipv4_binary.clone()])
     );
 
     let socket = DeserializeShapeGraph::for_type::<std::net::SocketAddr>();
-    let ShapeRef::Union(root) = &socket.root else {
+    let ShapeRef::Union(root) = socket.root() else {
         panic!("socket address should reflect human-readable and binary shapes");
     };
     assert!(root.alternatives().contains(&ShapeRef::String));

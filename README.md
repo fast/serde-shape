@@ -79,10 +79,10 @@ struct TlsConfig {
 }
 
 let graph = Config::deserialize_shape();
-let ShapeRef::Definition(config_id) = graph.root else {
+let ShapeRef::Definition(config_id) = graph.root() else {
     panic!("Config should produce a named definition");
 };
-let definition = graph.definition(config_id).unwrap();
+let definition = graph.definition(*config_id).unwrap();
 
 let DeserializeDefinitionKind::Struct(shape) = &definition.kind else {
     panic!("Config should produce a struct shape");

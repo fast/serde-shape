@@ -23,10 +23,12 @@ use serde_shape_test_no_std::NoStdConfig;
 #[test]
 fn reflects_no_std_deserialization() {
     let graph = NoStdConfig::deserialize_shape();
-    let ShapeRef::Definition(root_id) = graph.root else {
+    let ShapeRef::Definition(root_id) = graph.root() else {
         panic!("root shape should be a definition");
     };
-    assert_eq!(graph.definitions.len(), 1);
+    let root_id = *root_id;
+    assert_eq!(root_id.index(), 0);
+    assert_eq!(graph.definitions().len(), 1);
 
     let DeserializeDefinitionKind::Struct(shape) = &graph.definition(root_id).unwrap().kind else {
         panic!("root definition should be a struct");
@@ -51,10 +53,11 @@ fn reflects_no_std_deserialization() {
 #[test]
 fn reflects_no_std_serialization() {
     let graph = NoStdConfig::serialize_shape();
-    let ShapeRef::Definition(root_id) = graph.root else {
+    let ShapeRef::Definition(root_id) = graph.root() else {
         panic!("root shape should be a definition");
     };
-    assert_eq!(graph.definitions.len(), 1);
+    let root_id = *root_id;
+    assert_eq!(graph.definitions().len(), 1);
 
     let SerializeDefinitionKind::Struct(shape) = &graph.definition(root_id).unwrap().kind else {
         panic!("root definition should be a struct");

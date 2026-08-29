@@ -158,10 +158,10 @@ where
     T: SerializeShape,
 {
     let graph = T::serialize_shape();
-    let ShapeRef::Definition(id) = graph.root else {
+    let ShapeRef::Definition(id) = graph.root() else {
         panic!("root shape should be a definition");
     };
-    let definition = graph.definition(id).expect("definition should exist");
+    let definition = graph.definition(*id).expect("definition should exist");
     let SerializeDefinitionKind::Struct(shape) = &definition.kind else {
         panic!("definition should be a struct");
     };
@@ -173,10 +173,10 @@ where
     T: DeserializeShape,
 {
     let graph = T::deserialize_shape();
-    let ShapeRef::Definition(id) = graph.root else {
+    let ShapeRef::Definition(id) = graph.root() else {
         panic!("root shape should be a definition");
     };
-    let definition = graph.definition(id).expect("definition should exist");
+    let definition = graph.definition(*id).expect("definition should exist");
     let DeserializeDefinitionKind::Struct(shape) = &definition.kind else {
         panic!("definition should be a struct");
     };
@@ -188,10 +188,10 @@ where
     T: SerializeShape,
 {
     let graph = T::serialize_shape();
-    let ShapeRef::Definition(id) = graph.root else {
+    let ShapeRef::Definition(id) = graph.root() else {
         panic!("root shape should be a definition");
     };
-    let definition = graph.definition(id).expect("definition should exist");
+    let definition = graph.definition(*id).expect("definition should exist");
     let SerializeDefinitionKind::Enum(shape) = &definition.kind else {
         panic!("definition should be an enum");
     };
@@ -207,10 +207,10 @@ where
     T: DeserializeShape,
 {
     let graph = T::deserialize_shape();
-    let ShapeRef::Definition(id) = graph.root else {
+    let ShapeRef::Definition(id) = graph.root() else {
         panic!("root shape should be a definition");
     };
-    let definition = graph.definition(id).expect("definition should exist");
+    let definition = graph.definition(*id).expect("definition should exist");
     let DeserializeDefinitionKind::Enum(shape) = &definition.kind else {
         panic!("definition should be an enum");
     };

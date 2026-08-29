@@ -214,10 +214,10 @@ fn default_retries() -> u8 {
 #[test]
 fn exposes_deserialize_container_attributes() {
     let graph = Config::deserialize_shape();
-    let ShapeRef::Definition(id) = graph.root else {
+    let ShapeRef::Definition(id) = graph.root() else {
         panic!("root shape should be a definition");
     };
-    let definition = graph.definition(id).expect("definition exists");
+    let definition = graph.definition(*id).expect("definition exists");
     let DeserializeDefinitionKind::Struct(shape) = &definition.kind else {
         panic!("definition should be a struct");
     };
@@ -243,10 +243,10 @@ fn exposes_deserialize_container_attributes() {
 #[test]
 fn exposes_deserialize_enum_attributes() {
     let graph = Storage::deserialize_shape();
-    let ShapeRef::Definition(id) = graph.root else {
+    let ShapeRef::Definition(id) = graph.root() else {
         panic!("root shape should be a definition");
     };
-    let definition = graph.definition(id).expect("definition exists");
+    let definition = graph.definition(*id).expect("definition exists");
     let DeserializeDefinitionKind::Enum(shape) = &definition.kind else {
         panic!("definition should be an enum");
     };
@@ -260,10 +260,11 @@ fn exposes_deserialize_enum_attributes() {
 #[test]
 fn exposes_transparent_shape() {
     let transparent = UserId::deserialize_shape();
-    let ShapeRef::Definition(id) = transparent.root else {
+    let ShapeRef::Definition(id) = transparent.root() else {
         panic!("transparent root should be a definition");
     };
-    let DeserializeDefinitionKind::Struct(shape) = &transparent.definition(id).unwrap().kind else {
+    let DeserializeDefinitionKind::Struct(shape) = &transparent.definition(*id).unwrap().kind
+    else {
         panic!("transparent definition should be a struct");
     };
     assert!(shape.attributes.transparent);
@@ -275,28 +276,28 @@ fn exposes_transparent_shape() {
 
 #[test]
 fn follows_serde_conversion_shapes() {
-    assert_eq!(FromString::deserialize_shape().root, ShapeRef::String);
-    assert_eq!(TryFromU16::deserialize_shape().root, ShapeRef::U16);
-    assert_eq!(IntoString::serialize_shape().root, ShapeRef::String);
-    assert_eq!(FromGeneric::<u8>::deserialize_shape().root, ShapeRef::U8);
+    assert_eq!(FromString::deserialize_shape().root(), &ShapeRef::String);
+    assert_eq!(TryFromU16::deserialize_shape().root(), &ShapeRef::U16);
+    assert_eq!(IntoString::serialize_shape().root(), &ShapeRef::String);
+    assert_eq!(FromGeneric::<u8>::deserialize_shape().root(), &ShapeRef::U8);
 }
 
 #[test]
 fn applies_container_and_field_shape_overrides() {
     assert_eq!(
-        ContainerShapeOverride::serialize_shape().root,
-        ShapeRef::U16
+        ContainerShapeOverride::serialize_shape().root(),
+        &ShapeRef::U16
     );
     assert_eq!(
-        ContainerShapeOverride::deserialize_shape().root,
-        ShapeRef::String
+        ContainerShapeOverride::deserialize_shape().root(),
+        &ShapeRef::String
     );
 
     let serialize = FieldShapeOverrides::serialize_shape();
-    let ShapeRef::Definition(id) = serialize.root else {
+    let ShapeRef::Definition(id) = serialize.root() else {
         panic!("serialize root should be a definition");
     };
-    let SerializeDefinitionKind::Struct(shape) = &serialize.definition(id).unwrap().kind else {
+    let SerializeDefinitionKind::Struct(shape) = &serialize.definition(*id).unwrap().kind else {
         panic!("serialize definition should be a struct");
     };
     assert_eq!(
@@ -309,10 +310,11 @@ fn applies_container_and_field_shape_overrides() {
     );
 
     let deserialize = FieldShapeOverrides::deserialize_shape();
-    let ShapeRef::Definition(id) = deserialize.root else {
+    let ShapeRef::Definition(id) = deserialize.root() else {
         panic!("deserialize root should be a definition");
     };
-    let DeserializeDefinitionKind::Struct(shape) = &deserialize.definition(id).unwrap().kind else {
+    let DeserializeDefinitionKind::Struct(shape) = &deserialize.definition(*id).unwrap().kind
+    else {
         panic!("deserialize definition should be a struct");
     };
     assert_eq!(
@@ -328,10 +330,10 @@ fn applies_container_and_field_shape_overrides() {
 #[test]
 fn preserves_rust_documentation() {
     let serialize = DocumentedSetting::serialize_shape();
-    let ShapeRef::Definition(id) = serialize.root else {
+    let ShapeRef::Definition(id) = serialize.root() else {
         panic!("serialize root should be a definition");
     };
-    let definition = serialize.definition(id).unwrap();
+    let definition = serialize.definition(*id).unwrap();
     assert_eq!(
         definition.description,
         Some("Selects the retry policy.\n\nThis text is available to configuration tooling.")
@@ -352,10 +354,10 @@ fn preserves_rust_documentation() {
     );
 
     let deserialize = DocumentedSetting::deserialize_shape();
-    let ShapeRef::Definition(id) = deserialize.root else {
+    let ShapeRef::Definition(id) = deserialize.root() else {
         panic!("deserialize root should be a definition");
     };
-    let definition = deserialize.definition(id).unwrap();
+    let definition = deserialize.definition(*id).unwrap();
     assert_eq!(
         definition.description,
         Some("Selects the retry policy.\n\nThis text is available to configuration tooling.")
@@ -380,23 +382,27 @@ fn preserves_rust_documentation() {
 fn omits_shape_bounds_for_skipped_and_marker_fields() {
     assert_eq!(
         SkipsGeneric::<NotShape>::deserialize_shape()
-            .definitions
+            .definitions()
             .len(),
         1
     );
-    assert_eq!(Marker::<NotShape>::deserialize_shape().definitions.len(), 1);
+    assert_eq!(
+        Marker::<NotShape>::deserialize_shape().definitions().len(),
+        1
+    );
 }
 
 #[test]
 fn reuses_recursive_definition() {
     let graph = Recursive::deserialize_shape();
-    let ShapeRef::Definition(id) = graph.root else {
+    let ShapeRef::Definition(id) = graph.root() else {
         panic!("recursive root should be a definition");
     };
+    let id = *id;
     let DeserializeDefinitionKind::Struct(shape) = &graph.definition(id).unwrap().kind else {
         panic!("recursive definition should be a struct");
     };
-    assert_eq!(graph.definitions.len(), 1);
+    assert_eq!(graph.definitions().len(), 1);
     assert_eq!(
         shape.fields[0].wire_shape,
         FieldWireShape::Value(ShapeRef::Option(Box::new(ShapeRef::Definition(id))))
@@ -408,8 +414,8 @@ fn derives_recursive_generic_shapes_without_cyclic_bounds() {
     let serialize = RecursiveGeneric::<u8>::serialize_shape();
     let deserialize = RecursiveGeneric::<u8>::deserialize_shape();
 
-    assert_eq!(serialize.definitions.len(), 1);
-    assert_eq!(deserialize.definitions.len(), 1);
+    assert_eq!(serialize.definitions().len(), 1);
+    assert_eq!(deserialize.definitions().len(), 1);
 }
 
 #[test]
@@ -417,17 +423,17 @@ fn derives_shape_bounds_for_associated_values() {
     let serialize = AssociatedValue::<ValueProvider>::serialize_shape();
     let deserialize = AssociatedValue::<ValueProvider>::deserialize_shape();
 
-    assert_eq!(serialize.definitions.len(), 1);
-    assert_eq!(deserialize.definitions.len(), 1);
+    assert_eq!(serialize.definitions().len(), 1);
+    assert_eq!(deserialize.definitions().len(), 1);
 }
 
 #[test]
 fn exposes_deserialize_field_metadata() {
     let shape = SplitIo::deserialize_shape();
-    let renamed_shape::ShapeRef::Definition(id) = shape.root else {
+    let renamed_shape::ShapeRef::Definition(id) = shape.root() else {
         panic!("root shape should be a definition");
     };
-    let definition = shape.definition(id).expect("definition exists");
+    let definition = shape.definition(*id).expect("definition exists");
     let DeserializeDefinitionKind::Struct(struct_shape) = &definition.kind else {
         panic!("definition should be a struct");
     };
@@ -456,10 +462,10 @@ fn exposes_deserialize_field_metadata() {
 #[test]
 fn exposes_serialize_field_metadata() {
     let shape = SplitIo::serialize_shape();
-    let renamed_shape::ShapeRef::Definition(id) = shape.root else {
+    let renamed_shape::ShapeRef::Definition(id) = shape.root() else {
         panic!("root shape should be a definition");
     };
-    let definition = shape.definition(id).expect("definition exists");
+    let definition = shape.definition(*id).expect("definition exists");
     let SerializeDefinitionKind::Struct(struct_shape) = &definition.kind else {
         panic!("definition should be a struct");
     };
@@ -492,10 +498,10 @@ fn exposes_serialize_field_metadata() {
 #[test]
 fn exposes_deserialize_variant_metadata() {
     let shape = SplitEnum::deserialize_shape();
-    let renamed_shape::ShapeRef::Definition(id) = shape.root else {
+    let renamed_shape::ShapeRef::Definition(id) = shape.root() else {
         panic!("root shape should be a definition");
     };
-    let definition = shape.definition(id).expect("definition exists");
+    let definition = shape.definition(*id).expect("definition exists");
     let DeserializeDefinitionKind::Enum(enum_shape) = &definition.kind else {
         panic!("definition should be an enum");
     };
@@ -531,10 +537,10 @@ fn exposes_deserialize_variant_metadata() {
 #[test]
 fn exposes_serialize_variant_metadata() {
     let shape = SplitEnum::serialize_shape();
-    let renamed_shape::ShapeRef::Definition(id) = shape.root else {
+    let renamed_shape::ShapeRef::Definition(id) = shape.root() else {
         panic!("root shape should be a definition");
     };
-    let definition = shape.definition(id).expect("definition exists");
+    let definition = shape.definition(*id).expect("definition exists");
     let SerializeDefinitionKind::Enum(enum_shape) = &definition.kind else {
         panic!("definition should be an enum");
     };
@@ -573,15 +579,15 @@ fn derives_one_direction_without_requiring_the_other_direction() {
     let deserialize_shape = DeserializeOnly::<NotShape>::deserialize_shape();
 
     assert!(matches!(
-        serialize_shape.definition(match serialize_shape.root {
-            renamed_shape::ShapeRef::Definition(id) => id,
+        serialize_shape.definition(match serialize_shape.root() {
+            renamed_shape::ShapeRef::Definition(id) => *id,
             _ => panic!("serialize root shape should be a definition"),
         }),
         Some(renamed_shape::SerializeDefinitionShape { .. })
     ));
     assert!(matches!(
-        deserialize_shape.definition(match deserialize_shape.root {
-            renamed_shape::ShapeRef::Definition(id) => id,
+        deserialize_shape.definition(match deserialize_shape.root() {
+            renamed_shape::ShapeRef::Definition(id) => *id,
             _ => panic!("deserialize root shape should be a definition"),
         }),
         Some(renamed_shape::DeserializeDefinitionShape { .. })
