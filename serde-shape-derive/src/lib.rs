@@ -153,19 +153,30 @@ fn validate_shape_attrs(container: &ast::Container<'_>) -> syn::Result<()> {
                 if !attrs.is_empty() {
                     return Err(syn::Error::new_spanned(
                         variant.original,
-                        "serde_shape custom functions are supported on containers and fields, not variants",
+                        "serde_shape attributes are not supported on variants",
                     ));
                 }
                 for field in &variant.fields {
-                    ShapeAttrs::parse(&field.original.attrs)?;
+                    validate_field_shape_attrs(field)?;
                 }
             }
         }
         ast::Data::Struct(_, fields) => {
             for field in fields {
-                ShapeAttrs::parse(&field.original.attrs)?;
+                validate_field_shape_attrs(field)?;
             }
         }
+    }
+    Ok(())
+}
+
+fn validate_field_shape_attrs(field: &ast::Field<'_>) -> syn::Result<()> {
+    let attrs = ShapeAttrs::parse(&field.original.attrs)?;
+    if attrs.has_bound() {
+        return Err(syn::Error::new_spanned(
+            field.original,
+            "serde_shape bounds are supported on containers, not fields",
+        ));
     }
     Ok(())
 }
@@ -175,6 +186,13 @@ fn add_serialize_shape_bounds(
     container: &ast::Container<'_>,
     shape_attrs: &ShapeAttrs,
 ) -> syn::Result<()> {
+    if let Some(predicates) = shape_attrs.serialize_bound() {
+        generics
+            .make_where_clause()
+            .predicates
+            .extend(predicates.iter().cloned());
+        return Ok(());
+    }
     let type_params: BTreeSet<_> = generics
         .type_params()
         .map(|param| param.ident.to_string())
@@ -229,6 +247,13 @@ fn add_deserialize_shape_bounds(
     container: &ast::Container<'_>,
     shape_attrs: &ShapeAttrs,
 ) -> syn::Result<()> {
+    if let Some(predicates) = shape_attrs.deserialize_bound() {
+        generics
+            .make_where_clause()
+            .predicates
+            .extend(predicates.iter().cloned());
+        return Ok(());
+    }
     let type_params: BTreeSet<_> = generics
         .type_params()
         .map(|param| param.ident.to_string())

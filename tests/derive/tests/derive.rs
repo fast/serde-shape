@@ -115,6 +115,18 @@ struct FieldShapeOverrides {
     directional: NotShape,
 }
 
+#[derive(SerializeShape, DeserializeShape)]
+#[serde_shape(bound(serialize = "T: SerializeShape", deserialize = "T: DeserializeShape"))]
+struct GenericFieldShape<T> {
+    #[serde_shape(
+        serialize_with = "serialize_type_shape::<T>",
+        deserialize_with = "deserialize_type_shape::<T>"
+    )]
+    custom: NotShape,
+    #[serde(skip)]
+    marker: core::marker::PhantomData<T>,
+}
+
 /// Selects the retry policy.
 ///
 /// This text is available to configuration tooling.
@@ -234,6 +246,14 @@ fn deserialize_string_shape(context: &mut DeserializeShapeContext) -> ShapeRef {
     String::deserialize_shape_in(context)
 }
 
+fn serialize_type_shape<T: SerializeShape>(context: &mut SerializeShapeContext) -> ShapeRef {
+    T::serialize_shape_in(context)
+}
+
+fn deserialize_type_shape<T: DeserializeShape>(context: &mut DeserializeShapeContext) -> ShapeRef {
+    T::deserialize_shape_in(context)
+}
+
 fn serialize_u8_shape(_context: &mut SerializeShapeContext) -> ShapeRef {
     ShapeRef::U8
 }
@@ -340,6 +360,27 @@ fn applies_container_and_field_custom_shape_functions() {
     assert_eq!(
         shape.fields[1].wire_shape,
         FieldWireShape::Value(ShapeRef::Bool)
+    );
+}
+
+#[test]
+fn applies_explicit_bounds_to_generic_shape_hooks() {
+    let definition = serialize_root_definition::<GenericFieldShape<u32>>();
+    let SerializeDefinitionKind::Struct(shape) = &definition.kind else {
+        panic!("serialize definition should be a struct");
+    };
+    assert_eq!(
+        shape.fields[0].wire_shape,
+        FieldWireShape::Value(ShapeRef::U32)
+    );
+
+    let definition = deserialize_root_definition::<GenericFieldShape<u32>>();
+    let DeserializeDefinitionKind::Struct(shape) = &definition.kind else {
+        panic!("deserialize definition should be a struct");
+    };
+    assert_eq!(
+        shape.fields[0].wire_shape,
+        FieldWireShape::Value(ShapeRef::U32)
     );
 }
 

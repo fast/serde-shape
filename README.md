@@ -131,6 +131,8 @@ struct Config {
 
 Each function receives the current graph context and returns a `ShapeRef`. It may delegate to another type's shape implementation or construct a custom shape directly. A custom shape function is an assertion about the Serde behavior; `serde-shape` cannot verify that the declared shape matches the serializer or deserializer implementation.
 
+For a generic custom hook, container-level `#[serde_shape(bound(serialize = "...", deserialize = "..."))]` replaces the automatically inferred bounds in the corresponding direction, following Serde's bound-override convention.
+
 ## Model boundaries
 
 Shape graphs are an inspection API, not a stable interchange format. `ShapeId` values are local to one graph, and definition ordering and `Debug` output are not persistence contracts.

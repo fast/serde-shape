@@ -18,13 +18,18 @@ use syn::Expr;
 use syn::ExprPath;
 use syn::Lit;
 use syn::LitStr;
+use syn::Token;
+use syn::WherePredicate;
 use syn::meta::ParseNestedMeta;
+use syn::punctuated::Punctuated;
 use syn::spanned::Spanned;
 
 #[derive(Default)]
 pub struct ShapeAttrs {
     serialize_with: Option<(ExprPath, Span)>,
     deserialize_with: Option<(ExprPath, Span)>,
+    serialize_bound: Option<(Vec<WherePredicate>, Span)>,
+    deserialize_bound: Option<(Vec<WherePredicate>, Span)>,
 }
 
 impl ShapeAttrs {
@@ -49,9 +54,29 @@ impl ShapeAttrs {
                         parse_path(&meta)?,
                         meta.path.span(),
                     )
+                } else if meta.path.is_ident("bound") {
+                    meta.parse_nested_meta(|meta| {
+                        if meta.path.is_ident("serialize") {
+                            set_once(
+                                &mut parsed.serialize_bound,
+                                parse_bound(&meta)?,
+                                meta.path.span(),
+                            )
+                        } else if meta.path.is_ident("deserialize") {
+                            set_once(
+                                &mut parsed.deserialize_bound,
+                                parse_bound(&meta)?,
+                                meta.path.span(),
+                            )
+                        } else {
+                            Err(meta.error(
+                                "unknown serde_shape bound; expected `serialize` or `deserialize`",
+                            ))
+                        }
+                    })
                 } else {
                     Err(meta.error(
-                        "unknown serde_shape attribute; expected `serialize_with` or `deserialize_with`",
+                        "unknown serde_shape attribute; expected `serialize_with`, `deserialize_with`, or `bound`",
                     ))
                 }
             })?;
@@ -68,8 +93,24 @@ impl ShapeAttrs {
         self.deserialize_with.as_ref().map(|(path, _)| path)
     }
 
+    pub fn serialize_bound(&self) -> Option<&[WherePredicate]> {
+        self.serialize_bound
+            .as_ref()
+            .map(|(predicates, _)| predicates.as_slice())
+    }
+
+    pub fn deserialize_bound(&self) -> Option<&[WherePredicate]> {
+        self.deserialize_bound
+            .as_ref()
+            .map(|(predicates, _)| predicates.as_slice())
+    }
+
+    pub fn has_bound(&self) -> bool {
+        self.serialize_bound.is_some() || self.deserialize_bound.is_some()
+    }
+
     pub fn is_empty(&self) -> bool {
-        self.serialize_with.is_none() && self.deserialize_with.is_none()
+        self.serialize_with.is_none() && self.deserialize_with.is_none() && !self.has_bound()
     }
 }
 
@@ -111,6 +152,13 @@ fn parse_path(meta: &ParseNestedMeta<'_>) -> syn::Result<ExprPath> {
     let value = meta.value()?;
     let value: LitStr = value.parse()?;
     value.parse()
+}
+
+fn parse_bound(meta: &ParseNestedMeta<'_>) -> syn::Result<Vec<WherePredicate>> {
+    let value = meta.value()?;
+    let value: LitStr = value.parse()?;
+    let predicates = value.parse_with(Punctuated::<WherePredicate, Token![,]>::parse_terminated)?;
+    Ok(predicates.into_iter().collect())
 }
 
 fn set_once<T>(slot: &mut Option<(T, Span)>, value: T, span: Span) -> syn::Result<()> {

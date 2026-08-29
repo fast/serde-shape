@@ -218,7 +218,8 @@ pub mod __private {
 ///
 /// Use `#[serde_shape(deserialize_with = "path")]` on a container or field to override an
 /// opaque or foreign representation. The function must accept `&mut DeserializeShapeContext`
-/// and return a [`ShapeRef`].
+/// and return a [`ShapeRef`]. Generic hooks can replace inferred bounds with
+/// `#[serde_shape(bound(deserialize = "T: DeserializeShape"))]` on the container.
 ///
 /// # Example
 ///
@@ -257,7 +258,8 @@ pub use serde_shape_derive::DeserializeShape;
 ///
 /// Use `#[serde_shape(serialize_with = "path")]` on a container or field to override an opaque
 /// or foreign representation. The function must accept `&mut SerializeShapeContext` and return
-/// a [`ShapeRef`].
+/// a [`ShapeRef`]. Generic hooks can replace inferred bounds with
+/// `#[serde_shape(bound(serialize = "T: SerializeShape"))]` on the container.
 ///
 /// # Example
 ///
