@@ -76,6 +76,24 @@ enum Storage {
 }
 
 #[derive(DeserializeShape)]
+#[serde(field_identifier, rename_all = "snake_case")]
+enum FieldIdentifier {
+    KnownField,
+    #[serde(alias = "old_name")]
+    RenamedField,
+    #[serde(other)]
+    Other,
+}
+
+#[derive(DeserializeShape)]
+#[serde(variant_identifier)]
+enum VariantIdentifier {
+    First,
+    #[serde(alias = "legacy")]
+    Second,
+}
+
+#[derive(DeserializeShape)]
 #[serde(transparent)]
 struct UserId(u64);
 
@@ -315,6 +333,25 @@ fn exposes_deserialize_enum_attributes() {
     assert!(shape.attributes.non_exhaustive);
     assert_eq!(shape.variants[0].aliases, ["s3", "s3-compatible"]);
     assert!(shape.variants[2].other);
+}
+
+#[test]
+fn reflects_serde_identifier_enums() {
+    let field = deserialize_root_definition::<FieldIdentifier>();
+    let DeserializeDefinitionKind::Enum(field) = &field.kind else {
+        panic!("field identifier should be an enum");
+    };
+    assert_eq!(field.repr, Tagging::FieldIdentifier);
+    assert_eq!(field.variants[0].name, "known_field");
+    assert_eq!(field.variants[1].aliases, ["old_name", "renamed_field"]);
+    assert!(field.variants[2].other);
+
+    let variant = deserialize_root_definition::<VariantIdentifier>();
+    let DeserializeDefinitionKind::Enum(variant) = &variant.kind else {
+        panic!("variant identifier should be an enum");
+    };
+    assert_eq!(variant.repr, Tagging::VariantIdentifier);
+    assert_eq!(variant.variants[1].aliases, ["Second", "legacy"]);
 }
 
 #[test]

@@ -899,6 +899,10 @@ pub enum Tagging {
     },
     /// `#[serde(untagged)]`.
     Untagged,
+    /// `#[serde(field_identifier)]`, accepted only during deserialization.
+    FieldIdentifier,
+    /// `#[serde(variant_identifier)]`, accepted only during deserialization.
+    VariantIdentifier,
 }
 
 /// Struct-like serialization metadata.

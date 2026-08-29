@@ -144,6 +144,18 @@ fn parse_container<'a>(input: &'a DeriveInput, derive: Derive) -> syn::Result<as
         ));
     };
     cx.check()?;
+
+    if matches!(derive, Derive::Serialize) {
+        let message = match container.attrs.identifier() {
+            attr::Identifier::No => None,
+            attr::Identifier::Field => Some("field identifiers cannot be serialized"),
+            attr::Identifier::Variant => Some("variant identifiers cannot be serialized"),
+        };
+        if let Some(message) = message {
+            return Err(syn::Error::new_spanned(input, message));
+        }
+    }
+
     Ok(container)
 }
 
@@ -637,7 +649,7 @@ fn deserialize_definition_kind(container: &ast::Container<'_>) -> syn::Result<To
             }
         }
         ast::Data::Enum(variants) => {
-            let repr = tagging(container.attrs.tag());
+            let repr = deserialize_tagging(&container.attrs);
             let variants = variants
                 .iter()
                 .map(deserialize_variant_shape)
@@ -934,6 +946,14 @@ fn tagging(tag: &attr::TagType) -> TokenStream2 {
             })
         }
         attr::TagType::None => quote!(__serde_shape::Tagging::Untagged),
+    }
+}
+
+fn deserialize_tagging(attrs: &attr::Container) -> TokenStream2 {
+    match attrs.identifier() {
+        attr::Identifier::No => tagging(attrs.tag()),
+        attr::Identifier::Field => quote!(__serde_shape::Tagging::FieldIdentifier),
+        attr::Identifier::Variant => quote!(__serde_shape::Tagging::VariantIdentifier),
     }
 }
 
