@@ -97,7 +97,7 @@ seq_shape! {
 
     (T) BinaryHeap<T>
     where
-        serialize { T: Ord + SerializeShape }
+        serialize { T: SerializeShape }
         deserialize { T: Ord + DeserializeShape }
     => T;
 

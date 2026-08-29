@@ -86,7 +86,7 @@ transparent_shape! {
 
     (T) RefCell<T>
     where
-        serialize { T: SerializeShape }
+        serialize { T: SerializeShape + ?Sized }
         deserialize { T: DeserializeShape }
     => T;
 
@@ -107,13 +107,13 @@ transparent_shape! {
 transparent_shape! {
     (T) std::sync::Mutex<T>
     where
-        serialize { T: SerializeShape }
+        serialize { T: SerializeShape + ?Sized }
         deserialize { T: DeserializeShape }
     => T;
 
     (T) std::sync::RwLock<T>
     where
-        serialize { T: SerializeShape }
+        serialize { T: SerializeShape + ?Sized }
         deserialize { T: DeserializeShape }
     => T;
 }

@@ -24,6 +24,7 @@ use alloc::vec;
 use alloc::vec::Vec;
 use core::borrow::Borrow;
 use core::cell::Cell;
+use core::cell::RefCell;
 use core::cmp::Reverse;
 use core::num::Wrapping;
 
@@ -349,6 +350,18 @@ fn maps_common_core_and_alloc_shapes() {
 }
 
 #[test]
+fn accepts_serde_serializable_collection_and_wrapper_bounds() {
+    assert_eq!(
+        SerializeShapeGraph::for_type::<BinaryHeap<BorrowedShape>>().root(),
+        &ShapeRef::Seq(Box::new(ShapeRef::U8))
+    );
+    assert_eq!(
+        <RefCell<str> as SerializeShape>::serialize_shape().root(),
+        &ShapeRef::String
+    );
+}
+
+#[test]
 fn follows_cow_directional_serde_bounds() {
     assert_eq!(
         SerializeShapeGraph::for_type::<Cow<'static, BorrowedShape>>().root(),
@@ -373,6 +386,14 @@ fn maps_common_std_shapes() {
     );
     assert_eq!(
         SerializeShapeGraph::for_type::<std::path::PathBuf>().root(),
+        &ShapeRef::String
+    );
+    assert_eq!(
+        <std::sync::Mutex<str> as SerializeShape>::serialize_shape().root(),
+        &ShapeRef::String
+    );
+    assert_eq!(
+        <std::sync::RwLock<str> as SerializeShape>::serialize_shape().root(),
         &ShapeRef::String
     );
 }
