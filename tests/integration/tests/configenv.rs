@@ -15,16 +15,12 @@
 #![allow(dead_code)]
 
 use std::collections::BTreeMap;
-use std::net::SocketAddr;
-use std::num::NonZeroUsize;
-use std::path::PathBuf;
 
 use serde::Deserialize;
 use serde::de::IntoDeserializer;
 use serde_shape::DeserializeDefinitionKind;
 use serde_shape::DeserializeEnumShape;
 use serde_shape::DeserializeShape;
-use serde_shape::DeserializeShapeContext;
 use serde_shape::DeserializeShapeGraph;
 use serde_shape::DeserializeStructShape;
 use serde_shape::DeserializeVariantContent;
@@ -43,140 +39,6 @@ struct EnvOption {
     value_kind: String,
     optional: bool,
     condition: Option<String>,
-}
-
-#[derive(DeserializeShape)]
-#[serde(deny_unknown_fields)]
-struct Config {
-    server: ServerConfig,
-    storage: StorageConfig,
-    telemetry: TelemetryConfig,
-}
-
-#[derive(DeserializeShape)]
-#[serde(deny_unknown_fields)]
-struct ServerConfig {
-    #[serde(default = "default_dir")]
-    dir: PathBuf,
-    #[serde(default = "default_listen_data_addr")]
-    listen_data_addr: SocketAddr,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    advertise_data_addr: Option<SocketAddr>,
-    #[serde(default)]
-    initial_peers: Vec<String>,
-    #[serde(default = "default_cluster_id")]
-    cluster_id: String,
-}
-
-#[derive(DeserializeShape)]
-#[serde(deny_unknown_fields)]
-struct StorageConfig {
-    #[serde(default)]
-    backend: StorageBackend,
-    #[serde(default = "default_disk_capacity")]
-    disk_capacity: ByteSize,
-    #[serde(default = "default_memory_capacity")]
-    memory_capacity: ByteSize,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    disk_throttle: Option<DiskThrottle>,
-}
-
-#[derive(DeserializeShape)]
-#[serde(
-    tag = "kind",
-    rename_all = "snake_case",
-    rename_all_fields = "snake_case"
-)]
-enum StorageBackend {
-    Local { data_dir: PathBuf },
-    S3 { bucket: String, region: String },
-}
-
-#[derive(DeserializeShape)]
-#[serde(deny_unknown_fields)]
-struct DiskThrottle {
-    read_iops: u64,
-    write_iops: u64,
-    iops_counter: CounterConfig,
-}
-
-#[derive(DeserializeShape)]
-#[serde(deny_unknown_fields)]
-struct CounterConfig {
-    mode: CounterMode,
-    size: NonZeroUsize,
-}
-
-#[derive(DeserializeShape)]
-#[serde(rename_all = "snake_case")]
-enum CounterMode {
-    Window,
-    LeakyBucket,
-}
-
-#[derive(DeserializeShape)]
-#[serde(deny_unknown_fields)]
-struct TelemetryConfig {
-    #[serde(default)]
-    logs: LogsConfig,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    traces: Option<TracesConfig>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    metrics: Option<MetricsConfig>,
-}
-
-#[derive(DeserializeShape)]
-struct LogsConfig {
-    #[serde(flatten)]
-    sink: LogSink,
-    filter: String,
-}
-
-#[derive(DeserializeShape)]
-#[serde(
-    tag = "kind",
-    rename_all = "snake_case",
-    rename_all_fields = "snake_case"
-)]
-enum LogSink {
-    File {
-        dir: PathBuf,
-        #[serde(skip_serializing_if = "Option::is_none")]
-        max_files: Option<NonZeroUsize>,
-    },
-    Stderr,
-    Opentelemetry {
-        otlp_endpoint: String,
-    },
-}
-
-#[derive(DeserializeShape)]
-#[serde(deny_unknown_fields)]
-struct TracesConfig {
-    capture_log_filter: String,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    opentelemetry: Option<OpentelemetryTracesConfig>,
-}
-
-#[derive(DeserializeShape)]
-#[serde(deny_unknown_fields)]
-struct OpentelemetryTracesConfig {
-    otlp_endpoint: String,
-}
-
-#[derive(DeserializeShape)]
-#[serde(deny_unknown_fields)]
-struct MetricsConfig {
-    #[serde(skip_serializing_if = "Option::is_none")]
-    opentelemetry: Option<OpentelemetryMetricsConfig>,
-}
-
-#[derive(DeserializeShape)]
-#[serde(deny_unknown_fields)]
-struct OpentelemetryMetricsConfig {
-    otlp_endpoint: String,
-    #[serde(default = "default_metrics_push_interval")]
-    push_interval: HumanDuration,
 }
 
 #[derive(Debug, Deserialize, DeserializeShape, PartialEq)]
@@ -211,76 +73,6 @@ struct ModeConfig {
 enum ExecutionMode {
     Fast,
     Safe,
-}
-
-#[derive(Clone, Copy, Debug)]
-struct ByteSize(u64);
-
-impl DeserializeShape for ByteSize {
-    fn deserialize_shape_in(_context: &mut DeserializeShapeContext) -> ShapeRef {
-        string_or_integer_shape()
-    }
-}
-
-#[derive(Clone, Copy, Debug)]
-struct HumanDuration(u64);
-
-impl DeserializeShape for HumanDuration {
-    fn deserialize_shape_in(_context: &mut DeserializeShapeContext) -> ShapeRef {
-        string_or_integer_shape()
-    }
-}
-
-fn string_or_integer_shape() -> ShapeRef {
-    ShapeRef::union([
-        ShapeRef::String,
-        ShapeRef::I8,
-        ShapeRef::I16,
-        ShapeRef::I32,
-        ShapeRef::I64,
-        ShapeRef::I128,
-        ShapeRef::Isize,
-        ShapeRef::U8,
-        ShapeRef::U16,
-        ShapeRef::U32,
-        ShapeRef::U64,
-        ShapeRef::U128,
-        ShapeRef::Usize,
-    ])
-}
-
-fn default_dir() -> PathBuf {
-    PathBuf::from("/var/lib/percas")
-}
-
-fn default_listen_data_addr() -> SocketAddr {
-    SocketAddr::from(([0, 0, 0, 0], 7654))
-}
-
-fn default_cluster_id() -> String {
-    "percas-cluster".to_string()
-}
-
-fn default_disk_capacity() -> ByteSize {
-    ByteSize(512 * 1024 * 1024)
-}
-
-fn default_memory_capacity() -> ByteSize {
-    ByteSize(1024 * 1024 * 1024)
-}
-
-fn default_metrics_push_interval() -> HumanDuration {
-    HumanDuration(30)
-}
-
-#[test]
-fn snapshots_config_shape() {
-    insta::assert_debug_snapshot!(Config::deserialize_shape());
-}
-
-#[test]
-fn snapshots_env_options() {
-    insta::assert_debug_snapshot!(env_options::<Config>("PERCAS_CONFIG"));
 }
 
 #[test]
@@ -377,7 +169,7 @@ fn env_options<T: DeserializeShape>(env_prefix: &str) -> Vec<EnvOption> {
         env_prefix,
         options: BTreeMap::new(),
     };
-    collector.visit_shape_ref(&shape.root, &mut Vec::new(), false, None);
+    collector.visit_shape_ref(shape.root(), &mut Vec::new(), false, None);
     collector.options.into_values().collect()
 }
 

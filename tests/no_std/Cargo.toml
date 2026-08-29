@@ -25,8 +25,5 @@ release = false
 [dependencies]
 serde-shape = { workspace = true, features = ["derive"] }
 
-[dev-dependencies]
-insta = { workspace = true }
-
 [lints]
 workspace = true

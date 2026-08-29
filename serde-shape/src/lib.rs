@@ -71,10 +71,10 @@
 //! }
 //!
 //! let graph = Config::deserialize_shape();
-//! let ShapeRef::Definition(config_id) = graph.root else {
+//! let ShapeRef::Definition(config_id) = graph.root() else {
 //!     panic!("Config should produce a named definition");
 //! };
-//! let config = graph.definition(config_id).unwrap();
+//! let config = graph.definition(*config_id).unwrap();
 //!
 //! let DeserializeDefinitionKind::Struct(shape) = &config.kind else {
 //!     panic!("Config should produce a struct shape");
@@ -111,15 +111,15 @@
 //! let serialize_graph = Message::serialize_shape();
 //! let deserialize_graph = Message::deserialize_shape();
 //!
-//! let ShapeRef::Definition(serialize_id) = serialize_graph.root else {
+//! let ShapeRef::Definition(serialize_id) = serialize_graph.root() else {
 //!     panic!("Message should produce a named serialization definition");
 //! };
-//! let ShapeRef::Definition(deserialize_id) = deserialize_graph.root else {
+//! let ShapeRef::Definition(deserialize_id) = deserialize_graph.root() else {
 //!     panic!("Message should produce a named deserialization definition");
 //! };
 //!
-//! let serialize_definition = serialize_graph.definition(serialize_id).unwrap();
-//! let deserialize_definition = deserialize_graph.definition(deserialize_id).unwrap();
+//! let serialize_definition = serialize_graph.definition(*serialize_id).unwrap();
+//! let deserialize_definition = deserialize_graph.definition(*deserialize_id).unwrap();
 //!
 //! assert_eq!(serialize_definition.type_name.name, "wire-output");
 //! assert_eq!(deserialize_definition.type_name.name, "wire-input");
@@ -143,7 +143,12 @@
 //! stored as named definitions and referenced by [`ShapeId`].
 //!
 //! Definition IDs are local to one graph. Use [`SerializeShapeGraph::definition`] or
-//! [`DeserializeShapeGraph::definition`] to resolve them.
+//! [`DeserializeShapeGraph::definition`] to resolve them. Definition ordering and debug output
+//! are not stable persistence formats.
+//!
+//! Types that branch on Serde's human-readable mode may expose a union of their known
+//! representations. Shape graphs describe possible Serde data-model calls across formats rather
+//! than specializing themselves for one serializer.
 //!
 //! # Derive behavior
 //!
@@ -151,11 +156,19 @@
 //! follows the metadata Serde derives for each direction.
 //!
 //! A custom serializer or deserializer has no inferable inner shape, so the affected field or
-//! variant content is represented by an opaque boundary. Whole-container conversion and
-//! remote-derive attributes are represented as opaque definitions.
+//! variant content is represented by an opaque boundary. Whole-container conversion attributes
+//! use the conversion type's shape, while remote-derive attributes remain opaque.
 //! Field-level [`FieldWireShape`] distinguishes ordinary values from flattened fields, inline
 //! transparent fields, and omitted fields. Custom serializer/deserializer boundaries use
 //! [`ShapeRef::Opaque`] and remain composable with those field positions.
+//!
+//! Use `#[serde_shape(serialize_with = "path")]` or
+//! `#[serde_shape(deserialize_with = "path")]` to declare the representation of a container or
+//! field that cannot be inferred. Each function receives the current graph context and returns a
+//! [`ShapeRef`], so it can delegate to another type or build a custom shape directly.
+//!
+//! Rust doc comments on derived containers, variants, and fields are preserved in their
+//! `description` fields for documentation and diagnostic consumers.
 //!
 //! # Manual implementations
 //!
@@ -177,8 +190,8 @@
 //! }
 //!
 //! assert_eq!(
-//!     ByteSize::deserialize_shape().root,
-//!     ShapeRef::union([ShapeRef::String, ShapeRef::U64])
+//!     ByteSize::deserialize_shape().root(),
+//!     &ShapeRef::union([ShapeRef::String, ShapeRef::U64])
 //! );
 //! ```
 //!
@@ -216,6 +229,10 @@ pub mod __private {
 /// metadata that Serde uses for deserialization. The generated implementation records the
 /// deserialization-side names, shape graph, and Serde field/container metadata.
 ///
+/// Use `#[serde_shape(deserialize_with = "path")]` on a container or field to override an
+/// opaque or foreign representation. The function must accept `&mut DeserializeShapeContext`
+/// and return a [`ShapeRef`].
+///
 /// # Example
 ///
 /// ```rust
@@ -233,10 +250,10 @@ pub mod __private {
 /// }
 ///
 /// let graph = Config::deserialize_shape();
-/// let ShapeRef::Definition(id) = graph.root else {
+/// let ShapeRef::Definition(id) = graph.root() else {
 ///     panic!("Config should produce a named definition");
 /// };
-/// let definition = graph.definition(id).unwrap();
+/// let definition = graph.definition(*id).unwrap();
 ///
 /// let DeserializeDefinitionKind::Struct(shape) = &definition.kind else {
 ///     panic!("Config should produce a struct shape");
@@ -255,6 +272,10 @@ pub use serde_shape_derive::DeserializeShape;
 /// metadata that Serde uses for serialization. The generated implementation records the
 /// serialization-side names, shape graph, and Serde field/container metadata.
 ///
+/// Use `#[serde_shape(serialize_with = "path")]` on a container or field to override an opaque
+/// or foreign representation. The function must accept `&mut SerializeShapeContext` and return
+/// a [`ShapeRef`].
+///
 /// # Example
 ///
 /// ```rust
@@ -271,10 +292,10 @@ pub use serde_shape_derive::DeserializeShape;
 /// }
 ///
 /// let graph = Response::serialize_shape();
-/// let ShapeRef::Definition(id) = graph.root else {
+/// let ShapeRef::Definition(id) = graph.root() else {
 ///     panic!("Response should produce a named definition");
 /// };
-/// let definition = graph.definition(id).unwrap();
+/// let definition = graph.definition(*id).unwrap();
 ///
 /// let SerializeDefinitionKind::Struct(shape) = &definition.kind else {
 ///     panic!("Response should produce a struct shape");
@@ -323,9 +344,9 @@ pub trait DeserializeShape {
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct SerializeShapeGraph {
     /// The root shape reference.
-    pub root: ShapeRef,
+    root: ShapeRef,
     /// Named type definitions reachable from the root.
-    pub definitions: Vec<SerializeDefinitionShape>,
+    definitions: Vec<SerializeDefinitionShape>,
 }
 
 impl SerializeShapeGraph {
@@ -342,6 +363,16 @@ impl SerializeShapeGraph {
         }
     }
 
+    /// Return the root shape reference.
+    pub fn root(&self) -> &ShapeRef {
+        &self.root
+    }
+
+    /// Return the named definitions reachable from the root.
+    pub fn definitions(&self) -> &[SerializeDefinitionShape] {
+        &self.definitions
+    }
+
     /// Return a definition by id.
     pub fn definition(&self, id: ShapeId) -> Option<&SerializeDefinitionShape> {
         self.definitions.get(id.0)
@@ -352,9 +383,9 @@ impl SerializeShapeGraph {
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct DeserializeShapeGraph {
     /// The root shape reference.
-    pub root: ShapeRef,
+    root: ShapeRef,
     /// Named type definitions reachable from the root.
-    pub definitions: Vec<DeserializeDefinitionShape>,
+    definitions: Vec<DeserializeDefinitionShape>,
 }
 
 impl DeserializeShapeGraph {
@@ -369,6 +400,16 @@ impl DeserializeShapeGraph {
             root,
             definitions: context.finish(),
         }
+    }
+
+    /// Return the root shape reference.
+    pub fn root(&self) -> &ShapeRef {
+        &self.root
+    }
+
+    /// Return the named definitions reachable from the root.
+    pub fn definitions(&self) -> &[DeserializeDefinitionShape] {
+        &self.definitions
     }
 
     /// Return a definition by id.
@@ -393,6 +434,22 @@ impl SerializeShapeContext {
     where
         F: FnOnce(&mut Self) -> SerializeDefinitionKind + 'static,
     {
+        self.define_named_type_with_description(type_name, None, build)
+    }
+
+    /// Define a named type with user-facing documentation.
+    ///
+    /// This behaves like [`Self::define_named_type`] and stores `description` on the resulting
+    /// definition.
+    pub fn define_named_type_with_description<F>(
+        &mut self,
+        type_name: SerializeTypeName,
+        description: Option<&'static str>,
+        build: F,
+    ) -> ShapeRef
+    where
+        F: FnOnce(&mut Self) -> SerializeDefinitionKind + 'static,
+    {
         let identity = (TypeId::of::<F>(), type_name.rust_name);
         if let Some(id) = self.definitions_by_identity.get(&identity) {
             return ShapeRef::Definition(*id);
@@ -406,6 +463,7 @@ impl SerializeShapeContext {
         self.definitions[id.0] = Some(SerializeDefinitionShape {
             id,
             type_name,
+            description,
             kind,
         });
         ShapeRef::Definition(id)
@@ -435,6 +493,22 @@ impl DeserializeShapeContext {
     where
         F: FnOnce(&mut Self) -> DeserializeDefinitionKind + 'static,
     {
+        self.define_named_type_with_description(type_name, None, build)
+    }
+
+    /// Define a named type with user-facing documentation.
+    ///
+    /// This behaves like [`Self::define_named_type`] and stores `description` on the resulting
+    /// definition.
+    pub fn define_named_type_with_description<F>(
+        &mut self,
+        type_name: DeserializeTypeName,
+        description: Option<&'static str>,
+        build: F,
+    ) -> ShapeRef
+    where
+        F: FnOnce(&mut Self) -> DeserializeDefinitionKind + 'static,
+    {
         let identity = (TypeId::of::<F>(), type_name.rust_name);
         if let Some(id) = self.definitions_by_identity.get(&identity) {
             return ShapeRef::Definition(*id);
@@ -448,6 +522,7 @@ impl DeserializeShapeContext {
         self.definitions[id.0] = Some(DeserializeDefinitionShape {
             id,
             type_name,
+            description,
             kind,
         });
         ShapeRef::Definition(id)
@@ -463,7 +538,14 @@ impl DeserializeShapeContext {
 
 /// Identifies a named shape definition.
 #[derive(Clone, Copy, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
-pub struct ShapeId(pub usize);
+pub struct ShapeId(usize);
+
+impl ShapeId {
+    /// Return this id's graph-local definition index.
+    pub const fn index(self) -> usize {
+        self.0
+    }
+}
 
 /// Names associated with a Rust type and its Serde serializer.
 #[derive(Clone, Debug, Eq, PartialEq)]
@@ -673,6 +755,8 @@ pub struct SerializeDefinitionShape {
     pub id: ShapeId,
     /// The Rust and Serde names for this definition.
     pub type_name: SerializeTypeName,
+    /// User-facing documentation for this definition, if available.
+    pub description: Option<&'static str>,
     /// The definition body.
     pub kind: SerializeDefinitionKind,
 }
@@ -684,6 +768,8 @@ pub struct DeserializeDefinitionShape {
     pub id: ShapeId,
     /// The Rust and Serde names for this definition.
     pub type_name: DeserializeTypeName,
+    /// User-facing documentation for this definition, if available.
+    pub description: Option<&'static str>,
     /// The definition body.
     pub kind: DeserializeDefinitionKind,
 }
@@ -827,6 +913,8 @@ pub struct SerializeFieldShape {
     pub member: FieldMember,
     /// The primary Serde serialize name.
     pub name: &'static str,
+    /// User-facing documentation for this field, if available.
+    pub description: Option<&'static str>,
     /// How this field contributes to the serialized wire shape.
     pub wire_shape: FieldWireShape,
     /// The predicate used to skip this field during serialization.
@@ -842,6 +930,8 @@ pub struct DeserializeFieldShape {
     pub name: &'static str,
     /// All accepted Serde deserialize names, including the primary name.
     pub aliases: Vec<&'static str>,
+    /// User-facing documentation for this field, if available.
+    pub description: Option<&'static str>,
     /// How this field contributes to the deserialized wire shape.
     pub wire_shape: FieldWireShape,
     /// The default used if this field is missing.
@@ -878,6 +968,8 @@ pub struct SerializeVariantShape {
     pub rust_name: &'static str,
     /// The primary Serde serialize name.
     pub name: &'static str,
+    /// User-facing documentation for this variant, if available.
+    pub description: Option<&'static str>,
     /// The variant field style.
     pub style: FieldsStyle,
     /// How the variant contributes its serialized content.
@@ -907,6 +999,8 @@ pub struct DeserializeVariantShape {
     pub name: &'static str,
     /// All accepted Serde deserialize names, including the primary name.
     pub aliases: Vec<&'static str>,
+    /// User-facing documentation for this variant, if available.
+    pub description: Option<&'static str>,
     /// The variant field style.
     pub style: FieldsStyle,
     /// How the variant contributes its deserialized content.
@@ -961,12 +1055,6 @@ pub struct OpaqueShape {
 /// Reason a shape cannot be represented precisely.
 #[derive(Clone, Copy, Debug, Eq, Ord, PartialEq, PartialOrd)]
 pub enum OpaqueReason {
-    /// The type uses `#[serde(from = "...")]`.
-    FromType,
-    /// The type uses `#[serde(try_from = "...")]`.
-    TryFromType,
-    /// The type uses `#[serde(into = "...")]`.
-    IntoType,
     /// The type uses `#[serde(remote = "...")]`.
     Remote,
     /// A custom serializer controls the output.

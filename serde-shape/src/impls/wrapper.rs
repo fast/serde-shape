@@ -78,18 +78,6 @@ transparent_shape! {
         deserialize { T: DeserializeShape + ?Sized }
     => T;
 
-    ('a, T) Cow<'a, T>
-    where
-        serialize {
-            T: ToOwned + ?Sized,
-            <T as ToOwned>::Owned: SerializeShape
-        }
-        deserialize {
-            T: ToOwned + ?Sized,
-            <T as ToOwned>::Owned: DeserializeShape
-        }
-    => <T as ToOwned>::Owned;
-
     (T) Cell<T>
     where
         serialize { T: Copy + SerializeShape }
@@ -128,6 +116,25 @@ transparent_shape! {
         serialize { T: SerializeShape }
         deserialize { T: DeserializeShape }
     => T;
+}
+
+impl<T> SerializeShape for Cow<'_, T>
+where
+    T: ToOwned + SerializeShape + ?Sized,
+{
+    fn serialize_shape_in(context: &mut SerializeShapeContext) -> ShapeRef {
+        T::serialize_shape_in(context)
+    }
+}
+
+impl<T> DeserializeShape for Cow<'_, T>
+where
+    T: ToOwned + ?Sized,
+    T::Owned: DeserializeShape,
+{
+    fn deserialize_shape_in(context: &mut DeserializeShapeContext) -> ShapeRef {
+        T::Owned::deserialize_shape_in(context)
+    }
 }
 
 impl<T> SerializeShape for PhantomData<T> {

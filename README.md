@@ -12,11 +12,11 @@
 [docs-url]: https://docs.rs/serde-shape
 [msrv-badge]: https://img.shields.io/badge/MSRV-1.85-green?logo=rust
 [license-badge]: https://img.shields.io/crates/l/serde-shape
-[license-url]: LICENSE
+[license-url]: https://www.apache.org/licenses/LICENSE-2.0
 [actions-badge]: https://github.com/fast/serde-shape/workflows/CI/badge.svg
 [actions-url]: https://github.com/fast/serde-shape/actions?query=workflow%3ACI
 
-`serde-shape` reflects the shape of Serde serialization and deserialization at compile time.
+`serde-shape` builds inspectable graphs of Serde serialization and deserialization shapes. Derive macros generate the metadata code at compile time; calling `serialize_shape()` or `deserialize_shape()` constructs the graph at runtime without serializing or deserializing a value.
 
 It gives libraries and tools a lightweight graph of the Rust types, Serde names, field metadata, enum tagging, defaults, aliases, union value alternatives, skips, and custom serializer/deserializer boundaries that make up a type's wire shape.
 
@@ -65,7 +65,9 @@ use serde_shape::{
 
 #[derive(DeserializeShape)]
 #[serde(rename_all = "kebab-case", deny_unknown_fields)]
+/// Application configuration.
 struct Config {
+    /// Port used by the HTTP server.
     http_port: u16,
     peers: Vec<String>,
     tls: Option<TlsConfig>,
@@ -79,24 +81,66 @@ struct TlsConfig {
 }
 
 let graph = Config::deserialize_shape();
-let ShapeRef::Definition(config_id) = graph.root else {
+let ShapeRef::Definition(config_id) = graph.root() else {
     panic!("Config should produce a named definition");
 };
-let definition = graph.definition(config_id).unwrap();
+let definition = graph.definition(*config_id).unwrap();
 
 let DeserializeDefinitionKind::Struct(shape) = &definition.kind else {
     panic!("Config should produce a struct shape");
 };
 
 assert_eq!(definition.type_name.name, "Config");
+assert_eq!(definition.description, Some("Application configuration."));
 assert_eq!(shape.style, FieldsStyle::Struct);
 assert!(shape.attributes.deny_unknown_fields);
 assert_eq!(shape.fields[0].name, "http-port");
+assert_eq!(shape.fields[0].description, Some("Port used by the HTTP server."));
 assert_eq!(shape.fields[1].name, "peers");
 assert_eq!(shape.fields[2].name, "tls");
 ```
 
 See the [crate documentation][docs-url] for the full shape graph model, derive behavior, and manual implementation examples.
+
+Rust doc comments on derived containers, variants, and fields are preserved as descriptions. Consumers can use the same comments for generated configuration references, CLI help, or diagnostics.
+
+## Custom representations
+
+Custom Serde functions and foreign types do not expose enough information for `serde-shape` to infer their wire representation. Provide functions that build the serialization and deserialization shapes explicitly:
+
+```rust
+use serde_shape::{
+    DeserializeShape, DeserializeShapeContext, SerializeShape, SerializeShapeContext, ShapeRef,
+};
+
+struct ForeignDuration;
+
+fn serialize_duration(context: &mut SerializeShapeContext) -> ShapeRef {
+    String::serialize_shape_in(context)
+}
+
+fn deserialize_duration(_context: &mut DeserializeShapeContext) -> ShapeRef {
+    ShapeRef::union([ShapeRef::String, ShapeRef::U64])
+}
+
+#[derive(SerializeShape, DeserializeShape)]
+struct Config {
+    #[serde(with = "duration_format")]
+    #[serde_shape(
+        serialize_with = "serialize_duration",
+        deserialize_with = "deserialize_duration"
+    )]
+    timeout: ForeignDuration,
+}
+```
+
+Each function receives the current graph context and returns a `ShapeRef`. It may delegate to another type's shape implementation or construct a custom shape directly. A custom shape function is an assertion about the Serde behavior; `serde-shape` cannot verify that the declared shape matches the serializer or deserializer implementation.
+
+## Model boundaries
+
+Shape graphs are an inspection API, not a stable interchange format. `ShapeId` values are local to one graph, and definition ordering and `Debug` output are not persistence contracts.
+
+Types that branch on `Serializer::is_human_readable()` or `Deserializer::is_human_readable()` may expose a union of their known representations. The graph describes the possible Serde calls across formats; it is not specialized for one serializer format.
 
 ## Feature flags
 
@@ -133,6 +177,10 @@ This crate's minimum supported `rustc` version is `1.85.0`.
 
 The current policy is that the minimum Rust version required to use this crate can be increased in minor version updates. For example, if `crate 1.0` requires Rust 1.85.0, then `crate 1.0.z` for all values of `z` will also require Rust 1.85.0 or newer. However, `crate 1.y` for `y > 0` may require a newer minimum version of Rust.
 
+## Contributing
+
+See the [contributor guide](CONTRIBUTING.md) for the development workflow and test conventions.
+
 ## License
 
-This project is licensed under [Apache License, Version 2.0](LICENSE).
+This project is licensed under the [Apache License, Version 2.0](https://github.com/fast/serde-shape/blob/main/LICENSE).
