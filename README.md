@@ -52,7 +52,7 @@ Typical use cases:
 
 Field shapes expose `wire_shape` as the source of truth for regular values, flattened fields, inline transparent fields, and omitted fields. Custom serializer/deserializer boundaries are represented by `ShapeRef::Opaque`, including when they are flattened or inline.
 
-You may use [`schemars`](https://docs.rs/schemars) for JSON Schema generation and validation. But `schemars` is not a general-purpose Serde shape reflection library, and it does not support all Serde attributes. `serde-shape` is designed to be a more complete and general-purpose reflection of Serde shapes.
+If the consumer needs JSON Schema, [`schemars`](https://docs.rs/schemars) directly targets that format. `serde-shape` instead keeps serialization and deserialization shapes separate and leaves format-specific export and validation to downstream tools.
 
 ## Example
 
@@ -137,6 +137,8 @@ For a generic custom hook, container-level `#[serde_shape(bound(serialize = "...
 
 Shape graphs are an inspection API, not a stable interchange format. `ShapeId` values are local to one graph, and definition ordering and `Debug` output are not persistence contracts.
 
+Definitions may be recursive. A `ShapeRef::Definition` is a graph edge, so walkers must detect repeated `ShapeId` values instead of expanding definitions indefinitely.
+
 Types that branch on `Serializer::is_human_readable()` or `Deserializer::is_human_readable()` may expose a union of their known representations. The graph describes the possible Serde calls across formats; it is not specialized for one serializer format.
 
 ## Feature flags
@@ -161,7 +163,7 @@ The built-in implementations follow Serde's own data-model calls in each directi
 
 Network address shapes are unions of their human-readable string representation and their compact Serde representation. A serialized byte slice is a sequence, while borrowed byte deserialization uses `ShapeRef::Bytes`.
 
-For an unsupported foreign type, use a local newtype and implement `SerializeShape` or `DeserializeShape` manually. Custom Serde functions remain visible as opaque boundaries because their wire behavior cannot be inferred.
+For an unsupported foreign type, use a local newtype and implement `SerializeShape` or `DeserializeShape` manually. Custom Serde functions remain opaque by default because their wire behavior cannot be inferred; use a `serde_shape` custom hook when the representation is known.
 
 ## `no_std` support
 

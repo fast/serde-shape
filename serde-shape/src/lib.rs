@@ -132,6 +132,8 @@
 //! Definition IDs are local to one graph. Use [`SerializeShapeGraph::definition`] or
 //! [`DeserializeShapeGraph::definition`] to resolve them. Definition ordering and debug output
 //! are not stable persistence formats.
+//! Definitions may be recursive, so graph walkers must detect repeated [`ShapeId`] values before
+//! following definition references.
 //!
 //! Types that branch on Serde's human-readable mode may expose a union of their known
 //! representations. Shape graphs describe possible Serde data-model calls across formats rather
