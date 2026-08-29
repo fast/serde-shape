@@ -12,21 +12,21 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+use renamed_shape::DeserializeDefinitionKind;
+use renamed_shape::DeserializeFieldShape;
+use renamed_shape::DeserializeShape;
+use renamed_shape::DeserializeVariantContent;
+use renamed_shape::DeserializeVariantShape;
+use renamed_shape::FieldWireShape;
+use renamed_shape::OpaqueReason;
+use renamed_shape::SerializeDefinitionKind;
+use renamed_shape::SerializeFieldShape;
+use renamed_shape::SerializeShape;
+use renamed_shape::SerializeVariantContent;
+use renamed_shape::SerializeVariantShape;
+use renamed_shape::ShapeRef;
 use serde::Deserialize;
 use serde::Serialize;
-use serde_shape::DeserializeDefinitionKind;
-use serde_shape::DeserializeFieldShape;
-use serde_shape::DeserializeShape;
-use serde_shape::DeserializeVariantContent;
-use serde_shape::DeserializeVariantShape;
-use serde_shape::FieldWireShape;
-use serde_shape::OpaqueReason;
-use serde_shape::SerializeDefinitionKind;
-use serde_shape::SerializeFieldShape;
-use serde_shape::SerializeShape;
-use serde_shape::SerializeVariantContent;
-use serde_shape::SerializeVariantShape;
-use serde_shape::ShapeRef;
 
 #[derive(Debug, PartialEq)]
 struct FlatValue(u64);

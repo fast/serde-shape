@@ -19,13 +19,26 @@ use alloc::collections::BinaryHeap;
 use alloc::collections::LinkedList;
 use alloc::collections::VecDeque;
 use alloc::string::String;
+use alloc::vec;
+use alloc::vec::Vec;
 use core::cell::Cell;
 use core::cmp::Reverse;
 use core::num::Wrapping;
 
+use crate::DeserializeDefinitionKind;
+use crate::DeserializeShapeContext;
 use crate::DeserializeShapeGraph;
+use crate::DeserializeTypeName;
+use crate::FieldWireShape;
+use crate::FieldsStyle;
+use crate::OpaqueReason;
+use crate::OpaqueShape;
+use crate::SerializeDefinitionKind;
+use crate::SerializeShapeContext;
 use crate::SerializeShapeGraph;
+use crate::SerializeTypeName;
 use crate::ShapeRef;
+use crate::Tagging;
 
 #[test]
 fn classifies_flat_numeric_shapes() {
@@ -70,6 +83,71 @@ fn normalizes_union_shapes() {
     );
 }
 
+#[test]
+fn keeps_distinct_definition_builders_with_the_same_type_name() {
+    let mut serialize = SerializeShapeContext::default();
+    let first = serialize.define_named_type(
+        SerializeTypeName {
+            rust_name: "duplicate::Type",
+            name: "First",
+        },
+        |_| {
+            SerializeDefinitionKind::Opaque(OpaqueShape {
+                type_name: "duplicate::Type",
+                reason: OpaqueReason::Unsupported,
+                detail: Some("first"),
+            })
+        },
+    );
+    let second = serialize.define_named_type(
+        SerializeTypeName {
+            rust_name: "duplicate::Type",
+            name: "Second",
+        },
+        |_| {
+            SerializeDefinitionKind::Opaque(OpaqueShape {
+                type_name: "duplicate::Type",
+                reason: OpaqueReason::Unsupported,
+                detail: Some("second"),
+            })
+        },
+    );
+
+    assert_ne!(first, second);
+    assert_eq!(serialize.finish().len(), 2);
+
+    let mut deserialize = DeserializeShapeContext::default();
+    let first = deserialize.define_named_type(
+        DeserializeTypeName {
+            rust_name: "duplicate::Type",
+            name: "First",
+        },
+        |_| {
+            DeserializeDefinitionKind::Opaque(OpaqueShape {
+                type_name: "duplicate::Type",
+                reason: OpaqueReason::Unsupported,
+                detail: Some("first"),
+            })
+        },
+    );
+    let second = deserialize.define_named_type(
+        DeserializeTypeName {
+            rust_name: "duplicate::Type",
+            name: "Second",
+        },
+        |_| {
+            DeserializeDefinitionKind::Opaque(OpaqueShape {
+                type_name: "duplicate::Type",
+                reason: OpaqueReason::Unsupported,
+                detail: Some("second"),
+            })
+        },
+    );
+
+    assert_ne!(first, second);
+    assert_eq!(deserialize.finish().len(), 2);
+}
+
 #[cfg(target_has_atomic = "ptr")]
 #[test]
 fn maps_atomic_shapes() {
@@ -96,6 +174,108 @@ fn builds_map_shape() {
     assert!(serialize_shape.definitions.is_empty());
     assert_eq!(deserialize_shape.root, expected);
     assert!(deserialize_shape.definitions.is_empty());
+}
+
+#[test]
+fn distinguishes_byte_sequences_from_borrowed_byte_input() {
+    assert_eq!(
+        SerializeShapeGraph::for_type::<[u8]>().root,
+        ShapeRef::Seq(Box::new(ShapeRef::U8))
+    );
+    assert_eq!(
+        SerializeShapeGraph::for_type::<Vec<u8>>().root,
+        ShapeRef::Seq(Box::new(ShapeRef::U8))
+    );
+    assert_eq!(
+        DeserializeShapeGraph::for_type::<[u8]>().root,
+        ShapeRef::Bytes
+    );
+}
+
+#[test]
+fn maps_result_as_an_externally_tagged_enum() {
+    let serialize = SerializeShapeGraph::for_type::<Result<u8, String>>();
+    let ShapeRef::Definition(id) = serialize.root else {
+        panic!("result should produce a named definition");
+    };
+    let SerializeDefinitionKind::Enum(shape) = &serialize.definition(id).unwrap().kind else {
+        panic!("result definition should be an enum");
+    };
+
+    assert_eq!(shape.repr, Tagging::External);
+    assert_eq!(shape.variants.len(), 2);
+    assert_eq!(shape.variants[0].name, "Ok");
+    assert_eq!(shape.variants[0].style, FieldsStyle::Newtype);
+    let crate::SerializeVariantContent::Fields(fields) = &shape.variants[0].content else {
+        panic!("Ok should contain one reflected field");
+    };
+    assert_eq!(fields[0].wire_shape, FieldWireShape::Value(ShapeRef::U8));
+
+    let deserialize = DeserializeShapeGraph::for_type::<Result<u8, String>>();
+    let ShapeRef::Definition(id) = deserialize.root else {
+        panic!("result should produce a named definition");
+    };
+    let DeserializeDefinitionKind::Enum(shape) = &deserialize.definition(id).unwrap().kind else {
+        panic!("result definition should be an enum");
+    };
+    assert_eq!(shape.variants[1].name, "Err");
+    let crate::DeserializeVariantContent::Fields(fields) = &shape.variants[1].content else {
+        panic!("Err should contain one reflected field");
+    };
+    assert_eq!(
+        fields[0].wire_shape,
+        FieldWireShape::Value(ShapeRef::String)
+    );
+}
+
+#[test]
+fn maps_duration_as_serde_struct_fields() {
+    let deserialize = DeserializeShapeGraph::for_type::<core::time::Duration>();
+    let ShapeRef::Definition(id) = deserialize.root else {
+        panic!("duration should produce a named definition");
+    };
+    let DeserializeDefinitionKind::Struct(shape) = &deserialize.definition(id).unwrap().kind else {
+        panic!("duration definition should be a struct");
+    };
+
+    assert!(shape.attributes.deny_unknown_fields);
+    assert_eq!(shape.fields[0].name, "secs");
+    assert_eq!(
+        shape.fields[0].wire_shape,
+        FieldWireShape::Value(ShapeRef::U64)
+    );
+    assert_eq!(shape.fields[1].name, "nanos");
+    assert_eq!(
+        shape.fields[1].wire_shape,
+        FieldWireShape::Value(ShapeRef::U32)
+    );
+}
+
+#[test]
+fn supports_serde_tuple_arity() {
+    type Tuple16 = (
+        u8,
+        u8,
+        u8,
+        u8,
+        u8,
+        u8,
+        u8,
+        u8,
+        u8,
+        u8,
+        u8,
+        u8,
+        u8,
+        u8,
+        u8,
+        u8,
+    );
+
+    let ShapeRef::Tuple(items) = SerializeShapeGraph::for_type::<Tuple16>().root else {
+        panic!("16-element tuple should produce a tuple shape");
+    };
+    assert_eq!(items, vec![ShapeRef::U8; 16]);
 }
 
 #[test]
@@ -145,8 +325,39 @@ fn maps_common_std_shapes() {
         SerializeShapeGraph::for_type::<std::path::PathBuf>().root,
         ShapeRef::String
     );
+    let ipv4_binary = ShapeRef::Array {
+        item: Box::new(ShapeRef::U8),
+        len: 4,
+    };
     assert_eq!(
-        DeserializeShapeGraph::for_type::<std::net::SocketAddr>().root,
-        ShapeRef::String
+        SerializeShapeGraph::for_type::<std::net::Ipv4Addr>().root,
+        ShapeRef::union([ShapeRef::String, ipv4_binary.clone()])
+    );
+
+    let socket = DeserializeShapeGraph::for_type::<std::net::SocketAddr>();
+    let ShapeRef::Union(root) = &socket.root else {
+        panic!("socket address should reflect human-readable and binary shapes");
+    };
+    assert!(root.alternatives().contains(&ShapeRef::String));
+    let definition_id = root
+        .alternatives()
+        .iter()
+        .find_map(|shape| match shape {
+            ShapeRef::Definition(id) => Some(*id),
+            _ => None,
+        })
+        .expect("binary socket shape should be a named enum");
+    let DeserializeDefinitionKind::Enum(shape) = &socket.definition(definition_id).unwrap().kind
+    else {
+        panic!("binary socket shape should be an enum");
+    };
+    assert_eq!(shape.repr, Tagging::External);
+    assert_eq!(shape.variants[0].name, "V4");
+    let crate::DeserializeVariantContent::Fields(fields) = &shape.variants[0].content else {
+        panic!("V4 should contain its binary socket tuple");
+    };
+    assert_eq!(
+        fields[0].wire_shape,
+        FieldWireShape::Value(ShapeRef::Tuple(vec![ipv4_binary, ShapeRef::U16]))
     );
 }

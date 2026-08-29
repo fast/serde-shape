@@ -109,6 +109,15 @@ seq_shape! {
 
 }
 
+impl<T> SerializeShape for [T]
+where
+    T: SerializeShape,
+{
+    fn serialize_shape_in(context: &mut SerializeShapeContext) -> ShapeRef {
+        ShapeRef::Seq(Box::new(T::serialize_shape_in(context)))
+    }
+}
+
 #[cfg(feature = "std")]
 seq_shape! {
     (T, S) std::collections::HashSet<T, S>

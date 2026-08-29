@@ -57,7 +57,6 @@ primitive_shape! {
     f32 => ShapeRef::F32;
     f64 => ShapeRef::F64;
     str => ShapeRef::String;
-    [u8] => ShapeRef::Bytes;
     String => ShapeRef::String;
     core::num::NonZeroI8 => ShapeRef::I8;
     core::num::NonZeroI16 => ShapeRef::I16;
@@ -73,16 +72,16 @@ primitive_shape! {
     core::num::NonZeroUsize => ShapeRef::Usize;
 }
 
+impl DeserializeShape for [u8] {
+    fn deserialize_shape_in(_context: &mut DeserializeShapeContext) -> ShapeRef {
+        ShapeRef::Bytes
+    }
+}
+
 #[cfg(feature = "std")]
 primitive_shape! {
     std::path::Path => ShapeRef::String;
     std::path::PathBuf => ShapeRef::String;
-    std::net::IpAddr => ShapeRef::String;
-    std::net::Ipv4Addr => ShapeRef::String;
-    std::net::Ipv6Addr => ShapeRef::String;
-    std::net::SocketAddr => ShapeRef::String;
-    std::net::SocketAddrV4 => ShapeRef::String;
-    std::net::SocketAddrV6 => ShapeRef::String;
 }
 
 #[cfg(target_has_atomic = "8")]

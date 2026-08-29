@@ -191,12 +191,14 @@
 #![deny(missing_docs)]
 
 extern crate alloc;
+extern crate self as serde_shape;
 #[cfg(feature = "std")]
 extern crate std;
 
 use alloc::boxed::Box;
 use alloc::collections::BTreeMap;
 use alloc::vec::Vec;
+use core::any::TypeId;
 use core::fmt;
 
 /// Private exports used by generated derive code.
@@ -379,22 +381,25 @@ impl DeserializeShapeGraph {
 #[derive(Debug, Default)]
 pub struct SerializeShapeContext {
     definitions: Vec<Option<SerializeDefinitionShape>>,
-    definitions_by_rust_name: BTreeMap<&'static str, ShapeId>,
+    definitions_by_identity: BTreeMap<(TypeId, &'static str), ShapeId>,
 }
 
 impl SerializeShapeContext {
     /// Define a named type once and return a reference to its definition.
+    ///
+    /// The concrete builder type and diagnostic Rust name form the graph-local identity. Call this
+    /// method from one stable closure expression for every occurrence of the same named type.
     pub fn define_named_type<F>(&mut self, type_name: SerializeTypeName, build: F) -> ShapeRef
     where
-        F: FnOnce(&mut Self) -> SerializeDefinitionKind,
+        F: FnOnce(&mut Self) -> SerializeDefinitionKind + 'static,
     {
-        if let Some(id) = self.definitions_by_rust_name.get(type_name.rust_name) {
+        let identity = (TypeId::of::<F>(), type_name.rust_name);
+        if let Some(id) = self.definitions_by_identity.get(&identity) {
             return ShapeRef::Definition(*id);
         }
 
         let id = ShapeId(self.definitions.len());
-        self.definitions_by_rust_name
-            .insert(type_name.rust_name, id);
+        self.definitions_by_identity.insert(identity, id);
         self.definitions.push(None);
 
         let kind = build(self);
@@ -418,22 +423,25 @@ impl SerializeShapeContext {
 #[derive(Debug, Default)]
 pub struct DeserializeShapeContext {
     definitions: Vec<Option<DeserializeDefinitionShape>>,
-    definitions_by_rust_name: BTreeMap<&'static str, ShapeId>,
+    definitions_by_identity: BTreeMap<(TypeId, &'static str), ShapeId>,
 }
 
 impl DeserializeShapeContext {
     /// Define a named type once and return a reference to its definition.
+    ///
+    /// The concrete builder type and diagnostic Rust name form the graph-local identity. Call this
+    /// method from one stable closure expression for every occurrence of the same named type.
     pub fn define_named_type<F>(&mut self, type_name: DeserializeTypeName, build: F) -> ShapeRef
     where
-        F: FnOnce(&mut Self) -> DeserializeDefinitionKind,
+        F: FnOnce(&mut Self) -> DeserializeDefinitionKind + 'static,
     {
-        if let Some(id) = self.definitions_by_rust_name.get(type_name.rust_name) {
+        let identity = (TypeId::of::<F>(), type_name.rust_name);
+        if let Some(id) = self.definitions_by_identity.get(&identity) {
             return ShapeRef::Definition(*id);
         }
 
         let id = ShapeId(self.definitions.len());
-        self.definitions_by_rust_name
-            .insert(type_name.rust_name, id);
+        self.definitions_by_identity.insert(identity, id);
         self.definitions.push(None);
 
         let kind = build(self);

@@ -17,6 +17,10 @@
 use std::collections::BTreeSet;
 
 use proc_macro::TokenStream;
+use proc_macro_crate::FoundCrate;
+use proc_macro_crate::crate_name;
+use proc_macro2::Ident;
+use proc_macro2::Span;
 use proc_macro2::TokenStream as TokenStream2;
 use quote::ToTokens;
 use quote::quote;
@@ -58,6 +62,7 @@ pub fn derive_deserialize_shape(input: TokenStream) -> TokenStream {
 }
 
 fn expand_serialize_shape(input: &DeriveInput) -> syn::Result<TokenStream2> {
+    let serde_shape = serde_shape_crate()?;
     let container = parse_container(input, Derive::Serialize)?;
     let ident = &input.ident;
     let mut generics = input.generics.clone();
@@ -66,17 +71,22 @@ fn expand_serialize_shape(input: &DeriveInput) -> syn::Result<TokenStream2> {
     let body = serialize_shape_body(&container);
 
     Ok(quote! {
-        impl #impl_generics ::serde_shape::SerializeShape for #ident #ty_generics #where_clause {
-            fn serialize_shape_in(
-                context: &mut ::serde_shape::SerializeShapeContext,
-            ) -> ::serde_shape::ShapeRef {
-                #body
+        const _: () = {
+            use #serde_shape as __serde_shape;
+
+            impl #impl_generics __serde_shape::SerializeShape for #ident #ty_generics #where_clause {
+                fn serialize_shape_in(
+                    context: &mut __serde_shape::SerializeShapeContext,
+                ) -> __serde_shape::ShapeRef {
+                    #body
+                }
             }
-        }
+        };
     })
 }
 
 fn expand_deserialize_shape(input: &DeriveInput) -> syn::Result<TokenStream2> {
+    let serde_shape = serde_shape_crate()?;
     let container = parse_container(input, Derive::Deserialize)?;
     let ident = &input.ident;
     let mut generics = input.generics.clone();
@@ -85,14 +95,32 @@ fn expand_deserialize_shape(input: &DeriveInput) -> syn::Result<TokenStream2> {
     let body = deserialize_shape_body(&container);
 
     Ok(quote! {
-        impl #impl_generics ::serde_shape::DeserializeShape for #ident #ty_generics #where_clause {
-            fn deserialize_shape_in(
-                context: &mut ::serde_shape::DeserializeShapeContext,
-            ) -> ::serde_shape::ShapeRef {
-                #body
+        const _: () = {
+            use #serde_shape as __serde_shape;
+
+            impl #impl_generics __serde_shape::DeserializeShape for #ident #ty_generics #where_clause {
+                fn deserialize_shape_in(
+                    context: &mut __serde_shape::DeserializeShapeContext,
+                ) -> __serde_shape::ShapeRef {
+                    #body
+                }
             }
-        }
+        };
     })
+}
+
+fn serde_shape_crate() -> syn::Result<TokenStream2> {
+    match crate_name("serde-shape") {
+        Ok(FoundCrate::Itself) => Ok(quote!(::serde_shape)),
+        Ok(FoundCrate::Name(name)) => {
+            let ident = Ident::new(&name.replace('-', "_"), Span::call_site());
+            Ok(quote!(::#ident))
+        }
+        Err(err) => Err(syn::Error::new(
+            Span::call_site(),
+            format!("serde-shape derive could not resolve the serde-shape crate: {err}"),
+        )),
+    }
 }
 
 fn parse_container<'a>(input: &'a DeriveInput, derive: Derive) -> syn::Result<ast::Container<'a>> {
@@ -141,7 +169,7 @@ fn add_serialize_shape_bounds(generics: &mut syn::Generics, container: &ast::Con
         generics
             .make_where_clause()
             .predicates
-            .push(parse_quote!(#ty: ::serde_shape::SerializeShape));
+            .push(parse_quote!(#ty: __serde_shape::SerializeShape));
     }
 }
 
@@ -182,7 +210,7 @@ fn add_deserialize_shape_bounds(generics: &mut syn::Generics, container: &ast::C
         generics
             .make_where_clause()
             .predicates
-            .push(parse_quote!(#ty: ::serde_shape::DeserializeShape));
+            .push(parse_quote!(#ty: __serde_shape::DeserializeShape));
     }
 }
 
@@ -217,50 +245,84 @@ fn collect_field_bound_type(
     type_params: &BTreeSet<String>,
     field_bound_types: &mut Vec<Type>,
 ) {
-    let mut used_type_params = BTreeSet::new();
-    collect_type_params(field.ty, type_params, &mut used_type_params);
-    if !used_type_params.is_empty() {
-        field_bound_types.push((*field.ty).clone());
-    }
+    collect_shape_bound_types(field.ty, type_params, field_bound_types);
 }
 
-fn collect_type_params(
+fn collect_shape_bound_types(
     ty: &Type,
     type_params: &BTreeSet<String>,
-    used_type_params: &mut BTreeSet<String>,
+    field_bound_types: &mut Vec<Type>,
 ) {
     match ty {
-        Type::Array(ty) => collect_type_params(&ty.elem, type_params, used_type_params),
+        Type::Array(ty) => collect_shape_bound_types(&ty.elem, type_params, field_bound_types),
         Type::BareFn(ty) => {
             for input in &ty.inputs {
-                collect_type_params(&input.ty, type_params, used_type_params);
+                collect_shape_bound_types(&input.ty, type_params, field_bound_types);
             }
-            collect_return_type_params(&ty.output, type_params, used_type_params);
+            collect_return_type_params(&ty.output, type_params, field_bound_types);
         }
-        Type::Group(ty) => collect_type_params(&ty.elem, type_params, used_type_params),
-        Type::ImplTrait(ty) => collect_type_param_bounds(&ty.bounds, type_params, used_type_params),
-        Type::Paren(ty) => collect_type_params(&ty.elem, type_params, used_type_params),
+        Type::Group(ty) => collect_shape_bound_types(&ty.elem, type_params, field_bound_types),
+        Type::ImplTrait(ty) => {
+            collect_type_param_bounds(&ty.bounds, type_params, field_bound_types);
+        }
+        Type::Paren(ty) => collect_shape_bound_types(&ty.elem, type_params, field_bound_types),
         Type::Path(ty) => {
-            if let Some(qself) = &ty.qself {
-                collect_type_params(&qself.ty, type_params, used_type_params);
+            if ty
+                .path
+                .segments
+                .last()
+                .is_some_and(|segment| segment.ident == "PhantomData")
+            {
+                return;
             }
+
+            let is_associated_type = ty.qself.as_ref().is_some_and(|qself| {
+                let mut qself_bounds = Vec::new();
+                collect_shape_bound_types(&qself.ty, type_params, &mut qself_bounds);
+                !qself_bounds.is_empty()
+            }) || (ty.path.leading_colon.is_none()
+                && ty.path.segments.len() > 1
+                && ty
+                    .path
+                    .segments
+                    .first()
+                    .is_some_and(|segment| type_params.contains(&segment.ident.to_string())));
+
+            if is_associated_type {
+                push_bound_type(field_bound_types, Type::Path(ty.clone()));
+                return;
+            }
+
+            if ty.qself.is_none()
+                && ty.path.leading_colon.is_none()
+                && ty.path.segments.len() == 1
+                && ty
+                    .path
+                    .segments
+                    .first()
+                    .is_some_and(|segment| type_params.contains(&segment.ident.to_string()))
+            {
+                push_bound_type(field_bound_types, Type::Path(ty.clone()));
+                return;
+            }
+
+            if let Some(qself) = &ty.qself {
+                collect_shape_bound_types(&qself.ty, type_params, field_bound_types);
+            }
+
             for segment in &ty.path.segments {
-                let ident = segment.ident.to_string();
-                if type_params.contains(&ident) {
-                    used_type_params.insert(ident);
-                }
-                collect_path_arguments(&segment.arguments, type_params, used_type_params);
+                collect_path_arguments(&segment.arguments, type_params, field_bound_types);
             }
         }
-        Type::Ptr(ty) => collect_type_params(&ty.elem, type_params, used_type_params),
-        Type::Reference(ty) => collect_type_params(&ty.elem, type_params, used_type_params),
-        Type::Slice(ty) => collect_type_params(&ty.elem, type_params, used_type_params),
+        Type::Ptr(ty) => collect_shape_bound_types(&ty.elem, type_params, field_bound_types),
+        Type::Reference(ty) => collect_shape_bound_types(&ty.elem, type_params, field_bound_types),
+        Type::Slice(ty) => collect_shape_bound_types(&ty.elem, type_params, field_bound_types),
         Type::TraitObject(ty) => {
-            collect_type_param_bounds(&ty.bounds, type_params, used_type_params);
+            collect_type_param_bounds(&ty.bounds, type_params, field_bound_types);
         }
         Type::Tuple(ty) => {
             for elem in &ty.elems {
-                collect_type_params(elem, type_params, used_type_params);
+                collect_shape_bound_types(elem, type_params, field_bound_types);
             }
         }
         Type::Infer(_) | Type::Macro(_) | Type::Never(_) | Type::Verbatim(_) => {}
@@ -271,7 +333,7 @@ fn collect_type_params(
 fn collect_path_arguments(
     arguments: &PathArguments,
     type_params: &BTreeSet<String>,
-    used_type_params: &mut BTreeSet<String>,
+    field_bound_types: &mut Vec<Type>,
 ) {
     match arguments {
         PathArguments::None => {}
@@ -279,16 +341,16 @@ fn collect_path_arguments(
             for argument in &arguments.args {
                 match argument {
                     GenericArgument::Type(ty) => {
-                        collect_type_params(ty, type_params, used_type_params);
+                        collect_shape_bound_types(ty, type_params, field_bound_types);
                     }
                     GenericArgument::AssocType(assoc) => {
-                        collect_type_params(&assoc.ty, type_params, used_type_params);
+                        collect_shape_bound_types(&assoc.ty, type_params, field_bound_types);
                     }
                     GenericArgument::Constraint(constraint) => {
                         collect_type_param_bounds(
                             &constraint.bounds,
                             type_params,
-                            used_type_params,
+                            field_bound_types,
                         );
                     }
                     GenericArgument::Lifetime(_)
@@ -300,9 +362,9 @@ fn collect_path_arguments(
         }
         PathArguments::Parenthesized(arguments) => {
             for input in &arguments.inputs {
-                collect_type_params(input, type_params, used_type_params);
+                collect_shape_bound_types(input, type_params, field_bound_types);
             }
-            collect_return_type_params(&arguments.output, type_params, used_type_params);
+            collect_return_type_params(&arguments.output, type_params, field_bound_types);
         }
     }
 }
@@ -310,12 +372,12 @@ fn collect_path_arguments(
 fn collect_type_param_bounds(
     bounds: &syn::punctuated::Punctuated<TypeParamBound, syn::Token![+]>,
     type_params: &BTreeSet<String>,
-    used_type_params: &mut BTreeSet<String>,
+    field_bound_types: &mut Vec<Type>,
 ) {
     for bound in bounds {
         if let TypeParamBound::Trait(bound) = bound {
             for segment in &bound.path.segments {
-                collect_path_arguments(&segment.arguments, type_params, used_type_params);
+                collect_path_arguments(&segment.arguments, type_params, field_bound_types);
             }
         }
     }
@@ -324,10 +386,20 @@ fn collect_type_param_bounds(
 fn collect_return_type_params(
     return_type: &ReturnType,
     type_params: &BTreeSet<String>,
-    used_type_params: &mut BTreeSet<String>,
+    field_bound_types: &mut Vec<Type>,
 ) {
     if let ReturnType::Type(_, ty) = return_type {
-        collect_type_params(ty, type_params, used_type_params);
+        collect_shape_bound_types(ty, type_params, field_bound_types);
+    }
+}
+
+fn push_bound_type(field_bound_types: &mut Vec<Type>, ty: Type) {
+    let tokens = ty.to_token_stream().to_string();
+    if field_bound_types
+        .iter()
+        .all(|existing| existing.to_token_stream().to_string() != tokens)
+    {
+        field_bound_types.push(ty);
     }
 }
 
@@ -337,7 +409,7 @@ fn serialize_shape_body(container: &ast::Container<'_>) -> TokenStream2 {
 
     quote! {
         context.define_named_type(
-            ::serde_shape::SerializeTypeName {
+            __serde_shape::SerializeTypeName {
                 rust_name: ::core::any::type_name::<Self>(),
                 name: #name,
             },
@@ -354,7 +426,7 @@ fn deserialize_shape_body(container: &ast::Container<'_>) -> TokenStream2 {
 
     quote! {
         context.define_named_type(
-            ::serde_shape::DeserializeTypeName {
+            __serde_shape::DeserializeTypeName {
                 rust_name: ::core::any::type_name::<Self>(),
                 name: #name,
             },
@@ -379,9 +451,9 @@ fn serialize_definition_kind(container: &ast::Container<'_>) -> TokenStream2 {
             let style = fields_style(*style);
             let fields = fields.iter().map(serialize_field_shape);
             quote! {
-                ::serde_shape::SerializeDefinitionKind::Struct(::serde_shape::SerializeStructShape {
+                __serde_shape::SerializeDefinitionKind::Struct(__serde_shape::SerializeStructShape {
                     style: #style,
-                    fields: ::serde_shape::__private::vec![#(#fields),*],
+                    fields: __serde_shape::__private::vec![#(#fields),*],
                     attributes: #attributes,
                 })
             }
@@ -390,9 +462,9 @@ fn serialize_definition_kind(container: &ast::Container<'_>) -> TokenStream2 {
             let repr = tagging(container.attrs.tag());
             let variants = variants.iter().map(serialize_variant_shape);
             quote! {
-                ::serde_shape::SerializeDefinitionKind::Enum(::serde_shape::SerializeEnumShape {
+                __serde_shape::SerializeDefinitionKind::Enum(__serde_shape::SerializeEnumShape {
                     repr: #repr,
-                    variants: ::serde_shape::__private::vec![#(#variants),*],
+                    variants: __serde_shape::__private::vec![#(#variants),*],
                     attributes: #attributes,
                 })
             }
@@ -417,9 +489,9 @@ fn deserialize_definition_kind(container: &ast::Container<'_>) -> TokenStream2 {
             let style = fields_style(*style);
             let fields = fields.iter().map(deserialize_field_shape);
             quote! {
-                ::serde_shape::DeserializeDefinitionKind::Struct(::serde_shape::DeserializeStructShape {
+                __serde_shape::DeserializeDefinitionKind::Struct(__serde_shape::DeserializeStructShape {
                     style: #style,
-                    fields: ::serde_shape::__private::vec![#(#fields),*],
+                    fields: __serde_shape::__private::vec![#(#fields),*],
                     attributes: #attributes,
                 })
             }
@@ -428,9 +500,9 @@ fn deserialize_definition_kind(container: &ast::Container<'_>) -> TokenStream2 {
             let repr = tagging(container.attrs.tag());
             let variants = variants.iter().map(deserialize_variant_shape);
             quote! {
-                ::serde_shape::DeserializeDefinitionKind::Enum(::serde_shape::DeserializeEnumShape {
+                __serde_shape::DeserializeDefinitionKind::Enum(__serde_shape::DeserializeEnumShape {
                     repr: #repr,
-                    variants: ::serde_shape::__private::vec![#(#variants),*],
+                    variants: __serde_shape::__private::vec![#(#variants),*],
                     attributes: #attributes,
                 })
             }
@@ -446,7 +518,7 @@ where
     let detail = lit(detail.to_token_stream().to_string());
 
     quote! {
-        ::serde_shape::SerializeDefinitionKind::Opaque(::serde_shape::OpaqueShape {
+        __serde_shape::SerializeDefinitionKind::Opaque(__serde_shape::OpaqueShape {
             type_name: ::core::any::type_name::<Self>(),
             reason: #reason,
             detail: ::core::option::Option::Some(#detail),
@@ -462,7 +534,7 @@ where
     let detail = lit(detail.to_token_stream().to_string());
 
     quote! {
-        ::serde_shape::DeserializeDefinitionKind::Opaque(::serde_shape::OpaqueShape {
+        __serde_shape::DeserializeDefinitionKind::Opaque(__serde_shape::OpaqueShape {
             type_name: ::core::any::type_name::<Self>(),
             reason: #reason,
             detail: ::core::option::Option::Some(#detail),
@@ -477,7 +549,7 @@ fn serialize_container_attributes(attrs: &attr::Container) -> TokenStream2 {
     let non_exhaustive = attrs.non_exhaustive();
 
     quote! {
-        ::serde_shape::SerializeContainerAttributes {
+        __serde_shape::SerializeContainerAttributes {
             tagging: #tagging,
             has_flatten: #has_flatten,
             transparent: #transparent,
@@ -496,7 +568,7 @@ fn deserialize_container_attributes(attrs: &attr::Container) -> TokenStream2 {
     let non_exhaustive = attrs.non_exhaustive();
 
     quote! {
-        ::serde_shape::DeserializeContainerAttributes {
+        __serde_shape::DeserializeContainerAttributes {
             tagging: #tagging,
             deny_unknown_fields: #deny_unknown_fields,
             default: #default,
@@ -515,27 +587,27 @@ fn serialize_variant_shape(variant: &ast::Variant<'_>) -> TokenStream2 {
     let skip = variant.attrs.skip_serializing();
     let untagged = variant.attrs.untagged();
     let content = if skip {
-        quote!(::serde_shape::SerializeVariantContent::Omitted)
+        quote!(__serde_shape::SerializeVariantContent::Omitted)
     } else if let Some(custom_serializer) = variant.attrs.serialize_with() {
         let detail = option_path(Some(custom_serializer));
         quote! {
-            ::serde_shape::SerializeVariantContent::Custom(::serde_shape::OpaqueShape {
+            __serde_shape::SerializeVariantContent::Custom(__serde_shape::OpaqueShape {
                 type_name: ::core::any::type_name::<Self>(),
-                reason: ::serde_shape::OpaqueReason::CustomSerializer,
+                reason: __serde_shape::OpaqueReason::CustomSerializer,
                 detail: #detail,
             })
         }
     } else {
         let fields = variant.fields.iter().map(serialize_field_shape);
         quote! {
-            ::serde_shape::SerializeVariantContent::Fields(
-                ::serde_shape::__private::vec![#(#fields),*],
+            __serde_shape::SerializeVariantContent::Fields(
+                __serde_shape::__private::vec![#(#fields),*],
             )
         }
     };
 
     quote! {
-        ::serde_shape::SerializeVariantShape {
+        __serde_shape::SerializeVariantShape {
             rust_name: #rust_name,
             name: #name,
             style: #style,
@@ -554,27 +626,27 @@ fn deserialize_variant_shape(variant: &ast::Variant<'_>) -> TokenStream2 {
     let other = variant.attrs.other();
     let untagged = variant.attrs.untagged();
     let content = if skip {
-        quote!(::serde_shape::DeserializeVariantContent::Omitted)
+        quote!(__serde_shape::DeserializeVariantContent::Omitted)
     } else if let Some(custom_deserializer) = variant.attrs.deserialize_with() {
         let detail = option_path(Some(custom_deserializer));
         quote! {
-            ::serde_shape::DeserializeVariantContent::Custom(::serde_shape::OpaqueShape {
+            __serde_shape::DeserializeVariantContent::Custom(__serde_shape::OpaqueShape {
                 type_name: ::core::any::type_name::<Self>(),
-                reason: ::serde_shape::OpaqueReason::CustomDeserializer,
+                reason: __serde_shape::OpaqueReason::CustomDeserializer,
                 detail: #detail,
             })
         }
     } else {
         let fields = variant.fields.iter().map(deserialize_field_shape);
         quote! {
-            ::serde_shape::DeserializeVariantContent::Fields(
-                ::serde_shape::__private::vec![#(#fields),*],
+            __serde_shape::DeserializeVariantContent::Fields(
+                __serde_shape::__private::vec![#(#fields),*],
             )
         }
     };
 
     quote! {
-        ::serde_shape::DeserializeVariantShape {
+        __serde_shape::DeserializeVariantShape {
             rust_name: #rust_name,
             name: #name,
             aliases: #aliases,
@@ -595,32 +667,32 @@ fn serialize_field_shape(field: &ast::Field<'_>) -> TokenStream2 {
     let transparent = field.attrs.transparent();
     let ty = field.ty;
     let wire_shape = if skip {
-        quote!(::serde_shape::FieldWireShape::Omitted)
+        quote!(__serde_shape::FieldWireShape::Omitted)
     } else {
         let value_shape = if let Some(custom_serializer) = field.attrs.serialize_with() {
             let detail = option_path(Some(custom_serializer));
             quote! {
-                ::serde_shape::ShapeRef::Opaque(::serde_shape::OpaqueShape {
+                __serde_shape::ShapeRef::Opaque(__serde_shape::OpaqueShape {
                     type_name: ::core::any::type_name::<#ty>(),
-                    reason: ::serde_shape::OpaqueReason::CustomSerializer,
+                    reason: __serde_shape::OpaqueReason::CustomSerializer,
                     detail: #detail,
                 })
             }
         } else {
-            quote!(<#ty as ::serde_shape::SerializeShape>::serialize_shape_in(context))
+            quote!(<#ty as __serde_shape::SerializeShape>::serialize_shape_in(context))
         };
 
         if transparent {
-            quote!(::serde_shape::FieldWireShape::Inline(#value_shape))
+            quote!(__serde_shape::FieldWireShape::Inline(#value_shape))
         } else if flatten {
-            quote!(::serde_shape::FieldWireShape::Flatten(#value_shape))
+            quote!(__serde_shape::FieldWireShape::Flatten(#value_shape))
         } else {
-            quote!(::serde_shape::FieldWireShape::Value(#value_shape))
+            quote!(__serde_shape::FieldWireShape::Value(#value_shape))
         }
     };
 
     quote! {
-        ::serde_shape::SerializeFieldShape {
+        __serde_shape::SerializeFieldShape {
             member: #member,
             name: #name,
             wire_shape: #wire_shape,
@@ -639,32 +711,32 @@ fn deserialize_field_shape(field: &ast::Field<'_>) -> TokenStream2 {
     let transparent = field.attrs.transparent();
     let ty = field.ty;
     let wire_shape = if skip {
-        quote!(::serde_shape::FieldWireShape::Omitted)
+        quote!(__serde_shape::FieldWireShape::Omitted)
     } else {
         let value_shape = if let Some(custom_deserializer) = field.attrs.deserialize_with() {
             let detail = option_path(Some(custom_deserializer));
             quote! {
-                ::serde_shape::ShapeRef::Opaque(::serde_shape::OpaqueShape {
+                __serde_shape::ShapeRef::Opaque(__serde_shape::OpaqueShape {
                     type_name: ::core::any::type_name::<#ty>(),
-                    reason: ::serde_shape::OpaqueReason::CustomDeserializer,
+                    reason: __serde_shape::OpaqueReason::CustomDeserializer,
                     detail: #detail,
                 })
             }
         } else {
-            quote!(<#ty as ::serde_shape::DeserializeShape>::deserialize_shape_in(context))
+            quote!(<#ty as __serde_shape::DeserializeShape>::deserialize_shape_in(context))
         };
 
         if transparent {
-            quote!(::serde_shape::FieldWireShape::Inline(#value_shape))
+            quote!(__serde_shape::FieldWireShape::Inline(#value_shape))
         } else if flatten {
-            quote!(::serde_shape::FieldWireShape::Flatten(#value_shape))
+            quote!(__serde_shape::FieldWireShape::Flatten(#value_shape))
         } else {
-            quote!(::serde_shape::FieldWireShape::Value(#value_shape))
+            quote!(__serde_shape::FieldWireShape::Value(#value_shape))
         }
     };
 
     quote! {
-        ::serde_shape::DeserializeFieldShape {
+        __serde_shape::DeserializeFieldShape {
             member: #member,
             name: #name,
             aliases: #aliases,
@@ -678,67 +750,67 @@ fn field_member(member: &Member) -> TokenStream2 {
     match member {
         Member::Named(ident) => {
             let ident = lit(ident.to_string());
-            quote!(::serde_shape::FieldMember::Named(#ident))
+            quote!(__serde_shape::FieldMember::Named(#ident))
         }
         Member::Unnamed(index) => {
             let index = index.index as usize;
-            quote!(::serde_shape::FieldMember::Unnamed(#index))
+            quote!(__serde_shape::FieldMember::Unnamed(#index))
         }
     }
 }
 
 fn fields_style(style: ast::Style) -> TokenStream2 {
     match style {
-        ast::Style::Struct => quote!(::serde_shape::FieldsStyle::Struct),
-        ast::Style::Tuple => quote!(::serde_shape::FieldsStyle::Tuple),
-        ast::Style::Newtype => quote!(::serde_shape::FieldsStyle::Newtype),
-        ast::Style::Unit => quote!(::serde_shape::FieldsStyle::Unit),
+        ast::Style::Struct => quote!(__serde_shape::FieldsStyle::Struct),
+        ast::Style::Tuple => quote!(__serde_shape::FieldsStyle::Tuple),
+        ast::Style::Newtype => quote!(__serde_shape::FieldsStyle::Newtype),
+        ast::Style::Unit => quote!(__serde_shape::FieldsStyle::Unit),
     }
 }
 
 fn tagging(tag: &attr::TagType) -> TokenStream2 {
     match tag {
-        attr::TagType::External => quote!(::serde_shape::Tagging::External),
+        attr::TagType::External => quote!(__serde_shape::Tagging::External),
         attr::TagType::Internal { tag } => {
             let tag = lit(tag);
-            quote!(::serde_shape::Tagging::Internal { tag: #tag })
+            quote!(__serde_shape::Tagging::Internal { tag: #tag })
         }
         attr::TagType::Adjacent { tag, content } => {
             let tag = lit(tag);
             let content = lit(content);
-            quote!(::serde_shape::Tagging::Adjacent {
+            quote!(__serde_shape::Tagging::Adjacent {
                 tag: #tag,
                 content: #content,
             })
         }
-        attr::TagType::None => quote!(::serde_shape::Tagging::Untagged),
+        attr::TagType::None => quote!(__serde_shape::Tagging::Untagged),
     }
 }
 
 fn default_shape(default: &attr::Default) -> TokenStream2 {
     match default {
-        attr::Default::None => quote!(::serde_shape::DefaultShape::None),
-        attr::Default::Default => quote!(::serde_shape::DefaultShape::Default),
+        attr::Default::None => quote!(__serde_shape::DefaultShape::None),
+        attr::Default::Default => quote!(__serde_shape::DefaultShape::Default),
         attr::Default::Path(path) => {
             let path = lit(path.to_token_stream().to_string());
-            quote!(::serde_shape::DefaultShape::Path(#path))
+            quote!(__serde_shape::DefaultShape::Path(#path))
         }
     }
 }
 
 fn opaque_reason(reason: &str) -> TokenStream2 {
     match reason {
-        "FromType" => quote!(::serde_shape::OpaqueReason::FromType),
-        "TryFromType" => quote!(::serde_shape::OpaqueReason::TryFromType),
-        "IntoType" => quote!(::serde_shape::OpaqueReason::IntoType),
-        "Remote" => quote!(::serde_shape::OpaqueReason::Remote),
-        _ => quote!(::serde_shape::OpaqueReason::Unsupported),
+        "FromType" => quote!(__serde_shape::OpaqueReason::FromType),
+        "TryFromType" => quote!(__serde_shape::OpaqueReason::TryFromType),
+        "IntoType" => quote!(__serde_shape::OpaqueReason::IntoType),
+        "Remote" => quote!(__serde_shape::OpaqueReason::Remote),
+        _ => quote!(__serde_shape::OpaqueReason::Unsupported),
     }
 }
 
 fn aliases(aliases: &BTreeSet<String>) -> TokenStream2 {
     let aliases = aliases.iter().map(lit);
-    quote!(::serde_shape::__private::vec![#(#aliases),*])
+    quote!(__serde_shape::__private::vec![#(#aliases),*])
 }
 
 fn option_lit(value: Option<&str>) -> TokenStream2 {
