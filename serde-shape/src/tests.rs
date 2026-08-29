@@ -34,6 +34,10 @@ use core::cmp::Reverse;
 use core::ffi::CStr;
 use core::num::Saturating;
 use core::num::Wrapping;
+use core::ops::Range;
+use core::ops::RangeFrom;
+use core::ops::RangeInclusive;
+use core::ops::RangeTo;
 
 use crate::DeserializeDefinitionKind;
 use crate::DeserializeShape;
@@ -297,6 +301,50 @@ fn maps_duration_as_serde_struct_fields() {
     assert_eq!(
         shape.fields[1].wire_shape,
         FieldWireShape::Value(ShapeRef::U32)
+    );
+}
+
+#[test]
+fn maps_range_struct_shapes() {
+    assert_range_shapes::<Range<u8>>("Range", &["start", "end"]);
+    assert_range_shapes::<RangeFrom<u8>>("RangeFrom", &["start"]);
+    assert_range_shapes::<RangeInclusive<u8>>("RangeInclusive", &["start", "end"]);
+    assert_range_shapes::<RangeTo<u8>>("RangeTo", &["end"]);
+}
+
+fn assert_range_shapes<T>(type_name: &str, field_names: &[&str])
+where
+    T: SerializeShape + DeserializeShape,
+{
+    let serialize = T::serialize_shape();
+    let serialize_definition = serialize.root_definition().unwrap();
+    assert_eq!(serialize_definition.type_name.name, type_name);
+    let SerializeDefinitionKind::Struct(shape) = &serialize_definition.kind else {
+        panic!("range serialization shape should be a struct");
+    };
+    assert_eq!(
+        shape
+            .fields
+            .iter()
+            .map(|field| field.name)
+            .collect::<Vec<_>>(),
+        field_names
+    );
+
+    let deserialize = T::deserialize_shape();
+    let deserialize_definition = deserialize.root_definition().unwrap();
+    assert_eq!(deserialize_definition.type_name.name, type_name);
+    let DeserializeDefinitionKind::Struct(shape) = &deserialize_definition.kind else {
+        panic!("range deserialization shape should be a struct");
+    };
+    assert!(shape.attributes.deny_unknown_fields);
+    assert_eq!(
+        shape
+            .fields
+            .iter()
+            .map(|field| field.name)
+            .collect::<Vec<_>>(),
+        field_names
     );
 }
 

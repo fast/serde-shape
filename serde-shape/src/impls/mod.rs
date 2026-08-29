@@ -16,6 +16,7 @@ mod container;
 mod ffi;
 mod net;
 mod primitive;
+mod range;
 mod result;
 mod time;
 mod tuple;
