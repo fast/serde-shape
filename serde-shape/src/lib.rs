@@ -957,6 +957,19 @@ pub enum FieldWireShape {
     Inline(ShapeRef),
 }
 
+impl FieldWireShape {
+    /// Return the contributed value shape, or `None` when the field is omitted.
+    ///
+    /// This intentionally ignores whether the value is regular, flattened, or inline. Match on
+    /// the enum directly when the field's wire position matters.
+    pub fn shape(&self) -> Option<&ShapeRef> {
+        match self {
+            Self::Value(shape) | Self::Flatten(shape) | Self::Inline(shape) => Some(shape),
+            Self::Omitted => None,
+        }
+    }
+}
+
 /// Variant-level serialization metadata.
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct SerializeVariantShape {

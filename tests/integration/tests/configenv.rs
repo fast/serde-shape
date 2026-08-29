@@ -101,13 +101,7 @@ fn definition_for_wire_shape<'a>(
     graph: &'a DeserializeShapeGraph,
     wire_shape: &FieldWireShape,
 ) -> &'a DeserializeDefinitionShape {
-    let shape = match wire_shape {
-        FieldWireShape::Value(shape)
-        | FieldWireShape::Flatten(shape)
-        | FieldWireShape::Inline(shape) => shape,
-        FieldWireShape::Omitted => panic!("field should be present"),
-        _ => panic!("unknown field wire position"),
-    };
+    let shape = wire_shape.shape().expect("field should be present");
     let ShapeRef::Definition(id) = shape else {
         panic!("field should reference a named definition");
     };
