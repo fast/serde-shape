@@ -141,7 +141,9 @@ Shape graphs are an inspection API, not a stable interchange format. `ShapeId` v
 
 Definitions may be recursive. A `ShapeRef::Definition` is a graph edge, so walkers must detect repeated `ShapeId` values instead of expanding definitions indefinitely.
 
-Types that branch on `Serializer::is_human_readable()` or `Deserializer::is_human_readable()` may expose a union of their known representations. The graph describes the possible Serde calls across formats; it is not specialized for one serializer format.
+Types that branch on `Serializer::is_human_readable()` or `Deserializer::is_human_readable()` may expose a union of their known representations. The graph describes the possible semantic shapes across formats; it is not specialized for one serializer format.
+
+`ShapeRef` is a normalized semantic model, not a trace of exact `Serializer` or `Deserializer` method calls. For example, it preserves fixed arrays as `ShapeRef::Array` and pointer-width integers as `Isize` or `Usize`, even though Serde formats receive those values through tuple and fixed-width integer APIs. Use a recording serializer or deserializer when exact method dispatch is the contract being tested.
 
 ## Feature flags
 
@@ -152,7 +154,7 @@ Types that branch on `Serializer::is_human_readable()` or `Deserializer::is_huma
 
 ## Built-in shapes
 
-The built-in implementations follow Serde's own data-model calls in each direction.
+The built-in implementations follow Serde's semantic representations in each direction, including known human-readable and compact alternatives.
 
 | Group | Supported types |
 | --- | --- |

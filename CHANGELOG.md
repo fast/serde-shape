@@ -40,6 +40,7 @@ All notable changes to this project will be documented in this file.
 
 ### Improvements
 
+* Clarify that shape graphs are normalized semantic models rather than exact traces of Serde serializer or deserializer method dispatch.
 * Add `FieldWireShape::shape()` so graph walkers can follow any present field without repeating a match over every wire position.
 * Replace the integration test's embedded TOML/environment editor with a focused consumer-boundary test of the shape metadata. Configuration policy remains downstream rather than becoming a second implementation maintained by this crate.
 * Align the derive macro with Serde's current `syn` 3 parser stack so applications deriving both Serde and shape metadata do not compile two `syn` major versions.

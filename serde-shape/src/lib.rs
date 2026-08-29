@@ -136,8 +136,12 @@
 //! following definition references.
 //!
 //! Types that branch on Serde's human-readable mode may expose a union of their known
-//! representations. Shape graphs describe possible Serde data-model calls across formats rather
-//! than specializing themselves for one serializer.
+//! representations. Shape graphs describe possible semantic shapes across formats rather than
+//! specializing themselves for one serializer.
+//!
+//! [`ShapeRef`] is not a trace of exact serializer or deserializer method calls. It deliberately
+//! preserves useful Rust distinctions such as fixed arrays and pointer-width integers even when
+//! Serde dispatches them through tuple or fixed-width integer methods.
 //!
 //! # Derive behavior
 //!
