@@ -13,6 +13,7 @@
 // limitations under the License.
 
 mod container;
+mod ffi;
 mod net;
 mod primitive;
 mod result;

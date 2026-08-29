@@ -598,7 +598,7 @@ pub enum ShapeRef {
     F64,
     /// UTF-8 string shape.
     String,
-    /// Byte buffer shape.
+    /// Serde byte-buffer data-model shape.
     Bytes,
     /// Optional value shape.
     Option(Box<ShapeRef>),

@@ -19,6 +19,7 @@ use alloc::collections::BTreeMap;
 use alloc::collections::BinaryHeap;
 use alloc::collections::LinkedList;
 use alloc::collections::VecDeque;
+use alloc::ffi::CString;
 use alloc::string::String;
 use alloc::vec;
 use alloc::vec::Vec;
@@ -26,6 +27,7 @@ use core::borrow::Borrow;
 use core::cell::Cell;
 use core::cell::RefCell;
 use core::cmp::Reverse;
+use core::ffi::CStr;
 use core::num::Wrapping;
 
 use crate::DeserializeDefinitionKind;
@@ -350,6 +352,18 @@ fn maps_common_core_and_alloc_shapes() {
     assert_eq!(
         DeserializeShapeGraph::for_type::<BinaryHeap<u16>>().root(),
         &ShapeRef::Seq(Box::new(ShapeRef::U16))
+    );
+    assert_eq!(
+        SerializeShapeGraph::for_type::<CString>().root(),
+        &ShapeRef::Bytes
+    );
+    assert_eq!(
+        DeserializeShapeGraph::for_type::<CString>().root(),
+        &ShapeRef::Bytes
+    );
+    assert_eq!(
+        <Box<CStr> as DeserializeShape>::deserialize_shape().root(),
+        &ShapeRef::Bytes
     );
 }
 
