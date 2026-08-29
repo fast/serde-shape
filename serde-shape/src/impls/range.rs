@@ -13,7 +13,6 @@
 // limitations under the License.
 
 use alloc::vec;
-use core::any::type_name;
 use core::ops::Range;
 use core::ops::RangeFrom;
 use core::ops::RangeInclusive;
@@ -26,7 +25,6 @@ use crate::DeserializeFieldShape;
 use crate::DeserializeShape;
 use crate::DeserializeShapeContext;
 use crate::DeserializeStructShape;
-use crate::DeserializeTypeName;
 use crate::FieldMember;
 use crate::FieldWireShape;
 use crate::FieldsStyle;
@@ -36,8 +34,8 @@ use crate::SerializeFieldShape;
 use crate::SerializeShape;
 use crate::SerializeShapeContext;
 use crate::SerializeStructShape;
-use crate::SerializeTypeName;
 use crate::ShapeRef;
+use crate::TypeName;
 
 macro_rules! range_shape {
     ($($range:ident { $($field:ident),+ $(,)? })+) => {
@@ -48,10 +46,7 @@ macro_rules! range_shape {
             {
                 fn serialize_shape_in(context: &mut SerializeShapeContext) -> ShapeRef {
                     context.define_named_type(
-                        SerializeTypeName {
-                            rust_name: type_name::<Self>(),
-                            name: stringify!($range),
-                        },
+                        TypeName::of::<Self>(stringify!($range)),
                         |context| {
                             SerializeDefinitionKind::Struct(SerializeStructShape {
                                 style: FieldsStyle::Struct,
@@ -79,10 +74,7 @@ macro_rules! range_shape {
             {
                 fn deserialize_shape_in(context: &mut DeserializeShapeContext) -> ShapeRef {
                     context.define_named_type(
-                        DeserializeTypeName {
-                            rust_name: type_name::<Self>(),
-                            name: stringify!($range),
-                        },
+                        TypeName::of::<Self>(stringify!($range)),
                         |context| {
                             DeserializeDefinitionKind::Struct(DeserializeStructShape {
                                 style: FieldsStyle::Struct,

@@ -44,7 +44,6 @@ use crate::DeserializeDefinitionKind;
 use crate::DeserializeShape;
 use crate::DeserializeShapeContext;
 use crate::DeserializeShapeGraph;
-use crate::DeserializeTypeName;
 use crate::FieldWireShape;
 use crate::FieldsStyle;
 use crate::OpaqueReason;
@@ -53,9 +52,9 @@ use crate::SerializeDefinitionKind;
 use crate::SerializeShape;
 use crate::SerializeShapeContext;
 use crate::SerializeShapeGraph;
-use crate::SerializeTypeName;
 use crate::ShapeRef;
 use crate::Tagging;
+use crate::TypeName;
 
 struct BorrowedShape;
 
@@ -134,7 +133,7 @@ fn normalizes_union_shapes() {
 fn keeps_distinct_definition_builders_with_the_same_type_name() {
     let mut serialize = SerializeShapeContext::default();
     let first = serialize.define_named_type(
-        SerializeTypeName {
+        TypeName {
             rust_name: "duplicate::Type",
             name: "First",
         },
@@ -147,7 +146,7 @@ fn keeps_distinct_definition_builders_with_the_same_type_name() {
         },
     );
     let second = serialize.define_named_type(
-        SerializeTypeName {
+        TypeName {
             rust_name: "duplicate::Type",
             name: "Second",
         },
@@ -165,7 +164,7 @@ fn keeps_distinct_definition_builders_with_the_same_type_name() {
 
     let mut deserialize = DeserializeShapeContext::default();
     let first = deserialize.define_named_type(
-        DeserializeTypeName {
+        TypeName {
             rust_name: "duplicate::Type",
             name: "First",
         },
@@ -178,7 +177,7 @@ fn keeps_distinct_definition_builders_with_the_same_type_name() {
         },
     );
     let second = deserialize.define_named_type(
-        DeserializeTypeName {
+        TypeName {
             rust_name: "duplicate::Type",
             name: "Second",
         },

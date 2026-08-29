@@ -427,7 +427,7 @@ impl SerializeShapeContext {
     ///
     /// The concrete builder type and diagnostic Rust name form the graph-local identity. Call this
     /// method from one stable closure expression for every occurrence of the same named type.
-    pub fn define_named_type<F>(&mut self, type_name: SerializeTypeName, build: F) -> ShapeRef
+    pub fn define_named_type<F>(&mut self, type_name: TypeName, build: F) -> ShapeRef
     where
         F: FnOnce(&mut Self) -> SerializeDefinitionKind + 'static,
     {
@@ -440,7 +440,7 @@ impl SerializeShapeContext {
     /// definition.
     pub fn define_named_type_with_description<F>(
         &mut self,
-        type_name: SerializeTypeName,
+        type_name: TypeName,
         description: Option<&'static str>,
         build: F,
     ) -> ShapeRef
@@ -486,7 +486,7 @@ impl DeserializeShapeContext {
     ///
     /// The concrete builder type and diagnostic Rust name form the graph-local identity. Call this
     /// method from one stable closure expression for every occurrence of the same named type.
-    pub fn define_named_type<F>(&mut self, type_name: DeserializeTypeName, build: F) -> ShapeRef
+    pub fn define_named_type<F>(&mut self, type_name: TypeName, build: F) -> ShapeRef
     where
         F: FnOnce(&mut Self) -> DeserializeDefinitionKind + 'static,
     {
@@ -499,7 +499,7 @@ impl DeserializeShapeContext {
     /// definition.
     pub fn define_named_type_with_description<F>(
         &mut self,
-        type_name: DeserializeTypeName,
+        type_name: TypeName,
         description: Option<&'static str>,
         build: F,
     ) -> ShapeRef
@@ -544,22 +544,26 @@ impl ShapeId {
     }
 }
 
-/// Names associated with a Rust type and its Serde serializer.
+/// Names associated with a Rust type and one direction of its Serde representation.
 #[derive(Clone, Debug, Eq, PartialEq)]
-pub struct SerializeTypeName {
+pub struct TypeName {
     /// The fully qualified Rust type name, including generic arguments.
     pub rust_name: &'static str,
-    /// The Serde serialize name after container rename rules are applied.
+    /// The direction-specific Serde name after container rename rules are applied.
     pub name: &'static str,
 }
 
-/// Names associated with a Rust type and its Serde deserializer.
-#[derive(Clone, Debug, Eq, PartialEq)]
-pub struct DeserializeTypeName {
-    /// The fully qualified Rust type name, including generic arguments.
-    pub rust_name: &'static str,
-    /// The Serde deserialize name after container rename rules are applied.
-    pub name: &'static str,
+impl TypeName {
+    /// Build names for `T` and one direction-specific Serde container name.
+    pub fn of<T>(name: &'static str) -> Self
+    where
+        T: ?Sized,
+    {
+        Self {
+            rust_name: core::any::type_name::<T>(),
+            name,
+        }
+    }
 }
 
 /// A reference to a shape node.
@@ -751,7 +755,7 @@ pub struct SerializeDefinitionShape {
     /// The stable id of this definition inside its graph.
     pub id: ShapeId,
     /// The Rust and Serde names for this definition.
-    pub type_name: SerializeTypeName,
+    pub type_name: TypeName,
     /// User-facing documentation for this definition, if available.
     pub description: Option<&'static str>,
     /// The definition body.
@@ -764,7 +768,7 @@ pub struct DeserializeDefinitionShape {
     /// The stable id of this definition inside its graph.
     pub id: ShapeId,
     /// The Rust and Serde names for this definition.
-    pub type_name: DeserializeTypeName,
+    pub type_name: TypeName,
     /// User-facing documentation for this definition, if available.
     pub description: Option<&'static str>,
     /// The definition body.

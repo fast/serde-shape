@@ -535,10 +535,7 @@ fn serialize_shape_body(
 
     Ok(quote! {
         context.define_named_type_with_description(
-            __serde_shape::SerializeTypeName {
-                rust_name: ::core::any::type_name::<Self>(),
-                name: #name,
-            },
+            __serde_shape::TypeName::of::<Self>(#name),
             #description,
             |context| {
                 #kind
@@ -569,10 +566,7 @@ fn deserialize_shape_body(
 
     Ok(quote! {
         context.define_named_type_with_description(
-            __serde_shape::DeserializeTypeName {
-                rust_name: ::core::any::type_name::<Self>(),
-                name: #name,
-            },
+            __serde_shape::TypeName::of::<Self>(#name),
             #description,
             |context| {
                 #kind

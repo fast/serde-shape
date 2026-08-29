@@ -14,7 +14,6 @@
 
 use alloc::boxed::Box;
 use alloc::vec;
-use core::any::type_name;
 use core::net::IpAddr;
 use core::net::Ipv4Addr;
 use core::net::Ipv6Addr;
@@ -29,7 +28,6 @@ use crate::DeserializeEnumShape;
 use crate::DeserializeFieldShape;
 use crate::DeserializeShape;
 use crate::DeserializeShapeContext;
-use crate::DeserializeTypeName;
 use crate::DeserializeVariantContent;
 use crate::DeserializeVariantShape;
 use crate::FieldMember;
@@ -41,11 +39,11 @@ use crate::SerializeEnumShape;
 use crate::SerializeFieldShape;
 use crate::SerializeShape;
 use crate::SerializeShapeContext;
-use crate::SerializeTypeName;
 use crate::SerializeVariantContent;
 use crate::SerializeVariantShape;
 use crate::ShapeRef;
 use crate::Tagging;
+use crate::TypeName;
 
 macro_rules! union_shape {
     ($ty:ty => $binary:expr) => {
@@ -70,88 +68,64 @@ union_shape!(SocketAddrV6 => socket_v6_binary_shape());
 
 impl SerializeShape for IpAddr {
     fn serialize_shape_in(context: &mut SerializeShapeContext) -> ShapeRef {
-        let binary = context.define_named_type(
-            SerializeTypeName {
-                rust_name: type_name::<Self>(),
-                name: "IpAddr",
-            },
-            |_| {
-                SerializeDefinitionKind::Enum(SerializeEnumShape {
-                    repr: Tagging::External,
-                    variants: vec![
-                        serialize_newtype_variant("V4", ipv4_binary_shape()),
-                        serialize_newtype_variant("V6", ipv6_binary_shape()),
-                    ],
-                    attributes: serialize_enum_attributes(),
-                })
-            },
-        );
+        let binary = context.define_named_type(TypeName::of::<Self>("IpAddr"), |_| {
+            SerializeDefinitionKind::Enum(SerializeEnumShape {
+                repr: Tagging::External,
+                variants: vec![
+                    serialize_newtype_variant("V4", ipv4_binary_shape()),
+                    serialize_newtype_variant("V6", ipv6_binary_shape()),
+                ],
+                attributes: serialize_enum_attributes(),
+            })
+        });
         ShapeRef::union([ShapeRef::String, binary])
     }
 }
 
 impl DeserializeShape for IpAddr {
     fn deserialize_shape_in(context: &mut DeserializeShapeContext) -> ShapeRef {
-        let binary = context.define_named_type(
-            DeserializeTypeName {
-                rust_name: type_name::<Self>(),
-                name: "IpAddr",
-            },
-            |_| {
-                DeserializeDefinitionKind::Enum(DeserializeEnumShape {
-                    repr: Tagging::External,
-                    variants: vec![
-                        deserialize_newtype_variant("V4", ipv4_binary_shape()),
-                        deserialize_newtype_variant("V6", ipv6_binary_shape()),
-                    ],
-                    attributes: deserialize_enum_attributes(),
-                })
-            },
-        );
+        let binary = context.define_named_type(TypeName::of::<Self>("IpAddr"), |_| {
+            DeserializeDefinitionKind::Enum(DeserializeEnumShape {
+                repr: Tagging::External,
+                variants: vec![
+                    deserialize_newtype_variant("V4", ipv4_binary_shape()),
+                    deserialize_newtype_variant("V6", ipv6_binary_shape()),
+                ],
+                attributes: deserialize_enum_attributes(),
+            })
+        });
         ShapeRef::union([ShapeRef::String, binary])
     }
 }
 
 impl SerializeShape for SocketAddr {
     fn serialize_shape_in(context: &mut SerializeShapeContext) -> ShapeRef {
-        let binary = context.define_named_type(
-            SerializeTypeName {
-                rust_name: type_name::<Self>(),
-                name: "SocketAddr",
-            },
-            |_| {
-                SerializeDefinitionKind::Enum(SerializeEnumShape {
-                    repr: Tagging::External,
-                    variants: vec![
-                        serialize_newtype_variant("V4", socket_v4_binary_shape()),
-                        serialize_newtype_variant("V6", socket_v6_binary_shape()),
-                    ],
-                    attributes: serialize_enum_attributes(),
-                })
-            },
-        );
+        let binary = context.define_named_type(TypeName::of::<Self>("SocketAddr"), |_| {
+            SerializeDefinitionKind::Enum(SerializeEnumShape {
+                repr: Tagging::External,
+                variants: vec![
+                    serialize_newtype_variant("V4", socket_v4_binary_shape()),
+                    serialize_newtype_variant("V6", socket_v6_binary_shape()),
+                ],
+                attributes: serialize_enum_attributes(),
+            })
+        });
         ShapeRef::union([ShapeRef::String, binary])
     }
 }
 
 impl DeserializeShape for SocketAddr {
     fn deserialize_shape_in(context: &mut DeserializeShapeContext) -> ShapeRef {
-        let binary = context.define_named_type(
-            DeserializeTypeName {
-                rust_name: type_name::<Self>(),
-                name: "SocketAddr",
-            },
-            |_| {
-                DeserializeDefinitionKind::Enum(DeserializeEnumShape {
-                    repr: Tagging::External,
-                    variants: vec![
-                        deserialize_newtype_variant("V4", socket_v4_binary_shape()),
-                        deserialize_newtype_variant("V6", socket_v6_binary_shape()),
-                    ],
-                    attributes: deserialize_enum_attributes(),
-                })
-            },
-        );
+        let binary = context.define_named_type(TypeName::of::<Self>("SocketAddr"), |_| {
+            DeserializeDefinitionKind::Enum(DeserializeEnumShape {
+                repr: Tagging::External,
+                variants: vec![
+                    deserialize_newtype_variant("V4", socket_v4_binary_shape()),
+                    deserialize_newtype_variant("V6", socket_v6_binary_shape()),
+                ],
+                attributes: deserialize_enum_attributes(),
+            })
+        });
         ShapeRef::union([ShapeRef::String, binary])
     }
 }

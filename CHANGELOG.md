@@ -6,6 +6,7 @@ All notable changes to this project will be documented in this file.
 
 ### Breaking changes
 
+* Replace the identical `SerializeTypeName` and `DeserializeTypeName` structures with one direction-neutral `TypeName`. Manual named definitions can use `TypeName::of::<T>(serde_name)` instead of repeating `core::any::type_name::<T>()`.
 * Remove the redundant `transparent` field from container attributes. Transparent containers remain observable through their field's `FieldWireShape::Inline` position.
 * Remove the blanket `DeserializeShape` implementations for `&T` and `&mut T`, which claimed support that Serde does not provide. Borrowed `&str`, `&[u8]`, and `&Path` inputs retain explicit implementations; custom borrowed types can now provide their own local implementation.
 * Remove the redundant `tagging` and `has_flatten` fields from container attributes. Read enum tagging from `SerializeEnumShape::repr` or `DeserializeEnumShape::repr`, and identify flattened fields through `FieldWireShape::Flatten`.

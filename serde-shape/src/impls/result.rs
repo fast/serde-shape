@@ -13,7 +13,6 @@
 // limitations under the License.
 
 use alloc::vec;
-use core::any::type_name;
 
 use crate::DefaultShape;
 use crate::DeserializeContainerAttributes;
@@ -22,7 +21,6 @@ use crate::DeserializeEnumShape;
 use crate::DeserializeFieldShape;
 use crate::DeserializeShape;
 use crate::DeserializeShapeContext;
-use crate::DeserializeTypeName;
 use crate::DeserializeVariantContent;
 use crate::DeserializeVariantShape;
 use crate::FieldMember;
@@ -34,11 +32,11 @@ use crate::SerializeEnumShape;
 use crate::SerializeFieldShape;
 use crate::SerializeShape;
 use crate::SerializeShapeContext;
-use crate::SerializeTypeName;
 use crate::SerializeVariantContent;
 use crate::SerializeVariantShape;
 use crate::ShapeRef;
 use crate::Tagging;
+use crate::TypeName;
 
 impl<T, E> SerializeShape for Result<T, E>
 where
@@ -46,22 +44,16 @@ where
     E: SerializeShape,
 {
     fn serialize_shape_in(context: &mut SerializeShapeContext) -> ShapeRef {
-        context.define_named_type(
-            SerializeTypeName {
-                rust_name: type_name::<Self>(),
-                name: "Result",
-            },
-            |context| {
-                SerializeDefinitionKind::Enum(SerializeEnumShape {
-                    repr: Tagging::External,
-                    variants: vec![
-                        serialize_result_variant("Ok", T::serialize_shape_in(context)),
-                        serialize_result_variant("Err", E::serialize_shape_in(context)),
-                    ],
-                    attributes: SerializeContainerAttributes::default(),
-                })
-            },
-        )
+        context.define_named_type(TypeName::of::<Self>("Result"), |context| {
+            SerializeDefinitionKind::Enum(SerializeEnumShape {
+                repr: Tagging::External,
+                variants: vec![
+                    serialize_result_variant("Ok", T::serialize_shape_in(context)),
+                    serialize_result_variant("Err", E::serialize_shape_in(context)),
+                ],
+                attributes: SerializeContainerAttributes::default(),
+            })
+        })
     }
 }
 
@@ -71,22 +63,16 @@ where
     E: DeserializeShape,
 {
     fn deserialize_shape_in(context: &mut DeserializeShapeContext) -> ShapeRef {
-        context.define_named_type(
-            DeserializeTypeName {
-                rust_name: type_name::<Self>(),
-                name: "Result",
-            },
-            |context| {
-                DeserializeDefinitionKind::Enum(DeserializeEnumShape {
-                    repr: Tagging::External,
-                    variants: vec![
-                        deserialize_result_variant("Ok", T::deserialize_shape_in(context)),
-                        deserialize_result_variant("Err", E::deserialize_shape_in(context)),
-                    ],
-                    attributes: DeserializeContainerAttributes::default(),
-                })
-            },
-        )
+        context.define_named_type(TypeName::of::<Self>("Result"), |context| {
+            DeserializeDefinitionKind::Enum(DeserializeEnumShape {
+                repr: Tagging::External,
+                variants: vec![
+                    deserialize_result_variant("Ok", T::deserialize_shape_in(context)),
+                    deserialize_result_variant("Err", E::deserialize_shape_in(context)),
+                ],
+                attributes: DeserializeContainerAttributes::default(),
+            })
+        })
     }
 }
 
