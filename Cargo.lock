@@ -314,7 +314,6 @@ dependencies = [
 name = "serde-shape-test-derive"
 version = "0.0.0"
 dependencies = [
- "insta",
  "serde",
  "serde-shape",
  "serde_json",
@@ -324,7 +323,6 @@ dependencies = [
 name = "serde-shape-test-integration"
 version = "0.0.0"
 dependencies = [
- "insta",
  "serde",
  "serde-shape",
  "serde_test",

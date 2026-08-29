@@ -14,6 +14,7 @@
 
 #![allow(dead_code)]
 
+use renamed_shape::DefaultShape;
 use renamed_shape::DeserializeDefinitionKind;
 use renamed_shape::DeserializeShape;
 use renamed_shape::DeserializeVariantContent;
@@ -24,6 +25,7 @@ use renamed_shape::SerializeDefinitionKind;
 use renamed_shape::SerializeShape;
 use renamed_shape::SerializeVariantContent;
 use renamed_shape::ShapeRef;
+use renamed_shape::Tagging;
 
 #[derive(DeserializeShape)]
 #[serde(
@@ -171,38 +173,102 @@ fn default_retries() -> u8 {
 }
 
 #[test]
-fn snapshots_struct_shape_from_container_and_field_attrs() {
-    insta::assert_debug_snapshot!(Config::deserialize_shape());
+fn exposes_deserialize_container_attributes() {
+    let graph = Config::deserialize_shape();
+    let ShapeRef::Definition(id) = graph.root else {
+        panic!("root shape should be a definition");
+    };
+    let definition = graph.definition(id).expect("definition exists");
+    let DeserializeDefinitionKind::Struct(shape) = &definition.kind else {
+        panic!("definition should be a struct");
+    };
+
+    assert_eq!(shape.attributes.default, DefaultShape::Default);
+    assert!(shape.attributes.deny_unknown_fields);
+    assert_eq!(shape.attributes.expecting, Some("config object"));
+
+    let [http_port, api_url, retries, storage, skipped, secret] = shape.fields.as_slice() else {
+        panic!("config should expose all fields");
+    };
+    assert_eq!(http_port.name, "http-port");
+    assert_eq!(api_url.aliases, ["api-url", "endpoint"]);
+    assert_eq!(retries.default, DefaultShape::Path("default_retries"));
+    assert!(matches!(storage.wire_shape, FieldWireShape::Flatten(_)));
+    assert_eq!(skipped.wire_shape, FieldWireShape::Omitted);
+    let FieldWireShape::Value(ShapeRef::Opaque(opaque)) = &secret.wire_shape else {
+        panic!("custom deserializer should be opaque");
+    };
+    assert_eq!(opaque.reason, OpaqueReason::CustomDeserializer);
 }
 
 #[test]
-fn snapshots_internally_tagged_enum_shape_from_variant_attrs() {
-    insta::assert_debug_snapshot!(Storage::deserialize_shape());
+fn exposes_deserialize_enum_attributes() {
+    let graph = Storage::deserialize_shape();
+    let ShapeRef::Definition(id) = graph.root else {
+        panic!("root shape should be a definition");
+    };
+    let definition = graph.definition(id).expect("definition exists");
+    let DeserializeDefinitionKind::Enum(shape) = &definition.kind else {
+        panic!("definition should be an enum");
+    };
+
+    assert_eq!(shape.repr, Tagging::Internal { tag: "type" });
+    assert!(shape.attributes.non_exhaustive);
+    assert_eq!(shape.variants[0].aliases, ["s3", "s3-compatible"]);
+    assert!(shape.variants[2].other);
 }
 
 #[test]
-fn snapshots_transparent_struct_shape() {
-    insta::assert_debug_snapshot!(UserId::deserialize_shape());
+fn exposes_transparent_and_conversion_boundaries() {
+    let transparent = UserId::deserialize_shape();
+    let ShapeRef::Definition(id) = transparent.root else {
+        panic!("transparent root should be a definition");
+    };
+    let DeserializeDefinitionKind::Struct(shape) = &transparent.definition(id).unwrap().kind else {
+        panic!("transparent definition should be a struct");
+    };
+    assert!(shape.attributes.transparent);
+    assert_eq!(
+        shape.fields[0].wire_shape,
+        FieldWireShape::Inline(ShapeRef::U64)
+    );
+
+    let converted = FromString::deserialize_shape();
+    let ShapeRef::Definition(id) = converted.root else {
+        panic!("converted root should be a definition");
+    };
+    let DeserializeDefinitionKind::Opaque(opaque) = &converted.definition(id).unwrap().kind else {
+        panic!("converted definition should be opaque");
+    };
+    assert_eq!(opaque.reason, OpaqueReason::FromType);
+    assert_eq!(opaque.detail, Some("String"));
 }
 
 #[test]
-fn snapshots_conversion_based_opaque_shape() {
-    insta::assert_debug_snapshot!(FromString::deserialize_shape());
+fn omits_shape_bounds_for_skipped_and_marker_fields() {
+    assert_eq!(
+        SkipsGeneric::<NotShape>::deserialize_shape()
+            .definitions
+            .len(),
+        1
+    );
+    assert_eq!(Marker::<NotShape>::deserialize_shape().definitions.len(), 1);
 }
 
 #[test]
-fn snapshots_skipped_generic_field_without_shape_bound() {
-    insta::assert_debug_snapshot!(SkipsGeneric::<NotShape>::deserialize_shape());
-}
-
-#[test]
-fn snapshots_phantom_data_generic_field_without_shape_bound() {
-    insta::assert_debug_snapshot!(Marker::<NotShape>::deserialize_shape());
-}
-
-#[test]
-fn snapshots_recursive_type_reusing_the_same_definition() {
-    insta::assert_debug_snapshot!(Recursive::deserialize_shape());
+fn reuses_recursive_definition() {
+    let graph = Recursive::deserialize_shape();
+    let ShapeRef::Definition(id) = graph.root else {
+        panic!("recursive root should be a definition");
+    };
+    let DeserializeDefinitionKind::Struct(shape) = &graph.definition(id).unwrap().kind else {
+        panic!("recursive definition should be a struct");
+    };
+    assert_eq!(graph.definitions.len(), 1);
+    assert_eq!(
+        shape.fields[0].wire_shape,
+        FieldWireShape::Value(ShapeRef::Option(Box::new(ShapeRef::Definition(id))))
+    );
 }
 
 #[test]
