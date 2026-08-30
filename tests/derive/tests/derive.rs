@@ -172,18 +172,14 @@ struct Marker<T> {
     marker: core::marker::PhantomData<T>,
 }
 
-#[derive(DeserializeShape)]
+#[derive(serde::Deserialize, DeserializeShape)]
 struct BorrowedCow<'a> {
     #[serde(borrow)]
     text: Cow<'a, str>,
     #[serde(borrow)]
     bytes: Cow<'a, [u8]>,
-}
-
-#[derive(DeserializeShape)]
-struct CustomCowNamedHelper {
-    #[serde(deserialize_with = "_serde::custom::de::borrow_cow_str")]
-    value: NotShape,
+    #[serde(borrow, deserialize_with = "deserialize_borrowed_str")]
+    custom: Cow<'a, str>,
 }
 
 #[derive(DeserializeShape)]
@@ -294,6 +290,13 @@ fn serialize_u8_shape(_context: &mut SerializeShapeContext) -> ShapeRef {
 
 fn deserialize_bool_shape(_context: &mut DeserializeShapeContext) -> ShapeRef {
     ShapeRef::Bool
+}
+
+fn deserialize_borrowed_str<'de, D>(deserializer: D) -> Result<Cow<'de, str>, D::Error>
+where
+    D: serde::Deserializer<'de>,
+{
+    <&'de str as serde::Deserialize>::deserialize(deserializer).map(Cow::Borrowed)
 }
 
 fn default_retries() -> u8 {
@@ -565,26 +568,17 @@ fn preserves_serde_borrowed_cow_shapes() {
     let DeserializeDefinitionKind::Struct(shape) = &definition.kind else {
         panic!("definition should be a struct");
     };
-    let [text, bytes] = shape.fields.as_slice() else {
+    let [text, bytes, custom] = shape.fields.as_slice() else {
         panic!("borrowed Cow fields should be reflected");
     };
 
     assert_eq!(text.wire_shape, FieldWireShape::Value(ShapeRef::String));
     assert_eq!(bytes.wire_shape, FieldWireShape::Value(ShapeRef::Bytes));
-}
-
-#[test]
-fn keeps_custom_cow_named_helpers_opaque() {
-    let definition = deserialize_root_definition::<CustomCowNamedHelper>();
-    let DeserializeDefinitionKind::Struct(shape) = &definition.kind else {
-        panic!("definition should be a struct");
+    let FieldWireShape::Value(ShapeRef::Opaque(opaque)) = &custom.wire_shape else {
+        panic!("explicit custom deserializer should remain opaque");
     };
-    let FieldWireShape::Value(ShapeRef::Opaque(opaque)) = &shape.fields[0].wire_shape else {
-        panic!("custom helper should remain opaque");
-    };
-
     assert_eq!(opaque.reason, OpaqueReason::CustomDeserializer);
-    assert_eq!(opaque.detail, Some("_serde::custom::de::borrow_cow_str"));
+    assert_eq!(opaque.detail, Some("deserialize_borrowed_str"));
 }
 
 #[test]

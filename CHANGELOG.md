@@ -38,9 +38,8 @@ All notable changes to this project will be documented in this file.
 
 ### Bug fixes
 
-* Recognize only Serde's private borrowing helpers when recovering `Cow<str>` and `Cow<[u8]>` shapes, leaving similarly named user deserializers opaque.
 * Match Serde's deserialization bounds for tree and hash collections so a shape implementation is exposed only when the corresponding collection can actually deserialize.
-* Preserve the known string and byte shapes of `#[serde(borrow)]` fields using `Cow<str>` or `Cow<[u8]>` instead of treating Serde's generated borrowing helpers as custom opaque deserializers.
+* Preserve the known string and byte shapes of `#[serde(borrow)]` fields using `Cow<str>` or `Cow<[u8]>` from their source-level metadata, while leaving explicit custom deserializers opaque.
 * Distinguish borrowed byte input from owned boxed slices: `&[u8]` reflects bytes while `Box<[u8]>` reflects a sequence, matching Serde.
 * Match Serde's serialization bounds for `BinaryHeap`, `RefCell`, `Mutex`, and `RwLock`, including unsized wrapper contents.
 * Reflect the proxy type used by Serde `from`, `try_from`, and `into` container attributes.
