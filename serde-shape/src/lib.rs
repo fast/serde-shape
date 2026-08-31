@@ -129,9 +129,10 @@
 //! compound values are represented directly as [`ShapeRef`] values. Structs and enums are
 //! stored as named definitions and referenced by [`ShapeId`].
 //!
-//! Definition IDs are local to one graph. Use [`SerializeShapeGraph::definition`] or
-//! [`DeserializeShapeGraph::definition`] to resolve them. Definition ordering and debug output
-//! are not stable persistence formats.
+//! Definition IDs are local to one graph. They contain an index but no graph identity, so callers
+//! must keep each ID paired with the graph that produced it. Use
+//! [`SerializeShapeGraph::definition`] or [`DeserializeShapeGraph::definition`] to resolve them.
+//! Definition ordering and debug output are not stable persistence formats.
 //! Definitions may be recursive, so graph walkers must detect repeated [`ShapeId`] values before
 //! following definition references.
 //!
@@ -370,14 +371,17 @@ impl SerializeShapeGraph {
         &self.definitions
     }
 
-    /// Return a definition by id.
+    /// Return a definition at this id's graph-local index.
+    ///
+    /// A [`ShapeId`] does not encode graph ownership. The caller must pass an id produced by this
+    /// graph; an id from another graph with an in-bounds index cannot be distinguished here.
     pub fn definition(&self, id: ShapeId) -> Option<&SerializeDefinitionShape> {
         self.definitions.get(id.0)
     }
 
     /// Return the definition directly referenced by `shape`.
     ///
-    /// Returns `None` for non-definition shapes and for ids that do not belong to this graph.
+    /// Returns `None` for non-definition shapes and out-of-bounds definition indexes.
     pub fn definition_for(&self, shape: &ShapeRef) -> Option<&SerializeDefinitionShape> {
         let ShapeRef::Definition(id) = shape else {
             return None;
@@ -451,14 +455,17 @@ impl DeserializeShapeGraph {
         &self.definitions
     }
 
-    /// Return a definition by id.
+    /// Return a definition at this id's graph-local index.
+    ///
+    /// A [`ShapeId`] does not encode graph ownership. The caller must pass an id produced by this
+    /// graph; an id from another graph with an in-bounds index cannot be distinguished here.
     pub fn definition(&self, id: ShapeId) -> Option<&DeserializeDefinitionShape> {
         self.definitions.get(id.0)
     }
 
     /// Return the definition directly referenced by `shape`.
     ///
-    /// Returns `None` for non-definition shapes and for ids that do not belong to this graph.
+    /// Returns `None` for non-definition shapes and out-of-bounds definition indexes.
     pub fn definition_for(&self, shape: &ShapeRef) -> Option<&DeserializeDefinitionShape> {
         let ShapeRef::Definition(id) = shape else {
             return None;
@@ -585,7 +592,10 @@ impl DeserializeShapeContext {
     }
 }
 
-/// Identifies a named shape definition.
+/// Identifies a named shape definition by its graph-local index.
+///
+/// An id does not carry the identity of its originating graph. Keep it paired with the graph that
+/// produced it.
 #[derive(Clone, Copy, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
 pub struct ShapeId(usize);
 

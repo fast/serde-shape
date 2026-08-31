@@ -137,7 +137,7 @@ For a generic custom hook, container-level `#[serde_shape(bound(serialize = "...
 
 ## Model boundaries
 
-Shape graphs are an inspection API, not a stable interchange format. `ShapeId` values are local to one graph, and definition ordering and `Debug` output are not persistence contracts.
+Shape graphs are an inspection API, not a stable interchange format. `ShapeId` values are local to one graph and carry only a definition index, not graph identity. Keep an ID paired with the graph that produced it; a lookup cannot detect an ID from another graph when its index is in bounds. Definition ordering and `Debug` output are not persistence contracts.
 
 Definitions may be recursive. A `ShapeRef::Definition` is a graph edge, so walkers must detect repeated `ShapeId` values instead of expanding definitions indefinitely.
 
