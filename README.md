@@ -159,7 +159,7 @@ The built-in implementations follow Serde's semantic representations in each dir
 | Group | Supported types |
 | --- | --- |
 | Scalars | Rust primitives, `String`, serialized `str` and `fmt::Arguments`, and non-zero integers |
-| Containers | `Option`, `Result`, arrays, slices for serialization, tuples through arity 16, `Vec`, `VecDeque`, `LinkedList`, `BinaryHeap`, `BTreeSet`, and `BTreeMap` |
+| Containers | `Option`, `Result`, arrays through length 32, slices for serialization, tuples through arity 16, `Vec`, `VecDeque`, `LinkedList`, `BinaryHeap`, `BTreeSet`, and `BTreeMap` |
 | Wrappers | Serialized references, borrowed string/byte/path inputs, `Box`, `Rc`, `Arc`, their weak pointers, `Cow`, `Cell`, `RefCell`, `Wrapping`, `Saturating`, `Reverse`, and `PhantomData` |
 | FFI | `CStr` and `CString` byte representations; on Unix and Windows, serialized `OsStr`, `OsString`, and owned `Box<OsStr>` input |
 | Ranges | `Range`, `RangeFrom`, `RangeInclusive`, `RangeTo`, and `Bound` |

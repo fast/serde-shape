@@ -665,6 +665,9 @@ pub enum ShapeRef {
     /// Sequence shape.
     Seq(Box<ShapeRef>),
     /// Fixed-size array shape.
+    ///
+    /// Built-in array implementations follow Serde's supported lengths of 0 through 32. Manual
+    /// implementations may construct other lengths for custom representations.
     Array {
         /// The array item shape.
         item: Box<ShapeRef>,
@@ -1139,4 +1142,6 @@ pub enum OpaqueReason {
     CustomDeserializer,
     /// The type has no built-in shape implementation.
     Unsupported,
+    /// The surrounding representation contains no values of this type.
+    Unobserved,
 }

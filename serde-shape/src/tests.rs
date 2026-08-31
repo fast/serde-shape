@@ -62,6 +62,8 @@ struct BorrowedShape;
 
 struct OwnedShape(BorrowedShape);
 
+struct Unshaped;
+
 impl ToOwned for BorrowedShape {
     type Owned = OwnedShape;
 
@@ -224,6 +226,27 @@ fn builds_map_shape() {
     assert_eq!(deserialize_shape.root(), &expected);
     assert!(deserialize_shape.root_definition().is_none());
     assert!(deserialize_shape.definitions().is_empty());
+}
+
+#[test]
+fn matches_serde_array_coverage() {
+    let empty = ShapeRef::Array {
+        item: Box::new(ShapeRef::Opaque(OpaqueShape {
+            type_name: core::any::type_name::<Unshaped>(),
+            reason: OpaqueReason::Unobserved,
+            detail: Some("zero-length array has no elements"),
+        })),
+        len: 0,
+    };
+    assert_eq!(<[Unshaped; 0]>::serialize_shape().root(), &empty);
+    assert_eq!(<[Unshaped; 0]>::deserialize_shape().root(), &empty);
+
+    let largest = ShapeRef::Array {
+        item: Box::new(ShapeRef::U8),
+        len: 32,
+    };
+    assert_eq!(<[u8; 32]>::serialize_shape().root(), &largest);
+    assert_eq!(<[u8; 32]>::deserialize_shape().root(), &largest);
 }
 
 #[test]

@@ -134,28 +134,67 @@ seq_shape! {
     => T;
 }
 
-impl<T, const N: usize> SerializeShape for [T; N]
-where
-    T: SerializeShape,
-{
-    fn serialize_shape_in(context: &mut SerializeShapeContext) -> ShapeRef {
+impl<T> SerializeShape for [T; 0] {
+    fn serialize_shape_in(_context: &mut SerializeShapeContext) -> ShapeRef {
         ShapeRef::Array {
-            item: Box::new(T::serialize_shape_in(context)),
-            len: N,
+            item: Box::new(unobserved_empty_array_item::<T>()),
+            len: 0,
         }
     }
 }
 
-impl<T, const N: usize> DeserializeShape for [T; N]
-where
-    T: DeserializeShape,
-{
-    fn deserialize_shape_in(context: &mut DeserializeShapeContext) -> ShapeRef {
+impl<T> DeserializeShape for [T; 0] {
+    fn deserialize_shape_in(_context: &mut DeserializeShapeContext) -> ShapeRef {
         ShapeRef::Array {
-            item: Box::new(T::deserialize_shape_in(context)),
-            len: N,
+            item: Box::new(unobserved_empty_array_item::<T>()),
+            len: 0,
         }
     }
+}
+
+fn unobserved_empty_array_item<T>() -> ShapeRef {
+    ShapeRef::Opaque(crate::OpaqueShape {
+        type_name: core::any::type_name::<T>(),
+        reason: crate::OpaqueReason::Unobserved,
+        detail: Some("zero-length array has no elements"),
+    })
+}
+
+macro_rules! array_shape {
+    ($($len:literal)+) => {
+        $(
+            impl<T> SerializeShape for [T; $len]
+            where
+                T: SerializeShape,
+            {
+                fn serialize_shape_in(context: &mut SerializeShapeContext) -> ShapeRef {
+                    ShapeRef::Array {
+                        item: Box::new(T::serialize_shape_in(context)),
+                        len: $len,
+                    }
+                }
+            }
+
+            impl<T> DeserializeShape for [T; $len]
+            where
+                T: DeserializeShape,
+            {
+                fn deserialize_shape_in(context: &mut DeserializeShapeContext) -> ShapeRef {
+                    ShapeRef::Array {
+                        item: Box::new(T::deserialize_shape_in(context)),
+                        len: $len,
+                    }
+                }
+            }
+        )+
+    };
+}
+
+array_shape! {
+    1 2 3 4 5 6 7 8 9 10
+    11 12 13 14 15 16 17 18 19 20
+    21 22 23 24 25 26 27 28 29 30
+    31 32
 }
 
 macro_rules! map_shape {
