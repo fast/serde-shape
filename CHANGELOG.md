@@ -17,10 +17,12 @@ All notable changes to this project will be documented in this file.
 * Make the `ShapeId` tuple field private. Use `ShapeId::index()` when the graph-local numeric index is needed.
 * Add `description` to definition, field, and variant metadata. Manual struct literals must initialize the new field.
 * Remove `OpaqueReason::{FromType, TryFromType, IntoType}` because Serde conversion attributes now use the conversion type's shape instead of an opaque boundary.
+* Remove `OpaqueReason::Remote` because Serde remote definitions now expose their declared shape instead of an opaque boundary.
 * Restrict the blanket `Box<T>` deserialization shape to sized `T`. Serde-supported owned DSTs have explicit implementations; shape-only custom DSTs now need a local newtype.
 
 ### New features
 
+* Reflect the fields, names, tagging, and attributes declared by Serde remote definitions so foreign-type adapters can participate in shape graphs.
 * Reflect serialized `core::fmt::Arguments` as a string, matching Serde's formatting implementation.
 * Add target-specific `OsStr` and `OsString` enum shapes on Unix and Windows, including owned `Box<OsStr>` input.
 * Add `SerializeShapeGraph::from_fn` and `DeserializeShapeGraph::from_fn` so custom shape functions can describe foreign graph roots without a dummy wrapper type.

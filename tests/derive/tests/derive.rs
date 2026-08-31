@@ -113,6 +113,22 @@ struct IntoString(String);
 #[serde(from = "T")]
 struct FromGeneric<T>(T);
 
+struct RemoteRecord {
+    record_id: u64,
+    display_name: String,
+}
+
+#[derive(serde::Serialize, serde::Deserialize, SerializeShape, DeserializeShape)]
+#[serde(
+    remote = "RemoteRecord",
+    rename = "wire-remote",
+    rename_all = "kebab-case"
+)]
+struct RemoteRecordDef {
+    record_id: u64,
+    display_name: String,
+}
+
 #[derive(SerializeShape, DeserializeShape)]
 #[serde_shape(
     serialize_with = "serialize_number_or_string_shape",
@@ -381,6 +397,25 @@ fn follows_serde_conversion_shapes() {
     assert_eq!(TryFromU16::deserialize_shape().root(), &ShapeRef::U16);
     assert_eq!(IntoString::serialize_shape().root(), &ShapeRef::String);
     assert_eq!(FromGeneric::<u8>::deserialize_shape().root(), &ShapeRef::U8);
+}
+
+#[test]
+fn reflects_serde_remote_definitions() {
+    let serialize = serialize_root_definition::<RemoteRecordDef>();
+    assert_eq!(serialize.type_name.name, "wire-remote");
+    let SerializeDefinitionKind::Struct(serialize) = &serialize.kind else {
+        panic!("remote serialization definition should be a struct");
+    };
+    assert_eq!(serialize.fields[0].name, "record-id");
+    assert_eq!(serialize.fields[1].name, "display-name");
+
+    let deserialize = deserialize_root_definition::<RemoteRecordDef>();
+    assert_eq!(deserialize.type_name.name, "wire-remote");
+    let DeserializeDefinitionKind::Struct(deserialize) = &deserialize.kind else {
+        panic!("remote deserialization definition should be a struct");
+    };
+    assert_eq!(deserialize.fields[0].name, "record-id");
+    assert_eq!(deserialize.fields[1].name, "display-name");
 }
 
 #[test]

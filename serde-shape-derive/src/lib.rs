@@ -220,9 +220,6 @@ fn add_serialize_shape_bounds(
     if shape_attrs.serialize_with().is_some() {
         return Ok(());
     }
-    if container.attrs.remote().is_some() {
-        return Ok(());
-    }
     if let Some(ty) = container.attrs.type_into() {
         if type_uses_params(ty, &type_params) {
             generics
@@ -283,9 +280,6 @@ fn add_deserialize_shape_bounds(
         .map(|param| param.ident.to_string())
         .collect();
     if shape_attrs.deserialize_with().is_some() {
-        return Ok(());
-    }
-    if container.attrs.remote().is_some() {
         return Ok(());
     }
     if let Some(ty) = container
@@ -589,11 +583,6 @@ fn deserialize_shape_body(
 }
 
 fn serialize_definition_kind(container: &ast::Container<'_>) -> syn::Result<TokenStream2> {
-    if let Some(path) = container.attrs.remote() {
-        let opaque = remote_opaque_shape(path);
-        return Ok(quote!(__serde_shape::SerializeDefinitionKind::Opaque(#opaque)));
-    }
-
     let attributes = serialize_container_attributes(&container.attrs);
     Ok(match &container.data {
         ast::Data::Struct(style, fields) => {
@@ -628,11 +617,6 @@ fn serialize_definition_kind(container: &ast::Container<'_>) -> syn::Result<Toke
 }
 
 fn deserialize_definition_kind(container: &ast::Container<'_>) -> syn::Result<TokenStream2> {
-    if let Some(path) = container.attrs.remote() {
-        let opaque = remote_opaque_shape(path);
-        return Ok(quote!(__serde_shape::DeserializeDefinitionKind::Opaque(#opaque)));
-    }
-
     let attributes = deserialize_container_attributes(&container.attrs);
     Ok(match &container.data {
         ast::Data::Struct(style, fields) => {
@@ -664,21 +648,6 @@ fn deserialize_definition_kind(container: &ast::Container<'_>) -> syn::Result<To
             }
         }
     })
-}
-
-fn remote_opaque_shape<T>(detail: T) -> TokenStream2
-where
-    T: ToTokens,
-{
-    let detail = lit(detail.to_token_stream().to_string());
-
-    quote! {
-        __serde_shape::OpaqueShape {
-            type_name: ::core::any::type_name::<Self>(),
-            reason: __serde_shape::OpaqueReason::Remote,
-            detail: ::core::option::Option::Some(#detail),
-        }
-    }
 }
 
 fn serialize_container_attributes(attrs: &attr::Container) -> TokenStream2 {

@@ -151,7 +151,8 @@
 //!
 //! A custom serializer or deserializer has no inferable inner shape, so the affected field or
 //! variant content is represented by an opaque boundary. Whole-container conversion attributes
-//! use the conversion type's shape, while remote-derive attributes remain opaque.
+//! use the conversion type's shape. Serde remote derives expose the helper definition's declared
+//! wire shape.
 //! Field-level [`FieldWireShape`] distinguishes ordinary values from flattened fields, inline
 //! transparent fields, and omitted fields. Custom serializer/deserializer boundaries use
 //! [`ShapeRef::Opaque`] and remain composable with those field positions.
@@ -1144,8 +1145,6 @@ pub struct OpaqueShape {
 /// Reason a shape cannot be represented precisely.
 #[derive(Clone, Copy, Debug, Eq, Ord, PartialEq, PartialOrd)]
 pub enum OpaqueReason {
-    /// The type uses `#[serde(remote = "...")]`.
-    Remote,
     /// A custom serializer controls the output.
     CustomSerializer,
     /// A custom deserializer controls the input.
