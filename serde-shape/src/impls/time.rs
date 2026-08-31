@@ -26,7 +26,6 @@ use crate::DeserializeFieldShape;
 use crate::DeserializeShape;
 use crate::DeserializeShapeContext;
 use crate::DeserializeStructShape;
-use crate::DeserializeTypeName;
 use crate::FieldMember;
 use crate::FieldWireShape;
 use crate::FieldsStyle;
@@ -36,8 +35,8 @@ use crate::SerializeFieldShape;
 use crate::SerializeShape;
 use crate::SerializeShapeContext;
 use crate::SerializeStructShape;
-use crate::SerializeTypeName;
 use crate::ShapeRef;
+use crate::TypeName;
 
 macro_rules! time_shape {
     ($ty:ty, $name:literal, $($field:literal => $shape:expr),+ $(,)?) => {
@@ -91,7 +90,7 @@ fn serialize_time_shape<const N: usize>(
             skip_if: None,
         })
         .collect();
-    context.define_named_type(SerializeTypeName { rust_name, name }, move |_| {
+    context.define_named_type(TypeName { rust_name, name }, move |_| {
         SerializeDefinitionKind::Struct(SerializeStructShape {
             style: FieldsStyle::Struct,
             fields,
@@ -117,7 +116,7 @@ fn deserialize_time_shape<const N: usize>(
             default: DefaultShape::None,
         })
         .collect();
-    context.define_named_type(DeserializeTypeName { rust_name, name }, move |_| {
+    context.define_named_type(TypeName { rust_name, name }, move |_| {
         DeserializeDefinitionKind::Struct(DeserializeStructShape {
             style: FieldsStyle::Struct,
             fields,

@@ -76,6 +76,24 @@ enum Storage {
 }
 
 #[derive(DeserializeShape)]
+#[serde(field_identifier, rename_all = "snake_case")]
+enum FieldIdentifier {
+    KnownField,
+    #[serde(alias = "old_name")]
+    RenamedField,
+    #[serde(other)]
+    Other,
+}
+
+#[derive(DeserializeShape)]
+#[serde(variant_identifier)]
+enum VariantIdentifier {
+    First,
+    #[serde(alias = "legacy")]
+    Second,
+}
+
+#[derive(DeserializeShape)]
 #[serde(transparent)]
 struct UserId(u64);
 
@@ -154,12 +172,14 @@ struct Marker<T> {
     marker: core::marker::PhantomData<T>,
 }
 
-#[derive(DeserializeShape)]
+#[derive(serde::Deserialize, DeserializeShape)]
 struct BorrowedCow<'a> {
     #[serde(borrow)]
     text: Cow<'a, str>,
     #[serde(borrow)]
     bytes: Cow<'a, [u8]>,
+    #[serde(borrow, deserialize_with = "deserialize_borrowed_str")]
+    custom: Cow<'a, str>,
 }
 
 #[derive(DeserializeShape)]
@@ -272,6 +292,13 @@ fn deserialize_bool_shape(_context: &mut DeserializeShapeContext) -> ShapeRef {
     ShapeRef::Bool
 }
 
+fn deserialize_borrowed_str<'de, D>(deserializer: D) -> Result<Cow<'de, str>, D::Error>
+where
+    D: serde::Deserializer<'de>,
+{
+    <&'de str as serde::Deserialize>::deserialize(deserializer).map(Cow::Borrowed)
+}
+
 fn default_retries() -> u8 {
     3
 }
@@ -315,6 +342,25 @@ fn exposes_deserialize_enum_attributes() {
     assert!(shape.attributes.non_exhaustive);
     assert_eq!(shape.variants[0].aliases, ["s3", "s3-compatible"]);
     assert!(shape.variants[2].other);
+}
+
+#[test]
+fn reflects_serde_identifier_enums() {
+    let field = deserialize_root_definition::<FieldIdentifier>();
+    let DeserializeDefinitionKind::Enum(field) = &field.kind else {
+        panic!("field identifier should be an enum");
+    };
+    assert_eq!(field.repr, Tagging::FieldIdentifier);
+    assert_eq!(field.variants[0].name, "known_field");
+    assert_eq!(field.variants[1].aliases, ["old_name", "renamed_field"]);
+    assert!(field.variants[2].other);
+
+    let variant = deserialize_root_definition::<VariantIdentifier>();
+    let DeserializeDefinitionKind::Enum(variant) = &variant.kind else {
+        panic!("variant identifier should be an enum");
+    };
+    assert_eq!(variant.repr, Tagging::VariantIdentifier);
+    assert_eq!(variant.variants[1].aliases, ["Second", "legacy"]);
 }
 
 #[test]
@@ -522,12 +568,17 @@ fn preserves_serde_borrowed_cow_shapes() {
     let DeserializeDefinitionKind::Struct(shape) = &definition.kind else {
         panic!("definition should be a struct");
     };
-    let [text, bytes] = shape.fields.as_slice() else {
+    let [text, bytes, custom] = shape.fields.as_slice() else {
         panic!("borrowed Cow fields should be reflected");
     };
 
     assert_eq!(text.wire_shape, FieldWireShape::Value(ShapeRef::String));
     assert_eq!(bytes.wire_shape, FieldWireShape::Value(ShapeRef::Bytes));
+    let FieldWireShape::Value(ShapeRef::Opaque(opaque)) = &custom.wire_shape else {
+        panic!("explicit custom deserializer should remain opaque");
+    };
+    assert_eq!(opaque.reason, OpaqueReason::CustomDeserializer);
+    assert_eq!(opaque.detail, Some("deserialize_borrowed_str"));
 }
 
 #[test]

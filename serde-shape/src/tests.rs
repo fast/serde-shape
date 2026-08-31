@@ -44,7 +44,8 @@ use crate::DeserializeDefinitionKind;
 use crate::DeserializeShape;
 use crate::DeserializeShapeContext;
 use crate::DeserializeShapeGraph;
-use crate::DeserializeTypeName;
+#[cfg(all(feature = "std", any(unix, windows)))]
+use crate::DeserializeVariantContent;
 use crate::FieldWireShape;
 use crate::FieldsStyle;
 use crate::OpaqueReason;
@@ -53,9 +54,9 @@ use crate::SerializeDefinitionKind;
 use crate::SerializeShape;
 use crate::SerializeShapeContext;
 use crate::SerializeShapeGraph;
-use crate::SerializeTypeName;
 use crate::ShapeRef;
 use crate::Tagging;
+use crate::TypeName;
 
 struct BorrowedShape;
 
@@ -134,7 +135,7 @@ fn normalizes_union_shapes() {
 fn keeps_distinct_definition_builders_with_the_same_type_name() {
     let mut serialize = SerializeShapeContext::default();
     let first = serialize.define_named_type(
-        SerializeTypeName {
+        TypeName {
             rust_name: "duplicate::Type",
             name: "First",
         },
@@ -147,7 +148,7 @@ fn keeps_distinct_definition_builders_with_the_same_type_name() {
         },
     );
     let second = serialize.define_named_type(
-        SerializeTypeName {
+        TypeName {
             rust_name: "duplicate::Type",
             name: "Second",
         },
@@ -165,7 +166,7 @@ fn keeps_distinct_definition_builders_with_the_same_type_name() {
 
     let mut deserialize = DeserializeShapeContext::default();
     let first = deserialize.define_named_type(
-        DeserializeTypeName {
+        TypeName {
             rust_name: "duplicate::Type",
             name: "First",
         },
@@ -178,7 +179,7 @@ fn keeps_distinct_definition_builders_with_the_same_type_name() {
         },
     );
     let second = deserialize.define_named_type(
-        DeserializeTypeName {
+        TypeName {
             rust_name: "duplicate::Type",
             name: "Second",
         },
@@ -195,7 +196,7 @@ fn keeps_distinct_definition_builders_with_the_same_type_name() {
     assert_eq!(deserialize.finish().len(), 2);
 }
 
-#[cfg(target_has_atomic = "ptr")]
+#[cfg(all(feature = "std", target_has_atomic = "ptr"))]
 #[test]
 fn maps_atomic_shapes() {
     assert_eq!(
@@ -234,10 +235,6 @@ fn distinguishes_byte_sequences_from_borrowed_byte_input() {
     assert_eq!(
         SerializeShapeGraph::for_type::<Vec<u8>>().root(),
         &ShapeRef::Seq(Box::new(ShapeRef::U8))
-    );
-    assert_eq!(
-        <[u8] as DeserializeShape>::deserialize_shape().root(),
-        &ShapeRef::Bytes
     );
     assert_eq!(
         <&[u8] as DeserializeShape>::deserialize_shape().root(),
@@ -412,6 +409,10 @@ fn supports_serde_tuple_arity() {
 #[test]
 fn maps_common_core_and_alloc_shapes() {
     assert_eq!(
+        SerializeShapeGraph::for_type::<core::fmt::Arguments<'static>>().root(),
+        &ShapeRef::String
+    );
+    assert_eq!(
         DeserializeShapeGraph::for_type::<Cow<'static, str>>().root(),
         &ShapeRef::String
     );
@@ -514,11 +515,11 @@ fn maps_common_std_shapes() {
         &ShapeRef::String
     );
     assert_eq!(
-        DeserializeShapeGraph::for_type::<std::path::Path>().root(),
+        SerializeShapeGraph::for_type::<std::path::PathBuf>().root(),
         &ShapeRef::String
     );
     assert_eq!(
-        SerializeShapeGraph::for_type::<std::path::PathBuf>().root(),
+        DeserializeShapeGraph::for_type::<std::path::PathBuf>().root(),
         &ShapeRef::String
     );
     assert_eq!(
@@ -546,6 +547,41 @@ fn maps_common_std_shapes() {
     assert_eq!(shape.fields[0].name, "secs_since_epoch");
     assert_eq!(shape.fields[1].name, "nanos_since_epoch");
     assert!(shape.attributes.deny_unknown_fields);
+}
+
+#[cfg(all(feature = "std", any(unix, windows)))]
+#[test]
+fn maps_os_strings_as_platform_enums() {
+    let serialize = SerializeShapeGraph::for_type::<std::ffi::OsString>();
+    let serialize = serialize
+        .root_definition()
+        .expect("OsString should have a named serialization definition");
+    let SerializeDefinitionKind::Enum(serialize) = &serialize.kind else {
+        panic!("OsString should serialize as an enum");
+    };
+
+    let deserialize = DeserializeShapeGraph::for_type::<Box<std::ffi::OsStr>>();
+    let deserialize = deserialize
+        .root_definition()
+        .expect("Box<OsStr> should have a named deserialization definition");
+    let DeserializeDefinitionKind::Enum(deserialize) = &deserialize.kind else {
+        panic!("Box<OsStr> should deserialize from an enum");
+    };
+
+    #[cfg(unix)]
+    let (variant, item) = ("Unix", ShapeRef::U8);
+    #[cfg(windows)]
+    let (variant, item) = ("Windows", ShapeRef::U16);
+
+    assert_eq!(serialize.variants[0].name, variant);
+    assert_eq!(deserialize.variants[0].name, variant);
+    let DeserializeVariantContent::Fields(fields) = &deserialize.variants[0].content else {
+        panic!("platform variant should contain one value");
+    };
+    assert_eq!(
+        fields[0].wire_shape,
+        FieldWireShape::Value(ShapeRef::Seq(Box::new(item)))
+    );
 }
 
 #[test]

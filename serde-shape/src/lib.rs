@@ -331,17 +331,28 @@ pub struct SerializeShapeGraph {
 }
 
 impl SerializeShapeGraph {
+    /// Build a serialization graph from a function that returns its root shape.
+    ///
+    /// This is useful when the root type is foreign or when no Rust type corresponds to the
+    /// complete wire shape. Use [`Self::for_type`] when the root implements [`SerializeShape`].
+    pub fn from_fn<F>(build_root: F) -> Self
+    where
+        F: FnOnce(&mut SerializeShapeContext) -> ShapeRef,
+    {
+        let mut context = SerializeShapeContext::default();
+        let root = build_root(&mut context);
+        Self {
+            root,
+            definitions: context.finish(),
+        }
+    }
+
     /// Build a complete serialization shape graph rooted at `T`.
     pub fn for_type<T>() -> Self
     where
         T: SerializeShape + ?Sized,
     {
-        let mut context = SerializeShapeContext::default();
-        let root = T::serialize_shape_in(&mut context);
-        Self {
-            root,
-            definitions: context.finish(),
-        }
+        Self::from_fn(T::serialize_shape_in)
     }
 
     /// Return the root shape reference.
@@ -351,10 +362,7 @@ impl SerializeShapeGraph {
 
     /// Return the root definition when the graph root is a named type.
     pub fn root_definition(&self) -> Option<&SerializeDefinitionShape> {
-        let ShapeRef::Definition(id) = self.root() else {
-            return None;
-        };
-        self.definition(*id)
+        self.definition_for(self.root())
     }
 
     /// Return the named definitions reachable from the root.
@@ -365,6 +373,16 @@ impl SerializeShapeGraph {
     /// Return a definition by id.
     pub fn definition(&self, id: ShapeId) -> Option<&SerializeDefinitionShape> {
         self.definitions.get(id.0)
+    }
+
+    /// Return the definition directly referenced by `shape`.
+    ///
+    /// Returns `None` for non-definition shapes and for ids that do not belong to this graph.
+    pub fn definition_for(&self, shape: &ShapeRef) -> Option<&SerializeDefinitionShape> {
+        let ShapeRef::Definition(id) = shape else {
+            return None;
+        };
+        self.definition(*id)
     }
 }
 
@@ -378,17 +396,44 @@ pub struct DeserializeShapeGraph {
 }
 
 impl DeserializeShapeGraph {
+    /// Build a deserialization graph from a function that returns its root shape.
+    ///
+    /// This lets a custom shape function describe a foreign root without introducing a wrapper
+    /// type solely to implement [`DeserializeShape`].
+    ///
+    /// ```rust
+    /// use serde_shape::DeserializeShapeContext;
+    /// use serde_shape::DeserializeShapeGraph;
+    /// use serde_shape::ShapeRef;
+    ///
+    /// fn duration_input(_context: &mut DeserializeShapeContext) -> ShapeRef {
+    ///     ShapeRef::union([ShapeRef::String, ShapeRef::U64])
+    /// }
+    ///
+    /// let graph = DeserializeShapeGraph::from_fn(duration_input);
+    /// assert_eq!(
+    ///     graph.root(),
+    ///     &ShapeRef::union([ShapeRef::String, ShapeRef::U64]),
+    /// );
+    /// ```
+    pub fn from_fn<F>(build_root: F) -> Self
+    where
+        F: FnOnce(&mut DeserializeShapeContext) -> ShapeRef,
+    {
+        let mut context = DeserializeShapeContext::default();
+        let root = build_root(&mut context);
+        Self {
+            root,
+            definitions: context.finish(),
+        }
+    }
+
     /// Build a complete deserialization shape graph rooted at `T`.
     pub fn for_type<T>() -> Self
     where
         T: DeserializeShape + ?Sized,
     {
-        let mut context = DeserializeShapeContext::default();
-        let root = T::deserialize_shape_in(&mut context);
-        Self {
-            root,
-            definitions: context.finish(),
-        }
+        Self::from_fn(T::deserialize_shape_in)
     }
 
     /// Return the root shape reference.
@@ -398,10 +443,7 @@ impl DeserializeShapeGraph {
 
     /// Return the root definition when the graph root is a named type.
     pub fn root_definition(&self) -> Option<&DeserializeDefinitionShape> {
-        let ShapeRef::Definition(id) = self.root() else {
-            return None;
-        };
-        self.definition(*id)
+        self.definition_for(self.root())
     }
 
     /// Return the named definitions reachable from the root.
@@ -412,6 +454,16 @@ impl DeserializeShapeGraph {
     /// Return a definition by id.
     pub fn definition(&self, id: ShapeId) -> Option<&DeserializeDefinitionShape> {
         self.definitions.get(id.0)
+    }
+
+    /// Return the definition directly referenced by `shape`.
+    ///
+    /// Returns `None` for non-definition shapes and for ids that do not belong to this graph.
+    pub fn definition_for(&self, shape: &ShapeRef) -> Option<&DeserializeDefinitionShape> {
+        let ShapeRef::Definition(id) = shape else {
+            return None;
+        };
+        self.definition(*id)
     }
 }
 
@@ -427,7 +479,7 @@ impl SerializeShapeContext {
     ///
     /// The concrete builder type and diagnostic Rust name form the graph-local identity. Call this
     /// method from one stable closure expression for every occurrence of the same named type.
-    pub fn define_named_type<F>(&mut self, type_name: SerializeTypeName, build: F) -> ShapeRef
+    pub fn define_named_type<F>(&mut self, type_name: TypeName, build: F) -> ShapeRef
     where
         F: FnOnce(&mut Self) -> SerializeDefinitionKind + 'static,
     {
@@ -440,7 +492,7 @@ impl SerializeShapeContext {
     /// definition.
     pub fn define_named_type_with_description<F>(
         &mut self,
-        type_name: SerializeTypeName,
+        type_name: TypeName,
         description: Option<&'static str>,
         build: F,
     ) -> ShapeRef
@@ -486,7 +538,7 @@ impl DeserializeShapeContext {
     ///
     /// The concrete builder type and diagnostic Rust name form the graph-local identity. Call this
     /// method from one stable closure expression for every occurrence of the same named type.
-    pub fn define_named_type<F>(&mut self, type_name: DeserializeTypeName, build: F) -> ShapeRef
+    pub fn define_named_type<F>(&mut self, type_name: TypeName, build: F) -> ShapeRef
     where
         F: FnOnce(&mut Self) -> DeserializeDefinitionKind + 'static,
     {
@@ -499,7 +551,7 @@ impl DeserializeShapeContext {
     /// definition.
     pub fn define_named_type_with_description<F>(
         &mut self,
-        type_name: DeserializeTypeName,
+        type_name: TypeName,
         description: Option<&'static str>,
         build: F,
     ) -> ShapeRef
@@ -544,22 +596,26 @@ impl ShapeId {
     }
 }
 
-/// Names associated with a Rust type and its Serde serializer.
+/// Names associated with a Rust type and one direction of its Serde representation.
 #[derive(Clone, Debug, Eq, PartialEq)]
-pub struct SerializeTypeName {
+pub struct TypeName {
     /// The fully qualified Rust type name, including generic arguments.
     pub rust_name: &'static str,
-    /// The Serde serialize name after container rename rules are applied.
+    /// The direction-specific Serde name after container rename rules are applied.
     pub name: &'static str,
 }
 
-/// Names associated with a Rust type and its Serde deserializer.
-#[derive(Clone, Debug, Eq, PartialEq)]
-pub struct DeserializeTypeName {
-    /// The fully qualified Rust type name, including generic arguments.
-    pub rust_name: &'static str,
-    /// The Serde deserialize name after container rename rules are applied.
-    pub name: &'static str,
+impl TypeName {
+    /// Build names for `T` and one direction-specific Serde container name.
+    pub fn of<T>(name: &'static str) -> Self
+    where
+        T: ?Sized,
+    {
+        Self {
+            rust_name: core::any::type_name::<T>(),
+            name,
+        }
+    }
 }
 
 /// A reference to a shape node.
@@ -751,7 +807,7 @@ pub struct SerializeDefinitionShape {
     /// The stable id of this definition inside its graph.
     pub id: ShapeId,
     /// The Rust and Serde names for this definition.
-    pub type_name: SerializeTypeName,
+    pub type_name: TypeName,
     /// User-facing documentation for this definition, if available.
     pub description: Option<&'static str>,
     /// The definition body.
@@ -764,7 +820,7 @@ pub struct DeserializeDefinitionShape {
     /// The stable id of this definition inside its graph.
     pub id: ShapeId,
     /// The Rust and Serde names for this definition.
-    pub type_name: DeserializeTypeName,
+    pub type_name: TypeName,
     /// User-facing documentation for this definition, if available.
     pub description: Option<&'static str>,
     /// The definition body.
@@ -843,6 +899,10 @@ pub enum Tagging {
     },
     /// `#[serde(untagged)]`.
     Untagged,
+    /// `#[serde(field_identifier)]`, accepted only during deserialization.
+    FieldIdentifier,
+    /// `#[serde(variant_identifier)]`, accepted only during deserialization.
+    VariantIdentifier,
 }
 
 /// Struct-like serialization metadata.

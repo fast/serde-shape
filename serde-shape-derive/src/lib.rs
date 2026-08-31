@@ -29,6 +29,7 @@ use serde_derive_internals::Derive;
 use serde_derive_internals::ast;
 use serde_derive_internals::attr;
 use serde_derive_internals::name::Name;
+use serde_derive_internals::ungroup;
 use syn::DeriveInput;
 use syn::GenericArgument;
 use syn::LitStr;
@@ -144,6 +145,18 @@ fn parse_container<'a>(input: &'a DeriveInput, derive: Derive) -> syn::Result<as
         ));
     };
     cx.check()?;
+
+    if matches!(derive, Derive::Serialize) {
+        let message = match container.attrs.identifier() {
+            attr::Identifier::No => None,
+            attr::Identifier::Field => Some("field identifiers cannot be serialized"),
+            attr::Identifier::Variant => Some("variant identifiers cannot be serialized"),
+        };
+        if let Some(message) = message {
+            return Err(syn::Error::new_spanned(input, message));
+        }
+    }
+
     Ok(container)
 }
 
@@ -535,10 +548,7 @@ fn serialize_shape_body(
 
     Ok(quote! {
         context.define_named_type_with_description(
-            __serde_shape::SerializeTypeName {
-                rust_name: ::core::any::type_name::<Self>(),
-                name: #name,
-            },
+            __serde_shape::TypeName::of::<Self>(#name),
             #description,
             |context| {
                 #kind
@@ -569,10 +579,7 @@ fn deserialize_shape_body(
 
     Ok(quote! {
         context.define_named_type_with_description(
-            __serde_shape::DeserializeTypeName {
-                rust_name: ::core::any::type_name::<Self>(),
-                name: #name,
-            },
+            __serde_shape::TypeName::of::<Self>(#name),
             #description,
             |context| {
                 #kind
@@ -643,7 +650,7 @@ fn deserialize_definition_kind(container: &ast::Container<'_>) -> syn::Result<To
             }
         }
         ast::Data::Enum(variants) => {
-            let repr = tagging(container.attrs.tag());
+            let repr = deserialize_tagging(&container.attrs);
             let variants = variants
                 .iter()
                 .map(deserialize_variant_shape)
@@ -849,6 +856,7 @@ fn serialize_field_shape(field: &ast::Field<'_>) -> syn::Result<TokenStream2> {
 
 fn deserialize_field_shape(field: &ast::Field<'_>) -> syn::Result<TokenStream2> {
     let shape_attrs = ShapeAttrs::parse(&field.original.attrs)?;
+    let borrowed_cow_shape = borrowed_cow_shape(field)?;
     let member = field_member(&field.member);
     let name = lit_name(field.attrs.name().deserialize_name());
     let aliases = aliases(field.attrs.aliases());
@@ -864,18 +872,16 @@ fn deserialize_field_shape(field: &ast::Field<'_>) -> syn::Result<TokenStream2> 
     } else {
         let value_shape = if let Some(function) = shape_attrs.deserialize_with() {
             quote!(#function(context))
+        } else if let Some(shape) = borrowed_cow_shape {
+            shape
         } else if let Some(custom_deserializer) = field.attrs.deserialize_with() {
-            if let Some(shape) = serde_borrowed_cow_shape(custom_deserializer) {
-                shape
-            } else {
-                let detail = option_path(Some(custom_deserializer));
-                quote! {
-                    __serde_shape::ShapeRef::Opaque(__serde_shape::OpaqueShape {
-                        type_name: ::core::any::type_name::<#ty>(),
-                        reason: __serde_shape::OpaqueReason::CustomDeserializer,
-                        detail: #detail,
-                    })
-                }
+            let detail = option_path(Some(custom_deserializer));
+            quote! {
+                __serde_shape::ShapeRef::Opaque(__serde_shape::OpaqueShape {
+                    type_name: ::core::any::type_name::<#ty>(),
+                    reason: __serde_shape::OpaqueReason::CustomDeserializer,
+                    detail: #detail,
+                })
             }
         } else {
             quote!(<#ty as __serde_shape::DeserializeShape>::deserialize_shape_in(context))
@@ -943,6 +949,14 @@ fn tagging(tag: &attr::TagType) -> TokenStream2 {
     }
 }
 
+fn deserialize_tagging(attrs: &attr::Container) -> TokenStream2 {
+    match attrs.identifier() {
+        attr::Identifier::No => tagging(attrs.tag()),
+        attr::Identifier::Field => quote!(__serde_shape::Tagging::FieldIdentifier),
+        attr::Identifier::Variant => quote!(__serde_shape::Tagging::VariantIdentifier),
+    }
+}
+
 fn default_shape(default: &attr::Default) -> TokenStream2 {
     match default {
         attr::Default::None => quote!(__serde_shape::DefaultShape::None),
@@ -959,25 +973,78 @@ fn aliases(aliases: &BTreeSet<Name>) -> TokenStream2 {
     quote!(__serde_shape::__private::vec![#(#aliases),*])
 }
 
-fn serde_borrowed_cow_shape(path: &syn::ExprPath) -> Option<TokenStream2> {
-    if path.qself.is_some() || path.path.leading_colon.is_some() {
-        return None;
+fn borrowed_cow_shape(field: &ast::Field<'_>) -> syn::Result<Option<TokenStream2>> {
+    // serde_derive_internals models borrowed Cow fields as custom deserializers internally. Read
+    // the source-level contract instead, so this derive does not depend on Serde's private helper
+    // path. An explicit user deserializer still takes precedence over the built-in Cow behavior.
+    if field.attrs.borrowed_lifetimes().is_empty()
+        || has_explicit_serde_deserializer(&field.original.attrs)?
+    {
+        return Ok(None);
     }
 
-    let mut segments = path.path.segments.iter();
-    let serde = segments.next()?;
-    let _private = segments.next()?;
-    let de = segments.next()?;
-    let helper = segments.next()?;
-    if segments.next().is_some() || serde.ident != "_serde" || de.ident != "de" {
-        return None;
+    let Some(element) = cow_element_type(field.ty) else {
+        return Ok(None);
+    };
+    if is_primitive_type(element, "str") {
+        Ok(Some(quote!(__serde_shape::ShapeRef::String)))
+    } else if is_byte_slice(element) {
+        Ok(Some(quote!(__serde_shape::ShapeRef::Bytes)))
+    } else {
+        Ok(None)
     }
+}
 
-    match helper.ident.to_string().as_str() {
-        "borrow_cow_str" => Some(quote!(__serde_shape::ShapeRef::String)),
-        "borrow_cow_bytes" => Some(quote!(__serde_shape::ShapeRef::Bytes)),
+fn has_explicit_serde_deserializer(attrs: &[syn::Attribute]) -> syn::Result<bool> {
+    for attr in attrs.iter().filter(|attr| attr.path().is_ident("serde")) {
+        let metas = attr.parse_args_with(
+            syn::punctuated::Punctuated::<syn::Meta, syn::Token![,]>::parse_terminated,
+        )?;
+        if metas
+            .iter()
+            .any(|meta| meta.path().is_ident("deserialize_with") || meta.path().is_ident("with"))
+        {
+            return Ok(true);
+        }
+    }
+    Ok(false)
+}
+
+fn cow_element_type(ty: &Type) -> Option<&Type> {
+    let Type::Path(ty) = ungroup(ty) else {
+        return None;
+    };
+    let segment = ty.path.segments.last()?;
+    let PathArguments::AngleBracketed(arguments) = &segment.arguments else {
+        return None;
+    };
+    let mut arguments = arguments.args.iter();
+    match (arguments.next(), arguments.next(), arguments.next()) {
+        (Some(GenericArgument::Lifetime(_)), Some(GenericArgument::Type(element)), None)
+            if segment.ident == "Cow" =>
+        {
+            Some(element)
+        }
         _ => None,
     }
+}
+
+fn is_byte_slice(ty: &Type) -> bool {
+    match ungroup(ty) {
+        Type::Slice(slice) => is_primitive_type(&slice.elem, "u8"),
+        _ => false,
+    }
+}
+
+fn is_primitive_type(ty: &Type, name: &str) -> bool {
+    let Type::Path(ty) = ungroup(ty) else {
+        return false;
+    };
+    ty.qself.is_none()
+        && ty.path.leading_colon.is_none()
+        && ty.path.segments.len() == 1
+        && ty.path.segments[0].ident == name
+        && ty.path.segments[0].arguments.is_empty()
 }
 
 fn lit_name(value: &Name) -> LitStr {

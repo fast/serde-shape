@@ -15,13 +15,10 @@
 #![allow(dead_code)]
 
 use serde_shape::DeserializeDefinitionKind;
-use serde_shape::DeserializeDefinitionShape;
 use serde_shape::DeserializeShape;
-use serde_shape::DeserializeShapeGraph;
 use serde_shape::DeserializeVariantContent;
 use serde_shape::FieldWireShape;
 use serde_shape::FieldsStyle;
-use serde_shape::ShapeRef;
 use serde_shape::Tagging;
 
 #[derive(DeserializeShape)]
@@ -64,13 +61,22 @@ fn exposes_the_structure_needed_by_config_consumers() {
     };
 
     assert!(matches!(common.wire_shape, FieldWireShape::Flatten(_)));
-    let common = definition_for_wire_shape(&graph, &common.wire_shape);
+    let common = graph
+        .definition_for(common.wire_shape.shape().expect("field should be present"))
+        .expect("field should reference a named definition");
     let DeserializeDefinitionKind::Struct(common) = &common.kind else {
         panic!("flattened config should be a struct");
     };
     assert_eq!(common.fields[0].name, "retries");
 
-    let transport = definition_for_wire_shape(&graph, &transport.wire_shape);
+    let transport = graph
+        .definition_for(
+            transport
+                .wire_shape
+                .shape()
+                .expect("field should be present"),
+        )
+        .expect("field should reference a named definition");
     let DeserializeDefinitionKind::Enum(transport) = &transport.kind else {
         panic!("transport should be an enum");
     };
@@ -86,7 +92,9 @@ fn exposes_the_structure_needed_by_config_consumers() {
         panic!("newtype variant should expose its payload field");
     };
 
-    let tcp = definition_for_wire_shape(&graph, &payload.wire_shape);
+    let tcp = graph
+        .definition_for(payload.wire_shape.shape().expect("field should be present"))
+        .expect("field should reference a named definition");
     let DeserializeDefinitionKind::Struct(tcp) = &tcp.kind else {
         panic!("TCP payload should be a struct");
     };
@@ -97,15 +105,4 @@ fn exposes_the_structure_needed_by_config_consumers() {
             .collect::<Vec<_>>(),
         ["host", "port", "tls.version"]
     );
-}
-
-fn definition_for_wire_shape<'a>(
-    graph: &'a DeserializeShapeGraph,
-    wire_shape: &FieldWireShape,
-) -> &'a DeserializeDefinitionShape {
-    let shape = wire_shape.shape().expect("field should be present");
-    let ShapeRef::Definition(id) = shape else {
-        panic!("field should reference a named definition");
-    };
-    graph.definition(*id).expect("definition should exist")
 }
