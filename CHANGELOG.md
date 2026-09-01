@@ -40,6 +40,7 @@ All notable changes to this project will be documented in this file.
 
 ### Bug fixes
 
+* Package and verify the unpublished main and derive crates together so a new release does not require its derive version to exist on crates.io first.
 * Preserve qualified Serde function paths such as `<T as Trait>::function` as parseable Rust token streams.
 * Match Serde's fixed-array coverage and bounds: lengths above 32 no longer claim shape support, while zero-length arrays no longer require their unobserved element type to implement a shape trait, including inside derived generic containers.
 * Match Serde's deserialization bounds for tree and hash collections so a shape implementation is exposed only when the corresponding collection can actually deserialize.

@@ -12,7 +12,6 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-use std::fs;
 use std::path::Path;
 use std::process::Command as StdCommand;
 
@@ -73,16 +72,7 @@ struct CommandPackage {
 
 impl CommandPackage {
     fn run(self) {
-        let main_version = package_version("serde-shape");
-        let derive_version = package_version("serde-shape-derive");
-
-        run_command(make_package_cmd("serde-shape-derive", self.locked));
-
-        // Cargo would otherwise verify main against an already-published derive crate with the
-        // same version. Unpack the archive and patch the two packaged crates together instead.
-        run_command(make_package_archive_cmd("serde-shape", self.locked));
-        unpack_package_archive("serde-shape", &main_version);
-        run_command(make_verify_main_package_cmd(&main_version, &derive_version));
+        run_command(make_package_cmd(self.locked));
     }
 }
 
@@ -182,75 +172,20 @@ fn make_build_cmd(locked: bool) -> StdCommand {
     cmd
 }
 
-fn make_package_cmd(package: &str, locked: bool) -> StdCommand {
+fn make_package_cmd(locked: bool) -> StdCommand {
     let mut cmd = find_command("cargo");
-    cmd.args(["package", "--package", package, "--all-features"]);
+    cmd.args([
+        "package",
+        "--package",
+        "serde-shape-derive",
+        "--package",
+        "serde-shape",
+        "--all-features",
+    ]);
     if locked {
         cmd.arg("--locked");
     }
     cmd
-}
-
-fn make_package_archive_cmd(package: &str, locked: bool) -> StdCommand {
-    let mut cmd = make_package_cmd(package, locked);
-    cmd.arg("--no-verify");
-    cmd
-}
-
-fn unpack_package_archive(package: &str, version: &str) {
-    let package_root = workspace_dir().join("target/package");
-    let package_dir = package_root.join(format!("{package}-{version}"));
-    if package_dir.exists() {
-        fs::remove_dir_all(&package_dir).expect("failed to remove stale package directory");
-    }
-
-    let mut cmd = find_command("tar");
-    cmd.arg("-xzf")
-        .arg(package_root.join(format!("{package}-{version}.crate")))
-        .arg("-C")
-        .arg(package_root);
-    run_command(cmd);
-}
-
-fn make_verify_main_package_cmd(main_version: &str, derive_version: &str) -> StdCommand {
-    let package_dir = workspace_dir()
-        .join("target/package")
-        .join(format!("serde-shape-{main_version}"));
-    let derive_dir = workspace_dir()
-        .join("target/package")
-        .join(format!("serde-shape-derive-{derive_version}"));
-    let derive_dir = serde_json::to_string(&derive_dir.to_string_lossy()).unwrap();
-    let patch = format!("patch.crates-io.serde-shape-derive.path={derive_dir}");
-
-    let mut cmd = find_command("cargo");
-    cmd.args(["check", "--manifest-path"])
-        .arg(package_dir.join("Cargo.toml"))
-        .args(["--all-features", "--config", &patch]);
-    cmd
-}
-
-fn package_version(package: &str) -> String {
-    let mut cmd = find_command("cargo");
-    cmd.args(["metadata", "--no-deps", "--format-version", "1"]);
-    let output = cmd.output().expect("failed to read workspace metadata");
-    assert!(
-        output.status.success(),
-        "cargo metadata failed: {}",
-        String::from_utf8_lossy(&output.stderr)
-    );
-
-    let metadata: serde_json::Value =
-        serde_json::from_slice(&output.stdout).expect("cargo metadata should be valid JSON");
-    metadata["packages"]
-        .as_array()
-        .and_then(|packages| {
-            packages
-                .iter()
-                .find(|candidate| candidate["name"] == package)
-        })
-        .and_then(|package| package["version"].as_str())
-        .unwrap_or_else(|| panic!("package {package} not found in cargo metadata"))
-        .to_owned()
 }
 
 fn make_test_cmd(no_capture: bool, package: &str, features: &[&str]) -> StdCommand {
