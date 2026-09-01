@@ -12,18 +12,17 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-//! Reflect the shapes used by Serde serialization and deserialization.
+//! # serde-shape
 //!
-//! `serde-shape` builds a lightweight graph that describes what a Rust type emits through Serde
-//! serialization and accepts through Serde deserialization. It does not run Serde, and it is not a
-//! full validation schema. Instead, it gives tools access to the same structural information that
-//! Serde derives from Rust types and `#[serde(...)]` attributes, including union value shapes.
+//! `serde-shape` reflects the data model that a Rust type emits through Serde serialization or
+//! accepts through Serde deserialization. It builds a lightweight graph from type information and
+//! `#[serde(...)]` attributes without serializing or deserializing a value.
 //!
 //! Common uses are generating configuration reference docs, deriving environment-variable maps
 //! from config structs, documenting wire formats, and checking whether two versions of a type
 //! expose compatible Serde shapes.
 //!
-//! # Install
+//! ## Getting started
 //!
 //! Enable the `derive` feature when you want `#[derive(SerializeShape)]` and
 //! `#[derive(DeserializeShape)]`:
@@ -46,7 +45,7 @@
 //! actual serialization or deserialization. `serde_shape` attributes affect reflection metadata
 //! only; they do not change Serde's runtime behavior.
 //!
-//! # Quick start
+//! ## Inspecting a graph
 //!
 //! Derive [`trait@DeserializeShape`] for the type you want to inspect, then build a
 //! [`DeserializeShapeGraph`]:
@@ -127,7 +126,7 @@
 //! # }
 //! ```
 //!
-//! # Shape graphs
+//! ## Shape graphs
 //!
 //! A shape graph has a [`ShapeRef`] root and a list of named definitions. Flat primitive and
 //! compound values are represented directly as [`ShapeRef`] values. Structs and enums are
@@ -148,10 +147,12 @@
 //! preserves useful Rust distinctions such as fixed arrays and pointer-width integers even when
 //! Serde dispatches them through tuple or fixed-width integer methods.
 //!
-//! # Derive behavior
+//! ## Derive behavior
 //!
-//! The derive macros read Serde container, variant, and field attributes, so the resulting shape
-//! follows the metadata Serde derives for each direction.
+//! The derive macros use Serde's derive metadata for the selected direction. They reflect
+//! directional names and skips, rename rules, aliases, defaults, enum tagging, flattening,
+//! transparent fields, identifier enums, conversion types, remote definitions, and custom
+//! serializer or deserializer boundaries.
 //!
 //! A custom serializer or deserializer has no inferable inner shape, so the affected field or
 //! variant content is represented by an opaque boundary. Whole-container conversion attributes
@@ -165,11 +166,13 @@
 //! `#[serde_shape(deserialize_with = "path")]` to declare the representation of a container,
 //! variant, or field that cannot be inferred. Each function receives the current graph context and
 //! returns a [`ShapeRef`], so it can delegate to another type or build a custom shape directly.
+//! These extensions supply reflection metadata only: they cannot rename, tag, skip, flatten,
+//! alias, or default a Serde item.
 //!
 //! Rust doc comments on derived containers, variants, and fields are preserved in their
 //! `description` fields for documentation and diagnostic consumers.
 //!
-//! # Manual implementations
+//! ## Manual implementations
 //!
 //! Implement [`trait@SerializeShape`] or [`trait@DeserializeShape`] manually when a type's Serde
 //! representation is known but cannot be derived. This is common for wrappers that deserialize
@@ -222,7 +225,7 @@ pub mod __private {
 
 #[cfg(feature = "derive")]
 #[cfg_attr(docsrs, doc(cfg(feature = "derive")))]
-/// Derive [`trait@DeserializeShape`] from Serde deserialization metadata.
+/// Derives [`trait@DeserializeShape`] from Serde deserialization metadata.
 ///
 /// Use this macro when a type's accepted input shape should be reflected from the same
 /// metadata that Serde uses for deserialization. The generated implementation records the
@@ -262,7 +265,7 @@ pub mod __private {
 pub use serde_shape_derive::DeserializeShape;
 #[cfg(feature = "derive")]
 #[cfg_attr(docsrs, doc(cfg(feature = "derive")))]
-/// Derive [`trait@SerializeShape`] from Serde serialization metadata.
+/// Derives [`trait@SerializeShape`] from Serde serialization metadata.
 ///
 /// Use this macro when a type's emitted output shape should be reflected from the same
 /// metadata that Serde uses for serialization. The generated implementation records the
@@ -307,10 +310,10 @@ mod tests;
 
 /// A type that can describe the shape emitted by its Serde serializer.
 pub trait SerializeShape {
-    /// Build this type's serialization shape inside the provided context.
+    /// Builds this type's serialization shape inside the provided context.
     fn serialize_shape_in(context: &mut SerializeShapeContext) -> ShapeRef;
 
-    /// Build a complete serialization shape graph rooted at this type.
+    /// Builds a complete serialization shape graph rooted at this type.
     fn serialize_shape() -> SerializeShapeGraph {
         SerializeShapeGraph::for_type::<Self>()
     }
@@ -318,10 +321,10 @@ pub trait SerializeShape {
 
 /// A type that can describe the shape accepted by its Serde deserializer.
 pub trait DeserializeShape {
-    /// Build this type's deserialization shape inside the provided context.
+    /// Builds this type's deserialization shape inside the provided context.
     fn deserialize_shape_in(context: &mut DeserializeShapeContext) -> ShapeRef;
 
-    /// Build a complete deserialization shape graph rooted at this type.
+    /// Builds a complete deserialization shape graph rooted at this type.
     fn deserialize_shape() -> DeserializeShapeGraph {
         DeserializeShapeGraph::for_type::<Self>()
     }
@@ -337,7 +340,7 @@ pub struct SerializeShapeGraph {
 }
 
 impl SerializeShapeGraph {
-    /// Build a serialization graph from a function that returns its root shape.
+    /// Builds a serialization graph from a function that returns its root shape.
     ///
     /// This is useful when the root type is foreign or when no Rust type corresponds to the
     /// complete wire shape. Use [`Self::for_type`] when the root implements [`SerializeShape`].
@@ -353,7 +356,7 @@ impl SerializeShapeGraph {
         }
     }
 
-    /// Build a complete serialization shape graph rooted at `T`.
+    /// Builds a complete serialization shape graph rooted at `T`.
     pub fn for_type<T>() -> Self
     where
         T: SerializeShape + ?Sized,
@@ -361,22 +364,22 @@ impl SerializeShapeGraph {
         Self::from_fn(T::serialize_shape_in)
     }
 
-    /// Return the root shape reference.
+    /// Returns the root shape reference.
     pub fn root(&self) -> &ShapeRef {
         &self.root
     }
 
-    /// Return the root definition when the graph root is a named type.
+    /// Returns the root definition when the graph root is a named type.
     pub fn root_definition(&self) -> Option<&SerializeDefinitionShape> {
         self.definition_for(self.root())
     }
 
-    /// Return the named definitions reachable from the root.
+    /// Returns the named definitions reachable from the root.
     pub fn definitions(&self) -> &[SerializeDefinitionShape] {
         &self.definitions
     }
 
-    /// Return a definition at this id's graph-local index.
+    /// Returns the definition at this id's graph-local index.
     ///
     /// A [`ShapeId`] does not encode graph ownership. The caller must pass an id produced by this
     /// graph; an id from another graph with an in-bounds index cannot be distinguished here.
@@ -384,7 +387,7 @@ impl SerializeShapeGraph {
         self.definitions.get(id.0)
     }
 
-    /// Return the definition directly referenced by `shape`.
+    /// Returns the definition directly referenced by `shape`.
     ///
     /// Returns `None` for non-definition shapes and out-of-bounds definition indexes.
     pub fn definition_for(&self, shape: &ShapeRef) -> Option<&SerializeDefinitionShape> {
@@ -405,7 +408,7 @@ pub struct DeserializeShapeGraph {
 }
 
 impl DeserializeShapeGraph {
-    /// Build a deserialization graph from a function that returns its root shape.
+    /// Builds a deserialization graph from a function that returns its root shape.
     ///
     /// This lets a custom shape function describe a foreign root without introducing a wrapper
     /// type solely to implement [`DeserializeShape`].
@@ -437,7 +440,7 @@ impl DeserializeShapeGraph {
         }
     }
 
-    /// Build a complete deserialization shape graph rooted at `T`.
+    /// Builds a complete deserialization shape graph rooted at `T`.
     pub fn for_type<T>() -> Self
     where
         T: DeserializeShape + ?Sized,
@@ -445,22 +448,22 @@ impl DeserializeShapeGraph {
         Self::from_fn(T::deserialize_shape_in)
     }
 
-    /// Return the root shape reference.
+    /// Returns the root shape reference.
     pub fn root(&self) -> &ShapeRef {
         &self.root
     }
 
-    /// Return the root definition when the graph root is a named type.
+    /// Returns the root definition when the graph root is a named type.
     pub fn root_definition(&self) -> Option<&DeserializeDefinitionShape> {
         self.definition_for(self.root())
     }
 
-    /// Return the named definitions reachable from the root.
+    /// Returns the named definitions reachable from the root.
     pub fn definitions(&self) -> &[DeserializeDefinitionShape] {
         &self.definitions
     }
 
-    /// Return a definition at this id's graph-local index.
+    /// Returns the definition at this id's graph-local index.
     ///
     /// A [`ShapeId`] does not encode graph ownership. The caller must pass an id produced by this
     /// graph; an id from another graph with an in-bounds index cannot be distinguished here.
@@ -468,7 +471,7 @@ impl DeserializeShapeGraph {
         self.definitions.get(id.0)
     }
 
-    /// Return the definition directly referenced by `shape`.
+    /// Returns the definition directly referenced by `shape`.
     ///
     /// Returns `None` for non-definition shapes and out-of-bounds definition indexes.
     pub fn definition_for(&self, shape: &ShapeRef) -> Option<&DeserializeDefinitionShape> {
@@ -479,7 +482,7 @@ impl DeserializeShapeGraph {
     }
 }
 
-/// Accumulates named serialization definitions while a shape graph is built.
+/// A context that accumulates named serialization definitions while a graph is built.
 #[derive(Debug, Default)]
 pub struct SerializeShapeContext {
     definitions: Vec<Option<SerializeDefinitionShape>>,
@@ -487,7 +490,7 @@ pub struct SerializeShapeContext {
 }
 
 impl SerializeShapeContext {
-    /// Define a named type once and return a reference to its definition.
+    /// Defines a named type once and returns a reference to its definition.
     ///
     /// The concrete builder type and diagnostic Rust name form the graph-local identity. Call this
     /// method from one stable closure expression for every occurrence of the same named type.
@@ -498,7 +501,7 @@ impl SerializeShapeContext {
         self.define_named_type_with_description(type_name, None, build)
     }
 
-    /// Define a named type with user-facing documentation.
+    /// Defines a named type with user-facing documentation.
     ///
     /// This behaves like [`Self::define_named_type`] and stores `description` on the resulting
     /// definition.
@@ -538,7 +541,7 @@ impl SerializeShapeContext {
     }
 }
 
-/// Accumulates named deserialization definitions while a shape graph is built.
+/// A context that accumulates named deserialization definitions while a graph is built.
 #[derive(Debug, Default)]
 pub struct DeserializeShapeContext {
     definitions: Vec<Option<DeserializeDefinitionShape>>,
@@ -546,7 +549,7 @@ pub struct DeserializeShapeContext {
 }
 
 impl DeserializeShapeContext {
-    /// Define a named type once and return a reference to its definition.
+    /// Defines a named type once and returns a reference to its definition.
     ///
     /// The concrete builder type and diagnostic Rust name form the graph-local identity. Call this
     /// method from one stable closure expression for every occurrence of the same named type.
@@ -557,7 +560,7 @@ impl DeserializeShapeContext {
         self.define_named_type_with_description(type_name, None, build)
     }
 
-    /// Define a named type with user-facing documentation.
+    /// Defines a named type with user-facing documentation.
     ///
     /// This behaves like [`Self::define_named_type`] and stores `description` on the resulting
     /// definition.
@@ -597,7 +600,7 @@ impl DeserializeShapeContext {
     }
 }
 
-/// Identifies a named shape definition by its graph-local index.
+/// A graph-local identifier for a named shape definition.
 ///
 /// An id does not carry the identity of its originating graph. Keep it paired with the graph that
 /// produced it.
@@ -605,7 +608,7 @@ impl DeserializeShapeContext {
 pub struct ShapeId(usize);
 
 impl ShapeId {
-    /// Return this id's graph-local definition index.
+    /// Returns this id's graph-local definition index.
     pub const fn index(self) -> usize {
         self.0
     }
@@ -621,7 +624,7 @@ pub struct TypeName {
 }
 
 impl TypeName {
-    /// Build names for `T` and one direction-specific Serde container name.
+    /// Builds names for `T` and one direction-specific Serde container name.
     pub fn of<T>(name: &'static str) -> Self
     where
         T: ?Sized,
@@ -709,7 +712,7 @@ pub enum ShapeRef {
 }
 
 impl ShapeRef {
-    /// Build a normalized union from one or more possible value shapes.
+    /// Builds a normalized union from one or more possible value shapes.
     ///
     /// Nested unions are flattened, duplicate alternatives are removed, and alternatives are
     /// sorted into a canonical order. A single distinct alternative is returned directly.
@@ -725,7 +728,7 @@ impl ShapeRef {
         Self::try_union(alternatives).expect("shape union requires at least one alternative")
     }
 
-    /// Try to build a normalized union from possible value shapes.
+    /// Tries to build a normalized union from possible value shapes.
     ///
     /// Returns `None` when `alternatives` is empty. Nested unions are flattened, duplicate
     /// alternatives are removed, and alternatives are sorted into a canonical order. A single
@@ -752,7 +755,7 @@ impl ShapeRef {
         }
     }
 
-    /// Return whether this is a signed integer shape.
+    /// Returns `true` if this shape contains only signed integers.
     pub fn is_signed_integer(&self) -> bool {
         match self {
             Self::I8 | Self::I16 | Self::I32 | Self::I64 | Self::I128 | Self::Isize => true,
@@ -761,7 +764,7 @@ impl ShapeRef {
         }
     }
 
-    /// Return whether this is an unsigned integer shape.
+    /// Returns `true` if this shape contains only unsigned integers.
     pub fn is_unsigned_integer(&self) -> bool {
         match self {
             Self::U8 | Self::U16 | Self::U32 | Self::U64 | Self::U128 | Self::Usize => true,
@@ -770,7 +773,7 @@ impl ShapeRef {
         }
     }
 
-    /// Return whether this is any integer shape.
+    /// Returns `true` if this shape contains only integers.
     pub fn is_integer(&self) -> bool {
         match self {
             Self::Union(union) => union.alternatives.iter().all(Self::is_integer),
@@ -778,7 +781,7 @@ impl ShapeRef {
         }
     }
 
-    /// Return whether this is a floating point shape.
+    /// Returns `true` if this shape contains only floating-point values.
     pub fn is_float(&self) -> bool {
         match self {
             Self::F32 | Self::F64 => true,
@@ -787,7 +790,7 @@ impl ShapeRef {
         }
     }
 
-    /// Return whether this is any numeric shape.
+    /// Returns `true` if this shape contains only numeric values.
     pub fn is_number(&self) -> bool {
         match self {
             Self::Union(union) => union.alternatives.iter().all(Self::is_number),
@@ -807,7 +810,7 @@ pub struct UnionShape {
 }
 
 impl UnionShape {
-    /// Return the canonical union alternatives.
+    /// Returns the canonical union alternatives.
     pub fn alternatives(&self) -> &[ShapeRef] {
         &self.alternatives
     }
@@ -867,7 +870,7 @@ pub enum DeserializeDefinitionKind {
     Opaque(OpaqueShape),
 }
 
-/// Serde attributes that apply to a whole serialized container.
+/// Container metadata relevant to serialization.
 ///
 /// [`Default`] represents a container with every optional behavior disabled. Enum tagging is
 /// recorded once in [`SerializeEnumShape::repr`], and flattened fields are identified by
@@ -878,7 +881,7 @@ pub struct SerializeContainerAttributes {
     pub non_exhaustive: bool,
 }
 
-/// Serde attributes that apply to a whole deserialized container.
+/// Container metadata relevant to deserialization.
 ///
 /// [`Default`] represents a container with no default, expectation, or optional behavior
 /// configured. Enum tagging is recorded once in [`DeserializeEnumShape::repr`], and flattened
@@ -1037,7 +1040,7 @@ pub enum FieldWireShape {
 }
 
 impl FieldWireShape {
-    /// Return the contributed value shape, or `None` when the field is omitted.
+    /// Returns the contributed value shape, or `None` when the field is omitted.
     ///
     /// This intentionally ignores whether the value is regular, flattened, or inline. Match on
     /// the enum directly when the field's wire position matters.
@@ -1131,13 +1134,13 @@ pub enum DefaultShape {
 }
 
 impl DefaultShape {
-    /// Return whether this value represents no default.
+    /// Returns `true` if no default is configured.
     pub fn is_none(&self) -> bool {
         matches!(self, Self::None)
     }
 }
 
-/// Shape intentionally left opaque.
+/// An intentionally opaque shape.
 #[derive(Clone, Debug, Eq, Ord, PartialEq, PartialOrd)]
 pub struct OpaqueShape {
     /// The Rust type or Serde item that is opaque.
@@ -1148,7 +1151,7 @@ pub struct OpaqueShape {
     pub detail: Option<&'static str>,
 }
 
-/// Reason a shape cannot be represented precisely.
+/// The reason a shape cannot be represented precisely.
 #[derive(Clone, Copy, Debug, Eq, Ord, PartialEq, PartialOrd)]
 pub enum OpaqueReason {
     /// A custom serializer controls the output. Derive-generated `detail` is a parseable Rust path

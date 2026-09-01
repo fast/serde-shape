@@ -32,6 +32,6 @@ Prefer focused assertions for the contract under test. Avoid snapshots of entire
 
 Serialization and deserialization may have different shapes, bounds, and names. Check both directions when changing a shared implementation, and compare built-in types with Serde's actual data-model calls when behavior depends on the format or human-readable mode.
 
-Document user-visible changes in `CHANGELOG.md`. Update the README or crate-level documentation when a change affects setup, feature flags, supported representations, model boundaries, or migration steps.
+Update the README or crate-level documentation when a change affects setup, feature flags, supported representations, model boundaries, or migration steps.
 
 Keep pull requests and commits focused enough to review independently. Explain the concrete user problem and avoid adding generic abstractions without a current consumer.
