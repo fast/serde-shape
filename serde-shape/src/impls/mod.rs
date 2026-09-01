@@ -15,6 +15,8 @@
 mod bound;
 mod container;
 mod ffi;
+#[cfg(feature = "jiff02")]
+mod jiff02;
 mod net;
 #[cfg(all(feature = "std", any(unix, windows)))]
 mod os_string;

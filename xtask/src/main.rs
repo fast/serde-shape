@@ -87,6 +87,7 @@ impl CommandTest {
         run_command(make_test_cmd(self.no_capture, "serde-shape", &[]));
         run_command(make_test_cmd(self.no_capture, "serde-shape", &["std"]));
         run_command(make_test_cmd(self.no_capture, "serde-shape", &["derive"]));
+        run_command(make_test_cmd(self.no_capture, "serde-shape", &["jiff02"]));
         run_command(make_test_cmd(
             self.no_capture,
             "serde-shape",
