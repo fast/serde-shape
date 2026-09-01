@@ -42,9 +42,9 @@ The shape derives are independent of Serde's `Serialize` and `Deserialize` deriv
 
 Serde permits a type to emit and accept different representations. Names, skipped fields, custom functions, and conversion types can all differ by direction, so `serde-shape` exposes two independent APIs:
 
-| Representation | Derive | Graph entry point |
-| --- | --- | --- |
-| Values emitted by serialization | `SerializeShape` | `T::serialize_shape()` |
+| Representation                     | Derive             | Graph entry point        |
+| ---------------------------------- | ------------------ | ------------------------ |
+| Values emitted by serialization    | `SerializeShape`   | `T::serialize_shape()`   |
 | Values accepted by deserialization | `DeserializeShape` | `T::deserialize_shape()` |
 
 Derive only the direction a consumer needs. Derive both when a tool compares the emitted and accepted representations.
@@ -116,12 +116,12 @@ Rust doc comments on derived containers, variants, and fields are preserved as d
 
 The derive macros use Serde's derive metadata for the selected direction. They reflect the following wire-relevant behavior:
 
-| Scope | Reflected behavior |
-| --- | --- |
-| Container | Directional names, rename rules, enum tagging, transparent fields, defaults, unknown-field policy, expectation text, identifier enums, and `#[non_exhaustive]` |
-| Variant | Directional names and skips, deserialization aliases and `other`, per-variant `untagged`, field style, and custom-function boundaries |
-| Field | Directional names and skips, deserialization aliases and defaults, `flatten`, `skip_serializing_if`, transparent placement, borrowed string or byte `Cow` input, and custom-function boundaries |
-| Conversion and remote types | `into`, `from`, and `try_from` use the conversion type's shape; remote helpers expose their declared fields and Serde metadata |
+| Scope                       | Reflected behavior                                                                                                                                                                              |
+| --------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Container                   | Directional names, rename rules, enum tagging, transparent fields, defaults, unknown-field policy, expectation text, identifier enums, and `#[non_exhaustive]`                                  |
+| Variant                     | Directional names and skips, deserialization aliases and `other`, per-variant `untagged`, field style, and custom-function boundaries                                                           |
+| Field                       | Directional names and skips, deserialization aliases and defaults, `flatten`, `skip_serializing_if`, transparent placement, borrowed string or byte `Cow` input, and custom-function boundaries |
+| Conversion and remote types | `into`, `from`, and `try_from` use the conversion type's shape; remote helpers expose their declared fields and Serde metadata                                                                  |
 
 Serde attributes that affect generated code without changing the wire model are not copied into the graph. For example, Serde trait bounds and crate paths remain concerns of Serde's derive, while shape trait bounds are inferred independently.
 
@@ -129,11 +129,11 @@ Serde attributes that affect generated code without changing the wire model are 
 
 `serde_shape` has three direction-specific reflection extensions:
 
-| Attribute | Purpose | Allowed on |
-| --- | --- | --- |
-| `serialize_with = "path"` | Supplies a serialization `ShapeRef` | Containers, variants, and fields |
-| `deserialize_with = "path"` | Supplies a deserialization `ShapeRef` | Containers, variants, and fields |
-| `bound(serialize = "...", deserialize = "...")` | Replaces inferred shape bounds in the selected direction | Containers |
+| Attribute                                       | Purpose                                                  | Allowed on                       |
+| ----------------------------------------------- | -------------------------------------------------------- | -------------------------------- |
+| `serialize_with = "path"`                       | Supplies a serialization `ShapeRef`                      | Containers, variants, and fields |
+| `deserialize_with = "path"`                     | Supplies a deserialization `ShapeRef`                    | Containers, variants, and fields |
+| `bound(serialize = "...", deserialize = "...")` | Replaces inferred shape bounds in the selected direction | Containers                       |
 
 These extensions cannot rename, tag, skip, flatten, alias, or default a Serde item. Serde remains the source of truth for wire behavior; `serde_shape` only supplies reflection information that cannot be inferred.
 
@@ -194,16 +194,16 @@ Types that branch on `Serializer::is_human_readable()` or `Deserializer::is_huma
 
 The built-in implementations follow Serde's semantic representations in each direction, including known human-readable and compact alternatives.
 
-| Group | Supported types |
-| --- | --- |
-| Scalars | Rust primitives, `String`, serialized `str` and `fmt::Arguments`, and non-zero integers |
-| Containers | `Option`, `Result`, arrays through length 32, slices for serialization, tuples through arity 16, `Vec`, `VecDeque`, `LinkedList`, `BinaryHeap`, `BTreeSet`, and `BTreeMap` |
-| Wrappers | Serialized references, borrowed string/byte/path inputs, `Box`, `Rc`, `Arc`, their weak pointers, `Cow`, `Cell`, `RefCell`, `Wrapping`, `Saturating`, `Reverse`, and `PhantomData` |
-| FFI | `CStr` and `CString` byte representations; on Unix and Windows, serialized `OsStr`, `OsString`, and owned `Box<OsStr>` input |
-| Ranges | `Range`, `RangeFrom`, `RangeInclusive`, `RangeTo`, and `Bound` |
-| Time | `core::time::Duration` and, with `std`, `SystemTime` |
-| Network | `core::net` IP and socket address types |
-| `std` feature | Atomics available on the target, `HashMap`, `HashSet`, `Path`, `PathBuf`, `Mutex`, and `RwLock` |
+| Group         | Supported types                                                                                                                                                                    |
+| ------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Scalars       | Rust primitives, `String`, serialized `str` and `fmt::Arguments`, and non-zero integers                                                                                            |
+| Containers    | `Option`, `Result`, arrays through length 32, slices for serialization, tuples through arity 16, `Vec`, `VecDeque`, `LinkedList`, `BinaryHeap`, `BTreeSet`, and `BTreeMap`         |
+| Wrappers      | Serialized references, borrowed string/byte/path inputs, `Box`, `Rc`, `Arc`, their weak pointers, `Cow`, `Cell`, `RefCell`, `Wrapping`, `Saturating`, `Reverse`, and `PhantomData` |
+| FFI           | `CStr` and `CString` byte representations; on Unix and Windows, serialized `OsStr`, `OsString`, and owned `Box<OsStr>` input                                                       |
+| Ranges        | `Range`, `RangeFrom`, `RangeInclusive`, `RangeTo`, and `Bound`                                                                                                                     |
+| Time          | `core::time::Duration` and, with `std`, `SystemTime`                                                                                                                               |
+| Network       | `core::net` IP and socket address types                                                                                                                                            |
+| `std` feature | Atomics available on the target, `HashMap`, `HashSet`, `Path`, `PathBuf`, `Mutex`, and `RwLock`                                                                                    |
 
 Network address shapes are unions of their human-readable string representation and their compact Serde representation. A serialized byte slice and an owned `Box<[u8]>` input are sequences, while borrowed byte deserialization uses `ShapeRef::Bytes`.
 
