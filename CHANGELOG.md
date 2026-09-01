@@ -40,6 +40,7 @@ All notable changes to this project will be documented in this file.
 
 ### Bug fixes
 
+* Preserve required keyword spacing in qualified Serde function paths such as `<T as Trait>::function`.
 * Match Serde's fixed-array coverage and bounds: lengths above 32 no longer claim shape support, while zero-length arrays no longer require their unobserved element type to implement a shape trait.
 * Match Serde's deserialization bounds for tree and hash collections so a shape implementation is exposed only when the corresponding collection can actually deserialize.
 * Preserve the known string and byte shapes of `#[serde(borrow)]` fields using `Cow<str>` or `Cow<[u8]>` from their source-level metadata, while leaving explicit custom deserializers opaque.

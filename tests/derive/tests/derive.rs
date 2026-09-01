@@ -188,6 +188,12 @@ struct Marker<T> {
     marker: core::marker::PhantomData<T>,
 }
 
+#[derive(DeserializeShape)]
+struct QualifiedMetadataPaths {
+    #[serde(default = "<u8 as Default>::default")]
+    value: u8,
+}
+
 #[derive(serde::Deserialize, DeserializeShape)]
 struct BorrowedCow<'a> {
     #[serde(borrow)]
@@ -531,6 +537,18 @@ fn omits_shape_bounds_for_skipped_and_marker_fields() {
     assert_eq!(
         Marker::<NotShape>::deserialize_shape().definitions().len(),
         1
+    );
+}
+
+#[test]
+fn preserves_qualified_metadata_paths() {
+    let deserialize = deserialize_root_definition::<QualifiedMetadataPaths>();
+    let DeserializeDefinitionKind::Struct(deserialize) = &deserialize.kind else {
+        panic!("deserialization definition should be a struct");
+    };
+    assert_eq!(
+        deserialize.fields[0].default,
+        DefaultShape::Path("<u8 as Default>::default")
     );
 }
 
