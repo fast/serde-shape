@@ -52,6 +52,7 @@ All notable changes to this project will be documented in this file.
 
 ### Improvements
 
+* Clarify that shape derives and `serde_shape` attributes provide reflection metadata without implementing or changing Serde's runtime traits.
 * Point README and crate-level installation examples at the upcoming `0.1.0` release.
 * State the graph-local `ShapeId` ownership contract accurately instead of claiming that lookups can detect an in-bounds id copied from another graph.
 * Add `definition_for` to both graph types so walkers can resolve a `ShapeRef::Definition` without repeating a match and id lookup.
