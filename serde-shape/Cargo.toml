@@ -14,7 +14,7 @@
 
 [package]
 name = "serde-shape"
-version = "0.0.1"
+version = "0.1.0"
 
 categories = ["development-tools", "encoding"]
 description = "Build inspectable graphs of Serde serialization and deserialization shapes."

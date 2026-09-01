@@ -14,7 +14,7 @@
 
 [package]
 name = "serde-shape-derive"
-version = "0.0.1"
+version = "0.1.0"
 
 categories = ["development-tools", "encoding"]
 description = "Procedural macro implementation for the serde-shape crate."
