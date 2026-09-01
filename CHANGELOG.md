@@ -17,10 +17,12 @@ All notable changes to this project will be documented in this file.
 * Make the `ShapeId` tuple field private. Use `ShapeId::index()` when the graph-local numeric index is needed.
 * Add `description` to definition, field, and variant metadata. Manual struct literals must initialize the new field.
 * Remove `OpaqueReason::{FromType, TryFromType, IntoType}` because Serde conversion attributes now use the conversion type's shape instead of an opaque boundary.
+* Remove `OpaqueReason::Remote` because Serde remote definitions now expose their declared shape instead of an opaque boundary.
 * Restrict the blanket `Box<T>` deserialization shape to sized `T`. Serde-supported owned DSTs have explicit implementations; shape-only custom DSTs now need a local newtype.
 
 ### New features
 
+* Reflect the fields, names, tagging, and attributes declared by Serde remote definitions so foreign-type adapters can participate in shape graphs.
 * Reflect serialized `core::fmt::Arguments` as a string, matching Serde's formatting implementation.
 * Add target-specific `OsStr` and `OsString` enum shapes on Unix and Windows, including owned `Box<OsStr>` input.
 * Add `SerializeShapeGraph::from_fn` and `DeserializeShapeGraph::from_fn` so custom shape functions can describe foreign graph roots without a dummy wrapper type.
@@ -38,6 +40,7 @@ All notable changes to this project will be documented in this file.
 
 ### Bug fixes
 
+* Match Serde's fixed-array coverage and bounds: lengths above 32 no longer claim shape support, while zero-length arrays no longer require their unobserved element type to implement a shape trait.
 * Match Serde's deserialization bounds for tree and hash collections so a shape implementation is exposed only when the corresponding collection can actually deserialize.
 * Preserve the known string and byte shapes of `#[serde(borrow)]` fields using `Cow<str>` or `Cow<[u8]>` from their source-level metadata, while leaving explicit custom deserializers opaque.
 * Distinguish borrowed byte input from owned boxed slices: `&[u8]` reflects bytes while `Box<[u8]>` reflects a sequence, matching Serde.
@@ -49,6 +52,7 @@ All notable changes to this project will be documented in this file.
 
 ### Improvements
 
+* State the graph-local `ShapeId` ownership contract accurately instead of claiming that lookups can detect an in-bounds id copied from another graph.
 * Add `definition_for` to both graph types so walkers can resolve a `ShapeRef::Definition` without repeating a match and id lookup.
 * Verify the packaged main crate against the packaged derive implementation that will be released with it, rather than accidentally compiling the previously published same-version macro crate from crates.io.
 * Clarify that shape graphs are normalized semantic models rather than exact traces of Serde serializer or deserializer method dispatch.

@@ -135,9 +135,11 @@ The same `serde_shape` hooks can be placed on enum variants whose content is con
 
 For a generic custom hook, container-level `#[serde_shape(bound(serialize = "...", deserialize = "..."))]` replaces the automatically inferred bounds in the corresponding direction, following Serde's bound-override convention.
 
+Types declared with `#[serde(remote = "...")]` expose the wire shape described by the remote helper's fields and attributes. A field that uses the helper through `#[serde(with = "...")]` still needs a `serde_shape` hook that delegates to the helper, because an arbitrary `with` module does not identify its representation type.
+
 ## Model boundaries
 
-Shape graphs are an inspection API, not a stable interchange format. `ShapeId` values are local to one graph, and definition ordering and `Debug` output are not persistence contracts.
+Shape graphs are an inspection API, not a stable interchange format. `ShapeId` values are local to one graph and carry only a definition index, not graph identity. Keep an ID paired with the graph that produced it; a lookup cannot detect an ID from another graph when its index is in bounds. Definition ordering and `Debug` output are not persistence contracts.
 
 Definitions may be recursive. A `ShapeRef::Definition` is a graph edge, so walkers must detect repeated `ShapeId` values instead of expanding definitions indefinitely.
 
@@ -159,7 +161,7 @@ The built-in implementations follow Serde's semantic representations in each dir
 | Group | Supported types |
 | --- | --- |
 | Scalars | Rust primitives, `String`, serialized `str` and `fmt::Arguments`, and non-zero integers |
-| Containers | `Option`, `Result`, arrays, slices for serialization, tuples through arity 16, `Vec`, `VecDeque`, `LinkedList`, `BinaryHeap`, `BTreeSet`, and `BTreeMap` |
+| Containers | `Option`, `Result`, arrays through length 32, slices for serialization, tuples through arity 16, `Vec`, `VecDeque`, `LinkedList`, `BinaryHeap`, `BTreeSet`, and `BTreeMap` |
 | Wrappers | Serialized references, borrowed string/byte/path inputs, `Box`, `Rc`, `Arc`, their weak pointers, `Cow`, `Cell`, `RefCell`, `Wrapping`, `Saturating`, `Reverse`, and `PhantomData` |
 | FFI | `CStr` and `CString` byte representations; on Unix and Windows, serialized `OsStr`, `OsString`, and owned `Box<OsStr>` input |
 | Ranges | `Range`, `RangeFrom`, `RangeInclusive`, `RangeTo`, and `Bound` |
@@ -177,7 +179,7 @@ Serialization follows Serde's blanket support for `&T` and `&mut T`. Deserializa
 
 The unsized `str`, `[u8]`, and `Path` types themselves do not implement `DeserializeShape`, matching Serde. Their borrowed and owned input forms have explicit shape implementations.
 
-For an unsupported foreign type, use a local newtype and implement `SerializeShape` or `DeserializeShape` manually. Custom Serde functions remain opaque by default because their wire behavior cannot be inferred; use a `serde_shape` custom hook when the representation is known.
+For an unsupported foreign type, use a Serde remote definition, a local newtype, or a `serde_shape` custom hook. Custom Serde functions remain opaque by default because their wire behavior cannot be inferred.
 
 ## `no_std` support
 
