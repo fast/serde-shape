@@ -30,14 +30,14 @@
 //!
 //! ```toml
 //! [dependencies]
-//! serde-shape = { version = "0.0.1", features = ["derive"] }
+//! serde-shape = { version = "0.1.0", features = ["derive"] }
 //! ```
 //!
 //! Enable `std` when the reflected types use shapes provided only by the Rust standard library:
 //!
 //! ```toml
 //! [dependencies]
-//! serde-shape = { version = "0.0.1", features = ["derive", "std"] }
+//! serde-shape = { version = "0.1.0", features = ["derive", "std"] }
 //! ```
 //!
 //! The crate is `no_std` by default and requires `alloc`.
@@ -293,7 +293,7 @@ pub use serde_shape_derive::DeserializeShape;
 /// assert_eq!(definition.type_name.name, "api-response");
 /// assert_eq!(shape.fields[0].name, "requestId");
 /// assert_eq!(shape.fields[1].name, "nextPage");
-/// assert_eq!(shape.fields[1].skip_if, Some("Option::is_none"));
+/// assert!(shape.fields[1].skip_if.is_some());
 /// ```
 pub use serde_shape_derive::SerializeShape;
 
@@ -987,7 +987,8 @@ pub struct SerializeFieldShape {
     pub description: Option<&'static str>,
     /// How this field contributes to the serialized wire shape.
     pub wire_shape: FieldWireShape,
-    /// The predicate used to skip this field during serialization.
+    /// The predicate used to skip this field during serialization, rendered as a parseable Rust
+    /// path token stream. Whitespace is not normalized.
     pub skip_if: Option<&'static str>,
 }
 
@@ -1120,7 +1121,8 @@ pub enum DefaultShape {
     None,
     /// `Default::default()` is used.
     Default,
-    /// A custom default function path is used.
+    /// A custom default function path is used. The value is a parseable Rust path token stream;
+    /// whitespace is not normalized.
     Path(&'static str),
 }
 
@@ -1145,9 +1147,11 @@ pub struct OpaqueShape {
 /// Reason a shape cannot be represented precisely.
 #[derive(Clone, Copy, Debug, Eq, Ord, PartialEq, PartialOrd)]
 pub enum OpaqueReason {
-    /// A custom serializer controls the output.
+    /// A custom serializer controls the output. Derive-generated `detail` is a parseable Rust path
+    /// token stream whose whitespace is not normalized.
     CustomSerializer,
-    /// A custom deserializer controls the input.
+    /// A custom deserializer controls the input. Derive-generated `detail` is a parseable Rust
+    /// path token stream whose whitespace is not normalized.
     CustomDeserializer,
     /// The type has no built-in shape implementation.
     Unsupported,

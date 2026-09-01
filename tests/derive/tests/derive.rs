@@ -188,6 +188,17 @@ struct Marker<T> {
     marker: core::marker::PhantomData<T>,
 }
 
+#[derive(SerializeShape, DeserializeShape)]
+struct EmptyArray<T> {
+    values: [T; 0],
+}
+
+#[derive(DeserializeShape)]
+struct QualifiedMetadataPaths {
+    #[serde(default = "<u8 as Default>::default")]
+    value: u8,
+}
+
 #[derive(serde::Deserialize, DeserializeShape)]
 struct BorrowedCow<'a> {
     #[serde(borrow)]
@@ -308,6 +319,10 @@ fn deserialize_bool_shape(_context: &mut DeserializeShapeContext) -> ShapeRef {
     ShapeRef::Bool
 }
 
+fn parse_path(path: &str) -> syn::ExprPath {
+    syn::parse_str(path).expect("metadata path should remain valid Rust")
+}
+
 fn deserialize_borrowed_str<'de, D>(deserializer: D) -> Result<Cow<'de, str>, D::Error>
 where
     D: serde::Deserializer<'de>,
@@ -335,9 +350,18 @@ fn exposes_deserialize_container_attributes() {
     };
     assert_eq!(http_port.name, "http-port");
     assert_eq!(api_url.aliases, ["api-url", "endpoint"]);
+    let DefaultShape::Path(path) = retries.default else {
+        panic!("custom default should be represented by its path");
+    };
+    let path = parse_path(path);
+    assert!(path.qself.is_none());
     assert_eq!(
-        retries.default,
-        DefaultShape::Path("crate::default_retries")
+        path.path
+            .segments
+            .iter()
+            .map(|segment| segment.ident.to_string())
+            .collect::<Vec<_>>(),
+        ["crate", "default_retries"]
     );
     assert!(matches!(storage.wire_shape, FieldWireShape::Flatten(_)));
     assert_eq!(skipped.wire_shape, FieldWireShape::Omitted);
@@ -521,7 +545,7 @@ fn preserves_rust_documentation() {
 }
 
 #[test]
-fn omits_shape_bounds_for_skipped_and_marker_fields() {
+fn omits_unnecessary_shape_bounds() {
     assert_eq!(
         SkipsGeneric::<NotShape>::deserialize_shape()
             .definitions()
@@ -531,6 +555,39 @@ fn omits_shape_bounds_for_skipped_and_marker_fields() {
     assert_eq!(
         Marker::<NotShape>::deserialize_shape().definitions().len(),
         1
+    );
+    assert_eq!(
+        EmptyArray::<NotShape>::serialize_shape()
+            .definitions()
+            .len(),
+        1
+    );
+    assert_eq!(
+        EmptyArray::<NotShape>::deserialize_shape()
+            .definitions()
+            .len(),
+        1
+    );
+}
+
+#[test]
+fn preserves_qualified_metadata_paths() {
+    let deserialize = deserialize_root_definition::<QualifiedMetadataPaths>();
+    let DeserializeDefinitionKind::Struct(deserialize) = &deserialize.kind else {
+        panic!("deserialization definition should be a struct");
+    };
+    let DefaultShape::Path(path) = deserialize.fields[0].default else {
+        panic!("qualified default should be represented by its path");
+    };
+    let path = parse_path(path);
+    assert!(path.qself.is_some());
+    assert_eq!(
+        path.path
+            .segments
+            .iter()
+            .map(|segment| segment.ident.to_string())
+            .collect::<Vec<_>>(),
+        ["Default", "default"]
     );
 }
 

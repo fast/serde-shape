@@ -30,6 +30,7 @@ renamed-shape = { package = "serde-shape", path = "../../serde-shape", features 
 [dev-dependencies]
 serde = { workspace = true }
 serde_json = { workspace = true }
+syn = { workspace = true }
 
 [lints]
 workspace = true

@@ -368,8 +368,15 @@ fn collect_shape_bound_types(
     type_params: &BTreeSet<String>,
     field_bound_types: &mut Vec<Type>,
 ) {
+    // Keep this selective traversal aligned with serde_derive::bound::with_bound. A general
+    // syn::visit::Visit would also enter macros and const expressions, where mentioning a type
+    // parameter does not imply that the field needs a Shape bound.
     match ty {
-        Type::Array(ty) => collect_shape_bound_types(&ty.elem, type_params, field_bound_types),
+        Type::Array(ty) => {
+            if !is_zero_length(&ty.len) {
+                collect_shape_bound_types(&ty.elem, type_params, field_bound_types);
+            }
+        }
         Type::FnPtr(ty) => {
             for input in &ty.inputs {
                 collect_shape_bound_types(&input.ty, type_params, field_bound_types);
@@ -442,6 +449,19 @@ fn collect_shape_bound_types(
         }
         Type::Infer(_) | Type::Macro(_) | Type::Never(_) | Type::Verbatim(_) => {}
         _ => {}
+    }
+}
+
+fn is_zero_length(expr: &syn::Expr) -> bool {
+    match expr {
+        syn::Expr::Group(expr) => is_zero_length(&expr.expr),
+        syn::Expr::Lit(expr) => {
+            matches!(&expr.lit, syn::Lit::Int(value) if value
+                .base10_parse::<usize>()
+                .is_ok_and(|value| value == 0))
+        }
+        syn::Expr::Paren(expr) => is_zero_length(&expr.expr),
+        _ => false,
     }
 }
 
@@ -931,7 +951,7 @@ fn default_shape(default: &attr::Default) -> TokenStream2 {
         attr::Default::None => quote!(__serde_shape::DefaultShape::None),
         attr::Default::Default => quote!(__serde_shape::DefaultShape::Default),
         attr::Default::Path(path) => {
-            let path = lit(path.to_token_stream().to_string().replace(' ', ""));
+            let path = lit(path.to_token_stream().to_string());
             quote!(__serde_shape::DefaultShape::Path(#path))
         }
     }
@@ -1033,7 +1053,7 @@ fn option_lit(value: Option<&str>) -> TokenStream2 {
 fn option_path(value: Option<&syn::ExprPath>) -> TokenStream2 {
     match value {
         Some(value) => {
-            let value = lit(value.to_token_stream().to_string().replace(' ', ""));
+            let value = lit(value.to_token_stream().to_string());
             quote!(::core::option::Option::Some(#value))
         }
         None => quote!(::core::option::Option::None),
