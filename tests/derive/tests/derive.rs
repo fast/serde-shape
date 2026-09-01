@@ -319,6 +319,10 @@ fn deserialize_bool_shape(_context: &mut DeserializeShapeContext) -> ShapeRef {
     ShapeRef::Bool
 }
 
+fn parse_path(path: &str) -> syn::ExprPath {
+    syn::parse_str(path).expect("metadata path should remain valid Rust")
+}
+
 fn deserialize_borrowed_str<'de, D>(deserializer: D) -> Result<Cow<'de, str>, D::Error>
 where
     D: serde::Deserializer<'de>,
@@ -346,9 +350,18 @@ fn exposes_deserialize_container_attributes() {
     };
     assert_eq!(http_port.name, "http-port");
     assert_eq!(api_url.aliases, ["api-url", "endpoint"]);
+    let DefaultShape::Path(path) = retries.default else {
+        panic!("custom default should be represented by its path");
+    };
+    let path = parse_path(path);
+    assert!(path.qself.is_none());
     assert_eq!(
-        retries.default,
-        DefaultShape::Path("crate::default_retries")
+        path.path
+            .segments
+            .iter()
+            .map(|segment| segment.ident.to_string())
+            .collect::<Vec<_>>(),
+        ["crate", "default_retries"]
     );
     assert!(matches!(storage.wire_shape, FieldWireShape::Flatten(_)));
     assert_eq!(skipped.wire_shape, FieldWireShape::Omitted);
@@ -563,9 +576,18 @@ fn preserves_qualified_metadata_paths() {
     let DeserializeDefinitionKind::Struct(deserialize) = &deserialize.kind else {
         panic!("deserialization definition should be a struct");
     };
+    let DefaultShape::Path(path) = deserialize.fields[0].default else {
+        panic!("qualified default should be represented by its path");
+    };
+    let path = parse_path(path);
+    assert!(path.qself.is_some());
     assert_eq!(
-        deserialize.fields[0].default,
-        DefaultShape::Path("<u8 as Default>::default")
+        path.path
+            .segments
+            .iter()
+            .map(|segment| segment.ident.to_string())
+            .collect::<Vec<_>>(),
+        ["Default", "default"]
     );
 }
 

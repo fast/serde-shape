@@ -40,7 +40,7 @@ All notable changes to this project will be documented in this file.
 
 ### Bug fixes
 
-* Preserve required keyword spacing in qualified Serde function paths such as `<T as Trait>::function`.
+* Preserve qualified Serde function paths such as `<T as Trait>::function` as parseable Rust token streams.
 * Match Serde's fixed-array coverage and bounds: lengths above 32 no longer claim shape support, while zero-length arrays no longer require their unobserved element type to implement a shape trait, including inside derived generic containers.
 * Match Serde's deserialization bounds for tree and hash collections so a shape implementation is exposed only when the corresponding collection can actually deserialize.
 * Preserve the known string and byte shapes of `#[serde(borrow)]` fields using `Cow<str>` or `Cow<[u8]>` from their source-level metadata, while leaving explicit custom deserializers opaque.
@@ -49,7 +49,6 @@ All notable changes to this project will be documented in this file.
 * Reflect the proxy type used by Serde `from`, `try_from`, and `into` container attributes.
 * Follow Serde's directional bounds for `Cow`: serialization reflects the borrowed type and deserialization reflects the owned type.
 * Make IP and socket address shapes available in `no_std` builds through `core::net`.
-* Preserve qualified Serde default paths without token-rendering spaces.
 
 ### Improvements
 

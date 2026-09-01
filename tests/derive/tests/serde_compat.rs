@@ -85,6 +85,19 @@ fn flat_value_shape() -> ShapeRef {
     }
 }
 
+fn assert_path(actual: Option<&str>, expected_segments: &[&str]) {
+    let path = syn::parse_str::<syn::ExprPath>(actual.expect("path metadata should be present"))
+        .expect("metadata path should remain valid Rust");
+    assert_eq!(
+        path.path
+            .segments
+            .iter()
+            .map(|segment| segment.ident.to_string())
+            .collect::<Vec<_>>(),
+        expected_segments
+    );
+}
+
 #[test]
 fn composes_flatten_with_custom_field_boundaries() {
     let value = FlattenedCustom {
@@ -102,14 +115,14 @@ fn composes_flatten_with_custom_field_boundaries() {
         panic!("custom serialized flatten field should be flattened and opaque");
     };
     assert_eq!(opaque.reason, OpaqueReason::CustomSerializer);
-    assert_eq!(opaque.detail, Some("flat_value::serialize"));
+    assert_path(opaque.detail, &["flat_value", "serialize"]);
 
     let deserialize_field = first_deserialize_field::<FlattenedCustom>();
     let FieldWireShape::Flatten(ShapeRef::Opaque(opaque)) = deserialize_field.wire_shape else {
         panic!("custom deserialized flatten field should be flattened and opaque");
     };
     assert_eq!(opaque.reason, OpaqueReason::CustomDeserializer);
-    assert_eq!(opaque.detail, Some("flat_value::deserialize"));
+    assert_path(opaque.detail, &["flat_value", "deserialize"]);
 }
 
 #[test]
@@ -147,14 +160,14 @@ fn composes_transparent_with_custom_field_boundaries() {
         panic!("custom serialized transparent field should be inline and opaque");
     };
     assert_eq!(opaque.reason, OpaqueReason::CustomSerializer);
-    assert_eq!(opaque.detail, Some("stringified::serialize"));
+    assert_path(opaque.detail, &["stringified", "serialize"]);
 
     let deserialize_field = first_deserialize_field::<TransparentCustom>();
     let FieldWireShape::Inline(ShapeRef::Opaque(opaque)) = deserialize_field.wire_shape else {
         panic!("custom deserialized transparent field should be inline and opaque");
     };
     assert_eq!(opaque.reason, OpaqueReason::CustomDeserializer);
-    assert_eq!(opaque.detail, Some("stringified::deserialize"));
+    assert_path(opaque.detail, &["stringified", "deserialize"]);
 }
 
 #[test]
@@ -172,14 +185,14 @@ fn retains_custom_variant_boundary_details() {
         panic!("custom serialized variant should expose opaque content");
     };
     assert_eq!(opaque.reason, OpaqueReason::CustomSerializer);
-    assert_eq!(opaque.detail, Some("stringified::serialize"));
+    assert_path(opaque.detail, &["stringified", "serialize"]);
 
     let deserialize_variant = first_deserialize_variant::<CustomVariant>();
     let DeserializeVariantContent::Custom(opaque) = deserialize_variant.content else {
         panic!("custom deserialized variant should expose opaque content");
     };
     assert_eq!(opaque.reason, OpaqueReason::CustomDeserializer);
-    assert_eq!(opaque.detail, Some("stringified::deserialize"));
+    assert_path(opaque.detail, &["stringified", "deserialize"]);
 }
 
 #[test]

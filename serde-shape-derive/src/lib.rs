@@ -948,7 +948,7 @@ fn default_shape(default: &attr::Default) -> TokenStream2 {
         attr::Default::None => quote!(__serde_shape::DefaultShape::None),
         attr::Default::Default => quote!(__serde_shape::DefaultShape::Default),
         attr::Default::Path(path) => {
-            let path = lit(format_path(path));
+            let path = lit(path.to_token_stream().to_string());
             quote!(__serde_shape::DefaultShape::Path(#path))
         }
     }
@@ -1050,21 +1050,11 @@ fn option_lit(value: Option<&str>) -> TokenStream2 {
 fn option_path(value: Option<&syn::ExprPath>) -> TokenStream2 {
     match value {
         Some(value) => {
-            let value = lit(format_path(value));
+            let value = lit(value.to_token_stream().to_string());
             quote!(::core::option::Option::Some(#value))
         }
         None => quote!(::core::option::Option::None),
     }
-}
-
-fn format_path(path: &impl ToTokens) -> String {
-    path.to_token_stream()
-        .to_string()
-        .replace(" :: ", "::")
-        .replace("< ", "<")
-        .replace(" >", ">")
-        .replace(" ,", ",")
-        .replace(", ", ",")
 }
 
 fn lit(value: impl AsRef<str>) -> LitStr {
