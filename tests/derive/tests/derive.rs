@@ -188,6 +188,11 @@ struct Marker<T> {
     marker: core::marker::PhantomData<T>,
 }
 
+#[derive(SerializeShape, DeserializeShape)]
+struct EmptyArray<T> {
+    values: [T; 0],
+}
+
 #[derive(DeserializeShape)]
 struct QualifiedMetadataPaths {
     #[serde(default = "<u8 as Default>::default")]
@@ -527,7 +532,7 @@ fn preserves_rust_documentation() {
 }
 
 #[test]
-fn omits_shape_bounds_for_skipped_and_marker_fields() {
+fn omits_unnecessary_shape_bounds() {
     assert_eq!(
         SkipsGeneric::<NotShape>::deserialize_shape()
             .definitions()
@@ -536,6 +541,18 @@ fn omits_shape_bounds_for_skipped_and_marker_fields() {
     );
     assert_eq!(
         Marker::<NotShape>::deserialize_shape().definitions().len(),
+        1
+    );
+    assert_eq!(
+        EmptyArray::<NotShape>::serialize_shape()
+            .definitions()
+            .len(),
+        1
+    );
+    assert_eq!(
+        EmptyArray::<NotShape>::deserialize_shape()
+            .definitions()
+            .len(),
         1
     );
 }

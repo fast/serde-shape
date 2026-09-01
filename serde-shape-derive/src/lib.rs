@@ -369,7 +369,11 @@ fn collect_shape_bound_types(
     field_bound_types: &mut Vec<Type>,
 ) {
     match ty {
-        Type::Array(ty) => collect_shape_bound_types(&ty.elem, type_params, field_bound_types),
+        Type::Array(ty) => {
+            if !is_zero_length(&ty.len) {
+                collect_shape_bound_types(&ty.elem, type_params, field_bound_types);
+            }
+        }
         Type::FnPtr(ty) => {
             for input in &ty.inputs {
                 collect_shape_bound_types(&input.ty, type_params, field_bound_types);
@@ -442,6 +446,19 @@ fn collect_shape_bound_types(
         }
         Type::Infer(_) | Type::Macro(_) | Type::Never(_) | Type::Verbatim(_) => {}
         _ => {}
+    }
+}
+
+fn is_zero_length(expr: &syn::Expr) -> bool {
+    match expr {
+        syn::Expr::Group(expr) => is_zero_length(&expr.expr),
+        syn::Expr::Lit(expr) => {
+            matches!(&expr.lit, syn::Lit::Int(value) if value
+                .base10_parse::<usize>()
+                .is_ok_and(|value| value == 0))
+        }
+        syn::Expr::Paren(expr) => is_zero_length(&expr.expr),
+        _ => false,
     }
 }
 
