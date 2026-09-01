@@ -12,7 +12,11 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-//! Derive macros for `serde-shape`.
+//! Procedural macros for `serde-shape`.
+//!
+//! Most users should enable the main crate's `derive` feature, which re-exports
+//! [`SerializeShape`](derive@SerializeShape) and [`DeserializeShape`](derive@DeserializeShape)
+//! with the corresponding traits and graph types.
 
 use std::collections::BTreeSet;
 
@@ -46,7 +50,7 @@ mod shape_attr;
 use shape_attr::ShapeAttrs;
 use shape_attr::description;
 
-/// Derive `serde_shape::SerializeShape` from Serde serialize metadata.
+/// Derives `serde_shape::SerializeShape` from Serde serialization metadata.
 #[proc_macro_derive(SerializeShape, attributes(serde, serde_shape))]
 pub fn derive_serialize_shape(input: TokenStream) -> TokenStream {
     let input = parse_macro_input!(input as DeriveInput);
@@ -57,7 +61,7 @@ pub fn derive_serialize_shape(input: TokenStream) -> TokenStream {
     }
 }
 
-/// Derive `serde_shape::DeserializeShape` from Serde deserialize metadata.
+/// Derives `serde_shape::DeserializeShape` from Serde deserialization metadata.
 #[proc_macro_derive(DeserializeShape, attributes(serde, serde_shape))]
 pub fn derive_deserialize_shape(input: TokenStream) -> TokenStream {
     let input = parse_macro_input!(input as DeriveInput);
