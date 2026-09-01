@@ -26,14 +26,14 @@ Enable the `derive` feature when you want `#[derive(SerializeShape)]` and `#[der
 
 ```toml
 [dependencies]
-serde-shape = { version = "0.0.1", features = ["derive"] }
+serde-shape = { version = "0.1.0", features = ["derive"] }
 ```
 
 Enable `std` when your reflected types use shapes provided only by the Rust standard library:
 
 ```toml
 [dependencies]
-serde-shape = { version = "0.0.1", features = ["derive", "std"] }
+serde-shape = { version = "0.1.0", features = ["derive", "std"] }
 ```
 
 ## Motivation
