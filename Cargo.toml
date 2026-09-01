@@ -14,6 +14,7 @@
 
 [workspace]
 members = [
+  "examples",
   "serde-shape",
   "serde-shape-derive",
   "tests/derive",

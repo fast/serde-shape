@@ -42,13 +42,5 @@ std = []
 jiff02 = { package = "jiff", version = "0.2", default-features = false, optional = true }
 serde-shape-derive = { workspace = true, optional = true }
 
-[dev-dependencies]
-serde = { workspace = true }
-
 [lints]
 workspace = true
-
-[[example]]
-name = "inspect_config"
-path = "examples/inspect_config.rs"
-required-features = ["derive"]

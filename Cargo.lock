@@ -283,7 +283,6 @@ name = "serde-shape"
 version = "0.1.0"
 dependencies = [
  "jiff",
- "serde",
  "serde-shape-derive",
 ]
 
@@ -296,6 +295,14 @@ dependencies = [
  "quote",
  "serde_derive_internals",
  "syn 3.0.3",
+]
+
+[[package]]
+name = "serde-shape-examples"
+version = "0.0.0"
+dependencies = [
+ "serde",
+ "serde-shape",
 ]
 
 [[package]]

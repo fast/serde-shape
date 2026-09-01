@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-//! Prints an environment-variable reference from a Serde configuration model.
+//! Inspects a Serde configuration model and prints an environment-variable reference.
 
 #![allow(dead_code)]
 
