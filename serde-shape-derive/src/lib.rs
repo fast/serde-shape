@@ -368,6 +368,9 @@ fn collect_shape_bound_types(
     type_params: &BTreeSet<String>,
     field_bound_types: &mut Vec<Type>,
 ) {
+    // Keep this selective traversal aligned with serde_derive::bound::with_bound. A general
+    // syn::visit::Visit would also enter macros and const expressions, where mentioning a type
+    // parameter does not imply that the field needs a Shape bound.
     match ty {
         Type::Array(ty) => {
             if !is_zero_length(&ty.len) {
