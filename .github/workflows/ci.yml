@@ -103,6 +103,7 @@ jobs:
       - name: Check no_std
         run: |
           cargo check -p serde-shape --lib --no-default-features --target thumbv7em-none-eabihf
+          cargo check -p serde-shape --lib --no-default-features --features jiff02 --target thumbv7em-none-eabihf
           cargo check -p serde-shape-test-no-std --lib --target thumbv7em-none-eabihf
         shell: bash
 

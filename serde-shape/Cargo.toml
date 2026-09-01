@@ -35,9 +35,11 @@ rustdoc-args = ["--cfg", "docsrs"]
 [features]
 default = []
 derive = ["dep:serde-shape-derive"]
+jiff02 = ["dep:jiff02"]
 std = []
 
 [dependencies]
+jiff02 = { package = "jiff", version = "0.2", default-features = false, optional = true }
 serde-shape-derive = { workspace = true, optional = true }
 
 [lints]

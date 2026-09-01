@@ -645,3 +645,30 @@ fn maps_network_shapes_without_std() {
         FieldWireShape::Value(ShapeRef::Tuple(vec![ipv4_binary, ShapeRef::U16]))
     );
 }
+
+#[cfg(feature = "jiff02")]
+#[test]
+fn maps_jiff_serde_types_to_strings() {
+    fn assert_string_shapes<T>()
+    where
+        T: DeserializeShape + SerializeShape,
+    {
+        assert_eq!(
+            DeserializeShapeGraph::for_type::<T>().root(),
+            &ShapeRef::String
+        );
+        assert_eq!(
+            SerializeShapeGraph::for_type::<T>().root(),
+            &ShapeRef::String
+        );
+    }
+
+    assert_string_shapes::<jiff02::civil::Date>();
+    assert_string_shapes::<jiff02::civil::DateTime>();
+    assert_string_shapes::<jiff02::civil::ISOWeekDate>();
+    assert_string_shapes::<jiff02::civil::Time>();
+    assert_string_shapes::<jiff02::SignedDuration>();
+    assert_string_shapes::<jiff02::Span>();
+    assert_string_shapes::<jiff02::Timestamp>();
+    assert_string_shapes::<jiff02::Zoned>();
+}
