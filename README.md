@@ -16,11 +16,11 @@
 [actions-badge]: https://github.com/fast/serde-shape/workflows/CI/badge.svg
 [actions-url]: https://github.com/fast/serde-shape/actions?query=workflow%3ACI
 
-`serde-shape` builds inspectable graphs of Serde serialization and deserialization shapes. Derive macros generate the metadata code at compile time; calling `serialize_shape()` or `deserialize_shape()` constructs the graph at runtime without serializing or deserializing a value.
+`serde-shape` reflects the data model that a Rust type emits through Serde serialization or accepts through Serde deserialization. It builds an inspectable graph from type information and `#[serde(...)]` attributes without serializing or deserializing a value.
 
-It gives libraries and tools a lightweight graph of the Rust types, Serde names, field metadata, enum tagging, defaults, aliases, union value alternatives, skips, and custom serializer/deserializer boundaries that make up a type's wire shape.
+Libraries and tools can inspect Rust and Serde names, fields, enum tagging, defaults, aliases, skipped values, format-dependent alternatives, and custom serializer or deserializer boundaries.
 
-## Install
+## Getting started
 
 Enable the `derive` feature when you want `#[derive(SerializeShape)]` and `#[derive(DeserializeShape)]`:
 
@@ -38,7 +38,18 @@ serde-shape = { version = "0.1.0", features = ["derive", "std"] }
 
 The shape derives are independent of Serde's `Serialize` and `Deserialize` derives: they neither implement nor require those traits. Derive both sets when a type must also perform actual serialization or deserialization. Likewise, `serde_shape` attributes describe reflection metadata only and do not change Serde's runtime behavior.
 
-## Motivation
+## Choosing a direction
+
+Serde permits a type to emit and accept different representations. Names, skipped fields, custom functions, and conversion types can all differ by direction, so `serde-shape` exposes two independent APIs:
+
+| Representation | Derive | Graph entry point |
+| --- | --- | --- |
+| Values emitted by serialization | `SerializeShape` | `T::serialize_shape()` |
+| Values accepted by deserialization | `DeserializeShape` | `T::deserialize_shape()` |
+
+Derive only the direction a consumer needs. Derive both when a tool compares the emitted and accepted representations.
+
+## When to use serde-shape
 
 Use `serde-shape` when Serde already defines the contract you care about, but you also need to inspect that contract as data.
 
@@ -50,13 +61,13 @@ Typical use cases:
 - checking how a serialized or deserialized shape changes across releases;
 - building schema exporters that start from Serde metadata.
 
-`serde-shape` is intentionally not a full validation schema. It reflects the Serde data model shape and relevant Serde attributes; it does not infer value ranges, regexes, business rules, or runtime behavior hidden inside custom serializer/deserializer functions. Use `ShapeRef::union` for format-native alternatives that do not fit one Rust shape. Union alternatives may overlap; they are flattened, deduplicated, and stored in canonical order.
+`serde-shape` is intentionally not a validation schema. It does not infer value ranges, regular expressions, business rules, or runtime behavior hidden inside custom serializer or deserializer functions.
 
 Field shapes expose `wire_shape` as the source of truth for regular values, flattened fields, inline transparent fields, and omitted fields. Use `FieldWireShape::shape()` when a graph walker needs the contributed shape without distinguishing those wire positions. Custom serializer/deserializer boundaries are represented by `ShapeRef::Opaque`, including when they are flattened or inline.
 
 If the consumer needs JSON Schema, [`schemars`](https://docs.rs/schemars) directly targets that format. `serde-shape` instead keeps serialization and deserialization shapes separate and leaves format-specific export and validation to downstream tools.
 
-## Example
+## Inspecting a graph
 
 The following example shows how to inspect a nested config type.
 
@@ -101,7 +112,30 @@ See the [crate documentation][docs-url] for the full shape graph model, derive b
 
 Rust doc comments on derived containers, variants, and fields are preserved as descriptions. Consumers can use the same comments for generated configuration references, CLI help, or diagnostics.
 
-## Custom representations
+## Derive behavior
+
+The derive macros use Serde's derive metadata for the selected direction. They reflect the following wire-relevant behavior:
+
+| Scope | Reflected behavior |
+| --- | --- |
+| Container | Directional names, rename rules, enum tagging, transparent fields, defaults, unknown-field policy, expectation text, identifier enums, and `#[non_exhaustive]` |
+| Variant | Directional names and skips, deserialization aliases and `other`, per-variant `untagged`, field style, and custom-function boundaries |
+| Field | Directional names and skips, deserialization aliases and defaults, `flatten`, `skip_serializing_if`, transparent placement, borrowed string or byte `Cow` input, and custom-function boundaries |
+| Conversion and remote types | `into`, `from`, and `try_from` use the conversion type's shape; remote helpers expose their declared fields and Serde metadata |
+
+Serde attributes that affect generated code without changing the wire model are not copied into the graph. For example, Serde trait bounds and crate paths remain concerns of Serde's derive, while shape trait bounds are inferred independently.
+
+### Custom representations
+
+`serde_shape` has three direction-specific reflection extensions:
+
+| Attribute | Purpose | Allowed on |
+| --- | --- | --- |
+| `serialize_with = "path"` | Supplies a serialization `ShapeRef` | Containers, variants, and fields |
+| `deserialize_with = "path"` | Supplies a deserialization `ShapeRef` | Containers, variants, and fields |
+| `bound(serialize = "...", deserialize = "...")` | Replaces inferred shape bounds in the selected direction | Containers |
+
+These extensions cannot rename, tag, skip, flatten, alias, or default a Serde item. Serde remains the source of truth for wire behavior; `serde_shape` only supplies reflection information that cannot be inferred.
 
 Custom Serde functions and foreign types do not expose enough information for `serde-shape` to infer their wire representation. Provide functions that build the serialization and deserialization shapes explicitly:
 
