@@ -154,6 +154,7 @@ Types that branch on `Serializer::is_human_readable()` or `Deserializer::is_huma
 `serde-shape` enables no features by default.
 
 - `derive`: enables `#[derive(SerializeShape)]` and `#[derive(DeserializeShape)]`.
+- `jiff02`: enables string shapes for Jiff 0.2 types with direct Serde implementations.
 - `std`: enables shape implementations for standard-library-only types.
 
 ## Built-in shapes
@@ -170,6 +171,8 @@ The built-in implementations follow Serde's semantic representations in each dir
 | Time | `core::time::Duration` and, with `std`, `SystemTime` |
 | Network | `core::net` IP and socket address types |
 | `std` feature | Atomics available on the target, `HashMap`, `HashSet`, `Path`, `PathBuf`, `Mutex`, and `RwLock` |
+
+With the `jiff02` feature, `Date`, `DateTime`, `ISOWeekDate`, `SignedDuration`, `Span`, `Time`, `Timestamp`, and `Zoned` are string shapes in both directions, matching Jiff's direct Serde implementations.
 
 Network address shapes are unions of their human-readable string representation and their compact Serde representation. A serialized byte slice and an owned `Box<[u8]>` input are sequences, while borrowed byte deserialization uses `ShapeRef::Bytes`.
 
