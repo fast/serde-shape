@@ -112,6 +112,14 @@ See the [crate documentation][docs-url] for the full shape graph model, derive b
 
 Rust doc comments on derived containers, variants, and fields are preserved as descriptions. Consumers can use the same comments for generated configuration references, CLI help, or diagnostics.
 
+For a complete consumer, run the [`inspect_config`](serde-shape/examples/inspect_config.rs) example:
+
+```shell
+cargo run --package serde-shape --example inspect_config --features derive
+```
+
+It walks a fictional application configuration and prints the environment variable name, configuration path, and accepted value kind for each leaf. The example deliberately supports a small mapping policy and rejects shapes that policy cannot represent.
+
 ## Derive behavior
 
 The derive macros use Serde's derive metadata for the selected direction. They reflect the following wire-relevant behavior:

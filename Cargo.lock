@@ -283,6 +283,7 @@ name = "serde-shape"
 version = "0.1.0"
 dependencies = [
  "jiff",
+ "serde",
  "serde-shape-derive",
 ]
 
