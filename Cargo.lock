@@ -195,14 +195,14 @@ dependencies = [
 
 [[package]]
 name = "serde-shape"
-version = "0.0.1"
+version = "0.1.0"
 dependencies = [
  "serde-shape-derive",
 ]
 
 [[package]]
 name = "serde-shape-derive"
-version = "0.0.1"
+version = "0.1.0"
 dependencies = [
  "proc-macro-crate",
  "proc-macro2",
@@ -397,7 +397,6 @@ name = "x"
 version = "0.0.0"
 dependencies = [
  "clap",
- "serde_json",
  "which",
 ]
 

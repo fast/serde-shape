@@ -33,8 +33,8 @@ rust-version = "1.85.0"
 
 [workspace.dependencies]
 # workspace dependencies
-serde-shape = { version = "0.0.1", path = "serde-shape" }
-serde-shape-derive = { version = "=0.0.1", path = "serde-shape-derive" }
+serde-shape = { version = "0.1.0", path = "serde-shape" }
+serde-shape-derive = { version = "=0.1.0", path = "serde-shape-derive" }
 
 # crates.io dependencies
 clap = { version = "4.6.1" }

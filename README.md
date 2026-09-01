@@ -36,6 +36,8 @@ Enable `std` when your reflected types use shapes provided only by the Rust stan
 serde-shape = { version = "0.1.0", features = ["derive", "std"] }
 ```
 
+The shape derives are independent of Serde's `Serialize` and `Deserialize` derives: they neither implement nor require those traits. Derive both sets when a type must also perform actual serialization or deserialization. Likewise, `serde_shape` attributes describe reflection metadata only and do not change Serde's runtime behavior.
+
 ## Motivation
 
 Use `serde-shape` when Serde already defines the contract you care about, but you also need to inspect that contract as data.

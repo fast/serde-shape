@@ -40,6 +40,7 @@ All notable changes to this project will be documented in this file.
 
 ### Bug fixes
 
+* Package and verify the unpublished main and derive crates together so a new release does not require its derive version to exist on crates.io first.
 * Preserve qualified Serde function paths such as `<T as Trait>::function` as parseable Rust token streams.
 * Match Serde's fixed-array coverage and bounds: lengths above 32 no longer claim shape support, while zero-length arrays no longer require their unobserved element type to implement a shape trait, including inside derived generic containers.
 * Match Serde's deserialization bounds for tree and hash collections so a shape implementation is exposed only when the corresponding collection can actually deserialize.
@@ -52,6 +53,7 @@ All notable changes to this project will be documented in this file.
 
 ### Improvements
 
+* Clarify that shape derives and `serde_shape` attributes provide reflection metadata without implementing or changing Serde's runtime traits.
 * Point README and crate-level installation examples at the upcoming `0.1.0` release.
 * State the graph-local `ShapeId` ownership contract accurately instead of claiming that lookups can detect an in-bounds id copied from another graph.
 * Add `definition_for` to both graph types so walkers can resolve a `ShapeRef::Definition` without repeating a match and id lookup.

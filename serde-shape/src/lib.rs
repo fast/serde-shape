@@ -41,6 +41,10 @@
 //! ```
 //!
 //! The crate is `no_std` by default and requires `alloc`.
+//! The shape derives are independent of Serde's `Serialize` and `Deserialize` derives: they
+//! neither implement nor require those traits. Derive both sets when a type must also perform
+//! actual serialization or deserialization. `serde_shape` attributes affect reflection metadata
+//! only; they do not change Serde's runtime behavior.
 //!
 //! # Quick start
 //!
